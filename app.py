@@ -3,47 +3,46 @@ import os
 
 app = Flask(__name__)
 
-# --- ORTAK FOOTER ---
-footer_html = """
-<footer style="background: #111; padding: 25px; border-top: 2px solid #333; text-align: center; margin-top: auto;">
-    <button style="background:#ff4500; color:white; padding:12px 25px; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">☕ DESTEK OL</button>
-    <button style="background:#444; color:white; padding:12px 25px; border:none; border-radius:5px; cursor:pointer; font-weight:bold; margin-left:10px;" onclick="document.getElementById('c-box').style.display='block'">✉️ İLETİŞİM</button>
-    <div id="c-box" style="display:none; color:#aaa; margin-top:10px;">iletisim@canostudio.com</div>
-</footer>
-"""
-
-# --- ANA SAYFA ---
-ana_sayfa_html = f"""
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8"><title>Cano Game Studio | Portal</title>
-    <style>
-        body {{ background: #0a0a0a; color: white; font-family: sans-serif; margin: 0; display: flex; flex-direction: column; min-height: 100vh; }}
-        .container {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; padding: 40px; max-width: 1200px; margin: 0 auto; }}
-        .card {{ border: 2px solid #222; padding: 40px; border-radius: 20px; cursor: pointer; text-align: center; transition: 0.4s; }}
-        .card:hover {{ transform: scale(1.05); border-color: #00d4ff; box-shadow: 0 0 30px rgba(0,212,255,0.1); }}
-        h1 {{ text-align: center; margin-top: 50px; letter-spacing: 5px; color: #00d4ff; }}
-    </style>
-</head>
-<body>
-    <h1>CANO GAME STUDIO</h1>
-    <div class="container">
-        <div class="card" onclick="window.location.href='/neon-arcade'">
-            <h2 style="color:#00d4ff">NEON ARCADE</h2>
-            <p>Uçan Kare (Klasik Refleks)</p>
+# --- ANA SAYFA (DEĞİŞKEN İÇERDİĞİ İÇİN F-STRING KULLANILDI) ---
+def get_ana_sayfa():
+    footer_html = """
+    <footer style="background: #111; padding: 25px; border-top: 2px solid #333; text-align: center; margin-top: auto;">
+        <button style="background:#ff4500; color:white; padding:12px 25px; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">☕ DESTEK OL</button>
+        <button style="background:#444; color:white; padding:12px 25px; border:none; border-radius:5px; cursor:pointer; font-weight:bold; margin-left:10px;" onclick="document.getElementById('c-box').style.display='block'">✉️ İLETİŞİM</button>
+        <div id="c-box" style="display:none; color:#aaa; margin-top:10px;">iletisim@canostudio.com</div>
+    </footer>
+    """
+    return f"""
+    <!DOCTYPE html>
+    <html lang="tr">
+    <head>
+        <meta charset="UTF-8"><title>Cano Game Studio | Portal</title>
+        <style>
+            body {{ background: #0a0a0a; color: white; font-family: sans-serif; margin: 0; display: flex; flex-direction: column; min-height: 100vh; }}
+            .container {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; padding: 40px; max-width: 1200px; margin: 0 auto; }}
+            .card {{ border: 2px solid #222; padding: 40px; border-radius: 20px; cursor: pointer; text-align: center; transition: 0.4s; }}
+            .card:hover {{ transform: scale(1.05); border-color: #00d4ff; box-shadow: 0 0 30px rgba(0,212,255,0.1); }}
+            h1 {{ text-align: center; margin-top: 50px; letter-spacing: 5px; color: #00d4ff; }}
+        </style>
+    </head>
+    <body>
+        <h1>CANO GAME STUDIO</h1>
+        <div class="container">
+            <div class="card" onclick="window.location.href='/neon-arcade'">
+                <h2 style="color:#00d4ff">NEON ARCADE</h2>
+                <p>Uçan Kare (Klasik Refleks)</p>
+            </div>
+            <div class="card" onclick="window.location.href='/horror'" style="border-color:#e74c3c">
+                <h2 style="color:#e74c3c">HORROR / ACTION</h2>
+                <p>Zihnin Karanlığı (3D Açık Dünya)</p>
+            </div>
         </div>
-        <div class="card" onclick="window.location.href='/horror'" style="border-color:#e74c3c">
-            <h2 style="color:#e74c3c">HORROR / ACTION</h2>
-            <p>Zihnin Karanlığı (3D Açık Dünya)</p>
-        </div>
-    </div>
-    {footer_html}
-</body>
-</html>
-"""
+        {footer_html}
+    </body>
+    </html>
+    """
 
-# --- 3D HORROR OYUNU ---
+# --- 3D HORROR OYUNU (NORMAL STRING - HATA RİSKİ SIFIR) ---
 horror_sayfa_html = """
 <!DOCTYPE html>
 <html lang="tr">
@@ -54,9 +53,11 @@ horror_sayfa_html = """
         #ui-voice { position: fixed; top: 15%; width: 100%; text-align: center; color: rgba(255,255,255,0.5); font-family: monospace; font-size: 20px; z-index: 100; pointer-events: none; transition: 1s; opacity: 0; }
         #inventory { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 300px; background: rgba(0,0,0,0.9); border: 1px solid #e74c3c; padding: 20px; display: none; color: white; z-index: 200; font-family: monospace; }
         #dist { position: fixed; bottom: 20px; right: 20px; color: #444; font-family: monospace; }
+        #back { position: fixed; top: 20px; left: 20px; color: #555; text-decoration: none; z-index: 100; font-family: sans-serif; }
     </style>
 </head>
 <body>
+<a href="/" id="back">⬅ Kütüphaneye Dön</a>
 <div id="ui-voice"></div>
 <div id="inventory"><h3>ENVANTER (E)</h3><p>🔦 Fener</p><p>🔪 Çakı</p><p>📱 Telefon</p></div>
 <div id="dist">Hedef: <span id="dv">---</span>m</div>
@@ -85,7 +86,7 @@ horror_sayfa_html = """
         const floor = new THREE.Mesh(new THREE.PlaneGeometry(2000,2000), new THREE.MeshStandardMaterial({color:0x050505}));
         floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; scene.add(floor);
 
-        for(let i=0; i<500; i++) {
+        for(let i=0; i<600; i++) {
             let t = new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.5,10,6), new THREE.MeshStandardMaterial({color:0x111111}));
             t.position.set(Math.random()*600-300, 5, Math.random()*600-300);
             if(t.position.distanceTo(hosp) > 40) scene.add(t);
@@ -135,24 +136,23 @@ horror_sayfa_html = """
 </html>
 """
 
-# --- NEON ARCADE ---
-arcade_sayfa_html = f"""
+# --- NEON ARCADE (NORMAL STRING) ---
+arcade_sayfa_html = """
 <!DOCTYPE html>
 <html lang="tr">
 <head><meta charset="UTF-8"><title>Uçan Kare</title></head>
 <body style="background:#000; color:#00d4ff; text-align:center; font-family:sans-serif; margin:0;">
     <nav style="padding:20px; background:#111;"><a href="/" style="color:#fff; text-decoration:none;">⬅ Kütüphaneye Dön</a></nav>
     <canvas id="gc" width="400" height="400" style="border:3px solid #00d4ff; margin-top:20px;"></canvas>
-    {footer_html}
     <script>
         const canvas = document.getElementById("gc"); const ctx = canvas.getContext("2d");
-        let b = {{y:200, v:0}}, p = [], f = 0;
-        function draw() {{
+        let b = {y:200, v:0}, p = [], f = 0;
+        function draw() {
             ctx.fillStyle="#000"; ctx.fillRect(0,0,400,400);
             b.v += 0.6; b.y += b.v;
             ctx.fillStyle="#00d4ff"; ctx.fillRect(50, b.y, 25, 25);
-            if(f%90===0) p.push({{x:400, h:Math.random()*200+50}});
-            for(let i=p.length-1; i>=0; i--) {{
+            if(f%90===0) p.push({x:400, h:Math.random()*200+50});
+            for(let i=p.length-1; i>=0; i--) {
                 p[i].x -= 3; ctx.fillStyle="#333";
                 ctx.fillRect(p[i].x, 0, 50, p[i].h);
                 ctx.fillRect(p[i].x, p[i].h+130, 50, 400);
@@ -160,7 +160,7 @@ arcade_sayfa_html = f"""
                 if(p[i].x < -50) p.splice(i,1);
             }
             f++; requestAnimationFrame(draw);
-        }}
+        }
         window.onclick = () => b.v = -9; draw();
     </script>
 </body>
@@ -168,7 +168,7 @@ arcade_sayfa_html = f"""
 """
 
 @app.route('/')
-def home(): return ana_sayfa_html
+def home(): return get_ana_sayfa()
 
 @app.route('/horror')
 def horror(): return horror_sayfa_html
