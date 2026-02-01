@@ -8,31 +8,26 @@ horror_sayfa_html = """
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Zihnin Karanlığı | High-Gen Horror</title>
+    <title>Zihnin Karanlığı | Orman</title>
     <style>
         body { margin: 0; overflow: hidden; background: #000; }
-        #ui-overlay { position: fixed; bottom: 20px; left: 20px; color: white; font-family: sans-serif; z-index: 100; pointer-events: none; }
-        #crosshair { position: fixed; top: 50%; left: 50%; width: 4px; height: 4px; background: white; border-radius: 50%; transform: translate(-50%, -50%); z-index: 100; opacity: 0.5; }
-        #inventory { 
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-            width: 300px; background: rgba(0,0,0,0.9); border: 1px solid #e74c3c; 
-            padding: 20px; display: none; color: white; z-index: 200;
-        }
+        #ui-overlay { position: fixed; top: 10%; width: 100%; text-align: center; color: rgba(255,255,255,0.6); font-family: 'Courier New', monospace; font-style: italic; font-size: 22px; z-index: 100; pointer-events: none; text-shadow: 0 0 10px red; transition: 1s; opacity: 0; }
+        #crosshair { position: fixed; top: 50%; left: 50%; width: 2px; height: 2px; background: white; transform: translate(-50%, -50%); z-index: 100; opacity: 0.3; }
+        #inventory { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 300px; background: rgba(0,0,0,0.9); border: 1px solid #e74c3c; padding: 20px; display: none; color: white; z-index: 200; }
+        #instructions { position: fixed; bottom: 20px; left: 20px; color: #444; font-family: sans-serif; font-size: 12px; }
     </style>
 </head>
 <body>
 
-<div id="ui-overlay">
-    <div>WASD: Hareket | E: Envanter | Mouse: Etrafa Bak</div>
-    <div id="status">Durum: Ormanda Kayboldu...</div>
-</div>
+<div id="ui-overlay">Biri mi var orada?</div>
 <div id="crosshair"></div>
 <div id="inventory">
-    <h3 style="color:#e74c3c">ENVANTER</h3>
+    <h3 style="color:#e74c3c">ENVANTER (E)</h3>
     <p>🔦 Fener (Açık)</p>
     <p>🔪 Çakı</p>
     <p>📱 Telefon (Şarj %4)</p>
 </div>
+<div id="instructions">WASD: Ağır Hareket | E: Envanter | Tıkla: Odaklan</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
@@ -41,75 +36,89 @@ horror_sayfa_html = """
     let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
     let velocity = new THREE.Vector3();
     let direction = new THREE.Vector3();
+    
+    const thoughts = [
+        "Neden buradayım?",
+        "Bu ağaçlar... sanki yer değiştiriyorlar.",
+        "İlacım nerede? Onu bulmalıyım.",
+        "Sesler... kesilmiyor.",
+        "Doktor nerede? Bana bunu o yaptı.",
+        "Sakin ol... sadece bir halüsinasyon."
+    ];
 
     init();
     animate();
 
     function init() {
-        // 1. Sahne ve Kamera (Outlast Tarzı FPS)
         scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x020202);
-        scene.fog = new THREE.FogExp2(0x020202, 0.15); // Sisli orman havası
+        scene.background = new THREE.Color(0x010101);
+        scene.fog = new THREE.FogExp2(0x010101, 0.08); // Daha geniş ama puslu görüş
 
-        camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
         
-        // 2. Işıklandırma (Fener Efekti)
-        const ambientLight = new THREE.AmbientLight(0x404040, 0.2); // Çok hafif ortam ışığı
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.1); 
         scene.add(ambientLight);
 
-        flashLight = new THREE.SpotLight(0xffffff, 2);
-        flashLight.distance = 40;
-        flashLight.angle = Math.PI / 6;
-        flashLight.penumbra = 0.5;
-        flashLight.decay = 2;
+        flashLight = new THREE.SpotLight(0xffffff, 2.5);
+        flashLight.distance = 50;
+        flashLight.angle = Math.PI / 5;
+        flashLight.penumbra = 0.6;
+        flashLight.decay = 1.5;
         flashLight.castShadow = true;
         
         camera.add(flashLight);
         flashLight.position.set(0, 0, 1);
-        flashLight.target = camera; // Fener kameranın baktığı yere baksın
+        flashLight.target = camera; 
         scene.add(camera);
 
-        // 3. Yer ve Orman (Zemin)
-        const floorGeo = new THREE.PlaneGeometry(1000, 1000);
-        const floorMat = new THREE.MeshStandardMaterial({ color: 0x050505 });
+        // Zemin (Toprak/Çimen dokusu rengi)
+        const floorGeo = new THREE.PlaneGeometry(2000, 2000);
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0x020502 });
         const floor = new THREE.Mesh(floorGeo, floorMat);
         floor.rotation.x = -Math.PI / 2;
         floor.receiveShadow = true;
         scene.add(floor);
 
-        // 4. Rastgele Ağaçlar (Performanslı Model)
-        for(let i = 0; i < 200; i++) {
-            const treeHeight = Math.random() * 5 + 5;
-            const treeGeo = new THREE.CylinderGeometry(0.2, 0.5, treeHeight, 8);
-            const treeMat = new THREE.MeshStandardMaterial({ color: 0x1a0f00 });
-            const tree = new THREE.Mesh(treeGeo, treeMat);
+        // 500 Ağaçlık Dev Orman
+        const treeTrunkGeo = new THREE.CylinderGeometry(0.2, 0.4, 8, 8);
+        const treeTrunkMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a });
+        const treeTopGeo = new THREE.ConeGeometry(2, 5, 8);
+        const treeTopMat = new THREE.MeshStandardMaterial({ color: 0x050a05 });
+
+        for(let i = 0; i < 500; i++) {
+            const group = new THREE.Group();
             
-            tree.position.x = Math.random() * 200 - 100;
-            tree.position.z = Math.random() * 200 - 100;
-            tree.position.y = treeHeight / 2;
-            tree.castShadow = true;
-            scene.add(tree);
+            const trunk = new THREE.Mesh(treeTrunkGeo, treeTrunkMat);
+            trunk.position.y = 4;
+            trunk.castShadow = true;
+            group.add(trunk);
+
+            const top = new THREE.Mesh(treeTopGeo, treeTopMat);
+            top.position.y = 8;
+            top.castShadow = true;
+            group.add(top);
+
+            group.position.x = Math.random() * 400 - 200;
+            group.position.z = Math.random() * 400 - 200;
+            scene.add(group);
         }
 
         renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = true;
         document.body.appendChild(renderer.domElement);
 
-        // Mouse Kilitleme (FPS Kontrolü için)
         document.body.addEventListener('click', () => {
             if(!inventoryOpen) document.body.requestPointerLock();
         });
 
         document.addEventListener('mousemove', (e) => {
             if (document.pointerLockElement === document.body) {
-                camera.rotation.y -= e.movementX * 0.002;
-                camera.rotation.x -= e.movementY * 0.002;
+                camera.rotation.y -= e.movementX * 0.0015;
+                camera.rotation.x -= e.movementY * 0.0015;
             }
         });
 
-        // Klavye Kontrolleri
         const onKeyDown = (e) => {
             switch (e.code) {
                 case 'KeyW': moveForward = true; break;
@@ -129,6 +138,16 @@ horror_sayfa_html = """
         };
         document.addEventListener('keydown', onKeyDown);
         document.addEventListener('keyup', onKeyUp);
+
+        // Rastgele Şizofreni Düşünceleri
+        setInterval(() => {
+            if(!inventoryOpen) {
+                const voice = document.getElementById('ui-overlay');
+                voice.innerText = thoughts[Math.floor(Math.random() * thoughts.length)];
+                voice.style.opacity = 1;
+                setTimeout(() => { voice.style.opacity = 0; }, 3000);
+            }
+        }, 8000);
     }
 
     function toggleInventory() {
@@ -141,19 +160,19 @@ horror_sayfa_html = """
         requestAnimationFrame(animate);
         
         if (!inventoryOpen && document.pointerLockElement === document.body) {
-            const delta = 0.1;
+            const delta = 0.05; // HAREKET YAVAŞLATILDI (Yarısı kadar yavaş)
             direction.z = Number(moveForward) - Number(moveBackward);
             direction.x = Number(moveRight) - Number(moveLeft);
             direction.normalize();
 
-            if (moveForward || moveBackward) velocity.z -= direction.z * 4.0 * delta;
-            if (moveLeft || moveRight) velocity.x -= direction.x * 4.0 * delta;
+            if (moveForward || moveBackward) velocity.z -= direction.z * 1.5 * delta;
+            if (moveLeft || moveRight) velocity.x -= direction.x * 1.5 * delta;
 
             camera.translateX(-velocity.x * delta);
             camera.translateZ(velocity.z * delta);
             
-            velocity.x *= 0.9;
-            velocity.z *= 0.9;
+            velocity.x *= 0.85; // Sürtünme artırıldı (daha hantal duruş)
+            velocity.z *= 0.85;
         }
 
         renderer.render(scene, camera);
@@ -170,7 +189,7 @@ horror_sayfa_html = """
 """
 
 @app.route('/')
-def home(): return horror_sayfa_html # Test için direkt korku açılıyor
+def home(): return horror_sayfa_html
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
