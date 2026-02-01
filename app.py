@@ -6,45 +6,50 @@ app = Flask(__name__)
 # --- GENEL TEMA VE FOOTER ---
 footer_html = """
 <footer style="background: #080808; padding: 30px; border-top: 1px solid #1a1a1a; text-align: center; margin-top: auto;">
-    <p style="color: #444; font-size: 0.8rem; letter-spacing: 2px;">© 2026 CANO STUDIO - GLOBAL SYSTEMS</p>
+    <p style="color: #444; font-size: 0.8rem; letter-spacing: 2px;">© 2026 CANO STUDIO - CREATIVE LABS</p>
 </footer>
 """
 
 # --- 1. ANA PORTAL SAYFASI ---
 ana_sayfa_html = f"""
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cano Studio | Game Library</title>
+    <title>Cano Studio | Dashboard</title>
     <style>
         * {{ box-sizing: border-box; transition: 0.3s ease; }}
         body {{ background: #020202; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; min-height: 100vh; }}
-        .header {{ padding: 80px 20px; text-align: center; }}
-        h1 {{ font-size: 3.5rem; letter-spacing: 12px; margin: 0; color: #fff; font-weight: 300; text-transform: uppercase; }}
-        .container {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 30px; padding: 40px; max-width: 1100px; margin: 0 auto; width:100%; }}
-        .game-card {{ background: #0a0a0a; border: 1px solid #1a1a1a; padding: 40px; border-radius: 8px; cursor: pointer; position: relative; overflow: hidden; }}
-        .game-card:hover {{ border-color: #00ff88; transform: translateY(-5px); background: #0f0f0f; }}
-        .game-card h2 {{ margin: 10px 0; letter-spacing: 2px; }}
-        .status {{ font-size: 10px; color: #00ff88; letter-spacing: 2px; border: 1px solid #00ff88; display: inline-block; padding: 2px 8px; border-radius: 4px; }}
-        .description {{ color: #666; font-size: 0.9rem; line-height: 1.6; }}
+        .header {{ padding: 60px 20px; text-align: center; }}
+        h1 {{ font-size: 3rem; letter-spacing: 10px; margin: 0; color: #fff; font-weight: 200; }}
+        .container {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; padding: 40px; max-width: 1200px; margin: 0 auto; width:100%; }}
+        .game-card {{ background: #0a0a0a; border: 1px solid #1a1a1a; padding: 30px; border-radius: 4px; cursor: pointer; }}
+        .game-card:hover {{ border-color: #fff; background: #111; transform: translateY(-5px); }}
+        .status {{ font-size: 9px; letter-spacing: 2px; border: 1px solid; display: inline-block; padding: 2px 8px; margin-bottom: 15px; }}
+        .arcade {{ color: #00d4ff; border-color: #00d4ff; }}
+        .strategy {{ color: #00ff88; border-color: #00ff88; }}
+        .horror {{ color: #ff4500; border-color: #ff4500; }}
+        .description {{ color: #555; font-size: 0.85rem; line-height: 1.5; }}
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>CANO STUDIO</h1>
-    </div>
+    <div class="header"><h1>CANO STUDIO</h1></div>
     <div class="container">
         <div class="game-card" onclick="window.location.href='/neon-arcade'">
-            <div class="status">ARCADE</div>
+            <div class="status arcade">ARCADE</div>
             <h2>NEON ARCADE</h2>
-            <p class="description">High-speed reflex challenge. Navigate through neon barriers and break records.</p>
+            <p class="description">Ultra hızlı refleks testi. Çarpma anında anlık resetleme özelliği eklendi.</p>
         </div>
         <div class="game-card" onclick="window.location.href='/void-command'">
-            <div class="status">STRATEGY</div>
-            <h2 style="color: #00ff88;">VOID COMMAND</h2>
-            <p class="description">Deep space expansion. Capture planets, manage energy, and dominate the void.</p>
+            <div class="status strategy">STRATEGY</div>
+            <h2>VOID COMMAND</h2>
+            <p class="description">Level bazlı genişleme. Her bölümde daha agresif yapay zeka ve daha çok gezegen.</p>
+        </div>
+        <div class="game-card" onclick="window.location.href='/the-basement'">
+            <div class="status horror">HORROR</div>
+            <h2 style="color:#ff4500">THE BASEMENT</h2>
+            <p class="description">Karanlık koridorlarda hayatta kal. Sadece fenerin ve şansın var.</p>
         </div>
     </div>
     {footer_html}
@@ -52,163 +57,190 @@ ana_sayfa_html = f"""
 </html>
 """
 
-# --- 2. NEON ARCADE OYUN SAYFASI ---
+# --- 2. NEON ARCADE (ANLIK RESETLEME) ---
 arcade_html = """
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Neon Arcade | Cano Studio</title>
+    <title>Neon Arcade | Instant Reset</title>
     <style>
         body { background: #000; color: #fff; font-family: sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
-        #gc { border: 4px solid #00d4ff; box-shadow: 0 0 20px #00d4ff66; border-radius: 10px; cursor: pointer; }
-        .ui { position: absolute; top: 20px; text-align: center; pointer-events: none; }
-        .back-btn { position: fixed; top: 20px; left: 20px; color: #444; text-decoration: none; border: 1px solid #222; padding: 5px 15px; border-radius: 5px; }
-        .back-btn:hover { color: #fff; border-color: #fff; }
+        canvas { border: 2px solid #00d4ff; box-shadow: 0 0 20px #00d4ff33; cursor: pointer; }
+        .score { position: absolute; top: 20px; font-size: 3rem; font-weight: bold; color: #00d4ff; pointer-events: none; opacity: 0.5; }
     </style>
 </head>
 <body>
-    <a href="/" class="back-btn">← EXIT</a>
-    <div class="ui">
-        <h1 style="color:#00d4ff; margin:0; letter-spacing:5px;">NEON ARCADE</h1>
-        <div id="scoreDisplay" style="font-size: 2rem;">0</div>
-    </div>
-    <canvas id="gc" width="400" height="500"></canvas>
+    <div class="score" id="s">0</div>
+    <canvas id="c" width="400" height="500"></canvas>
     <script>
-        const canvas = document.getElementById("gc");
-        const ctx = canvas.getContext("2d");
-        let bird = { y: 250, v: 0, gravity: 0.5, jump: -8 };
-        let pipes = [];
-        let score = 0;
-        let frames = 0;
+        const canvas = document.getElementById("c"), ctx = canvas.getContext("2d");
+        let bird, pipes, frames, score;
+
+        function reset() {
+            bird = {y: 250, v: 0, g: 0.5, j: -8};
+            pipes = []; frames = 0; score = 0;
+            document.getElementById("s").innerText = "0";
+        }
 
         function draw() {
-            ctx.fillStyle = "#000"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-            bird.v += bird.gravity; bird.y += bird.v;
-            ctx.fillStyle = "#00d4ff"; ctx.shadowBlur = 15; ctx.shadowColor = "#00d4ff";
-            ctx.fillRect(50, bird.y, 30, 30); ctx.shadowBlur = 0;
+            ctx.fillStyle = "#000"; ctx.fillRect(0,0,400,500);
+            bird.v += bird.g; bird.y += bird.v;
+            ctx.fillStyle = "#00d4ff"; ctx.fillRect(50, bird.y, 30, 30);
 
-            if (frames % 90 === 0) {
-                let h = Math.random() * (canvas.height - 200) + 50;
-                pipes.push({ x: canvas.width, h: h, scored: false });
+            if(frames % 100 === 0) pipes.push({x: 400, h: Math.random()*250+50, s: false});
+            for(let i=pipes.length-1; i>=0; i--) {
+                pipes[i].x -= 4;
+                ctx.fillStyle = "#111"; ctx.fillRect(pipes[i].x, 0, 50, pipes[i].h);
+                ctx.fillRect(pipes[i].x, pipes[i].h+150, 50, 500);
+                if(50+30 > pipes[i].x && 50 < pipes[i].x+50 && (bird.y < pipes[i].h || bird.y+30 > pipes[i].h+150)) reset();
+                if(pipes[i].x < 50 && !pipes[i].s) { score++; pipes[i].s = true; document.getElementById("s").innerText = score; }
+                if(pipes[i].x < -50) pipes.splice(i,1);
             }
-            for (let i = pipes.length - 1; i >= 0; i--) {
-                pipes[i].x -= 3.5;
-                ctx.fillStyle = "#111"; ctx.strokeStyle = "#00d4ff";
-                ctx.fillRect(pipes[i].x, 0, 50, pipes[i].h);
-                ctx.fillRect(pipes[i].x, pipes[i].h + 150, 50, canvas.height);
-                ctx.strokeRect(pipes[i].x, 0, 50, pipes[i].h);
-                ctx.strokeRect(pipes[i].x, pipes[i].h + 150, 50, canvas.height);
-
-                if (50 > pipes[i].x + 50 && !pipes[i].scored) { score++; pipes[i].scored = true; document.getElementById("scoreDisplay").innerText = score; }
-                if (50 + 25 > pipes[i].x && 50 < pipes[i].x + 50 && (bird.y < pipes[i].h || bird.y + 30 > pipes[i].h + 150)) location.reload();
-                if (pipes[i].x < -50) pipes.splice(i, 1);
-            }
-            if (bird.y > canvas.height || bird.y < 0) location.reload();
+            if(bird.y > 500 || bird.y < 0) reset();
             frames++; requestAnimationFrame(draw);
         }
-        window.onclick = () => bird.v = bird.jump;
-        window.onkeydown = (e) => { if(e.code === 'Space') bird.v = bird.jump; };
+        window.onclick = () => bird.v = bird.j;
+        reset(); draw();
+    </script>
+</body>
+</html>
+"""
+
+# --- 3. VOID COMMAND (LEVEL SİSTEMLİ STRATEJİ) ---
+void_command_html = """
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Void Command | Levels</title>
+    <style>
+        body { background: #050505; color: #00ff88; font-family: 'Courier New', monospace; margin: 0; overflow: hidden; }
+        .ui { position: fixed; width: 100%; padding: 20px; display: flex; justify-content: space-between; background: rgba(0,0,0,0.8); z-index: 10; }
+        #game { display: block; background: #000; }
+    </style>
+</head>
+<body>
+    <div class="ui">
+        <span id="lvl">LEVEL: 1</span>
+        <span id="info">TÜM GEZEGENLERİ ELE GEÇİR!</span>
+    </div>
+    <canvas id="game"></canvas>
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+        
+        let level = 1, planets = [], selected = null;
+
+        class Planet {
+            constructor(x, y, r, owner) {
+                this.x = x; this.y = y; this.r = r; this.owner = owner;
+                this.energy = owner === 'neutral' ? 5 : 20;
+            }
+            draw() {
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, Math.PI*2);
+                ctx.strokeStyle = this.owner === 'player' ? '#00ff88' : (this.owner === 'enemy' ? '#ff4500' : '#333');
+                ctx.lineWidth = selected === this ? 5 : 2; ctx.stroke();
+                ctx.fillStyle = ctx.strokeStyle; ctx.textAlign = "center";
+                ctx.fillText(Math.floor(this.energy), this.x, this.y+5);
+            }
+        }
+
+        function initLevel() {
+            planets = [new Planet(100, canvas.height/2, 40, 'player')];
+            // Level arttıkça düşman sayısı artar
+            for(let i=0; i < level; i++) {
+                planets.push(new Planet(canvas.width - 100, (canvas.height/(level+1))*(i+1), 35, 'enemy'));
+            }
+            for(let i=0; i<5; i++) {
+                planets.push(new Planet(300+Math.random()*(canvas.width-600), Math.random()*canvas.height, 25, 'neutral'));
+            }
+        }
+
+        canvas.onclick = (e) => {
+            let p = planets.find(p => Math.hypot(p.x-e.clientX, p.y-e.clientY) < p.r);
+            if(p) {
+                if(p.owner === 'player') selected = p;
+                else if(selected) {
+                    let f = selected.energy/2; selected.energy -= f; p.energy -= f;
+                    if(p.energy < 0) { p.owner = 'player'; p.energy = Math.abs(p.energy); }
+                    selected = null;
+                }
+            }
+            if(!planets.some(p => p.owner === 'enemy')) { level++; document.getElementById('lvl').innerText = "LEVEL: " + level; initLevel(); }
+        };
+
+        function loop() {
+            ctx.fillStyle = "black"; ctx.fillRect(0,0,canvas.width,canvas.height);
+            planets.forEach(p => { if(p.owner !== 'neutral') p.energy += 0.01 * level; p.draw(); });
+            requestAnimationFrame(loop);
+        }
+        initLevel(); loop();
+    </script>
+</body>
+</html>
+"""
+
+# --- 4. THE BASEMENT (KORKU OYUNU) ---
+horror_html = """
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>The Basement | Horror</title>
+    <style>
+        body { background: #000; color: #fff; margin: 0; overflow: hidden; font-family: serif; }
+        #flashlight { position: fixed; width: 100vw; height: 100vh; background: radial-gradient(circle at center, transparent 10%, rgba(0,0,0,0.98) 30%); pointer-events: none; }
+        .message { position: fixed; bottom: 50px; width: 100%; text-align: center; color: #300; font-size: 1.2rem; }
+    </style>
+</head>
+<body>
+    <div id="flashlight"></div>
+    <div class="message" id="m">BURADAN ÇIKMALIYIM...</div>
+    <canvas id="h"></canvas>
+    <script>
+        const c = document.getElementById("h"), ctx = c.getContext("2d");
+        c.width = window.innerWidth; c.height = window.innerHeight;
+        let ghost = {x: -100, y: -100}, frame = 0;
+
+        window.onmousemove = (e) => {
+            document.getElementById("flashlight").style.background = `radial-gradient(circle at ${e.clientX}px ${e.clientY}px, transparent 0%, rgba(0,0,0,0.99) 25%)`;
+            if(Math.hypot(ghost.x-e.clientX, ghost.y-e.clientY) < 50) {
+                document.getElementById("m").innerText = "O BURADA!";
+                document.getElementById("m").style.color = "red";
+            }
+        };
+
+        function spawnGhost() {
+            ghost.x = Math.random() * c.width; ghost.y = Math.random() * c.height;
+        }
+
+        function draw() {
+            ctx.fillStyle = "#050505"; ctx.fillRect(0,0,c.width,c.height);
+            // Hayalet sadece çok yakındayken titrek bir şekilde görünür
+            ctx.fillStyle = "rgba(255,255,255,0.02)";
+            ctx.beginPath(); ctx.arc(ghost.x, ghost.y, 20, 0, Math.PI*2); ctx.fill();
+            if(frame % 200 === 0) spawnGhost();
+            frame++; requestAnimationFrame(draw);
+        }
         draw();
     </script>
 </body>
 </html>
 """
 
-# --- 3. VOID COMMAND STRATEJİ SAYFASI ---
-void_command_html = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Void Command | Cano Studio</title>
-    <style>
-        body { background: #050505; color: #00ff88; font-family: 'Courier New', monospace; margin: 0; overflow: hidden; user-select: none; }
-        .nav { padding: 20px; background: rgba(0,0,0,0.9); border-bottom: 1px solid #111; display: flex; justify-content: space-between; position: fixed; width: 100%; z-index: 100; }
-        .back-btn { color: #444; text-decoration: none; border: 1px solid #222; padding: 2px 10px; border-radius: 4px; }
-        #game-canvas { display: block; background: radial-gradient(circle, #0a0a0a 0%, #000 100%); }
-    </style>
-</head>
-<body>
-    <div class="nav">
-        <a href="/" class="back-btn">← EXIT</a>
-        <span id="status">COMMAND CENTER: ACTIVE</span>
-        <span id="fleet-info">SELECT ORIGIN PLANET</span>
-    </div>
-    <canvas id="game-canvas"></canvas>
-    <script>
-        const canvas = document.getElementById('game-canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-        let planets = []; let selectedPlanet = null;
-
-        class Planet {
-            constructor(x, y, radius, owner) {
-                this.x = x; this.y = y; this.radius = radius; this.owner = owner;
-                this.energy = owner === 'neutral' ? 5 : 20;
-                this.color = owner === 'player' ? '#00ff88' : (owner === 'enemy' ? '#ff4500' : '#333');
-            }
-            draw() {
-                if (selectedPlanet === this) {
-                    ctx.beginPath(); ctx.arc(this.x, this.y, this.radius + 10, 0, Math.PI * 2);
-                    ctx.strokeStyle = 'white'; ctx.setLineDash([5, 5]); ctx.stroke(); ctx.setLineDash([]);
-                }
-                ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fillStyle = '#000'; ctx.fill();
-                ctx.strokeStyle = this.color; ctx.lineWidth = 3; ctx.stroke();
-                ctx.fillStyle = this.color; ctx.font = "14px Arial"; ctx.textAlign = "center";
-                ctx.fillText(Math.floor(this.energy), this.x, this.y + 5);
-            }
-            update() { if (this.owner !== 'neutral') this.energy += 0.015; }
-        }
-
-        function init() {
-            planets = [
-                new Planet(150, canvas.height/2, 40, 'player'),
-                new Planet(canvas.width - 150, canvas.height/2, 40, 'enemy')
-            ];
-            for(let i=0; i<6; i++) {
-                planets.push(new Planet(300 + Math.random()*(canvas.width-600), 100 + Math.random()*(canvas.height-200), 25 + Math.random()*20, 'neutral'));
-            }
-        }
-
-        canvas.onclick = (e) => {
-            const mouseX = e.clientX; const mouseY = e.clientY;
-            let clicked = planets.find(p => Math.hypot(p.x - mouseX, p.y - mouseY) < p.radius);
-            if (clicked) {
-                if (clicked.owner === 'player') selectedPlanet = clicked;
-                else if (selectedPlanet && selectedPlanet.energy > 5) {
-                    let force = selectedPlanet.energy / 2;
-                    selectedPlanet.energy -= force;
-                    clicked.energy -= force;
-                    if (clicked.energy < 0) { clicked.owner = 'player'; clicked.energy = Math.abs(clicked.energy); clicked.color = '#00ff88'; }
-                    selectedPlanet = null;
-                }
-            } else selectedPlanet = null;
-        };
-
-        function animate() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            planets.forEach(p => { p.update(); p.draw(); });
-            requestAnimationFrame(animate);
-        }
-        init(); animate();
-    </script>
-</body>
-</html>
-"""
-
 @app.route('/')
-def home():
-    return ana_sayfa_html
+def home(): return ana_sayfa_html
 
 @app.route('/neon-arcade')
-def arcade():
-    return arcade_html
+def arcade(): return arcade_html
 
 @app.route('/void-command')
-def strategy():
-    return void_command_html
+def strategy(): return void_command_html
+
+@app.route('/the-basement')
+def horror(): return horror_html
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
