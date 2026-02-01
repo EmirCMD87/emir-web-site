@@ -87,4 +87,5 @@ def ana_sayfa():
     return html_icerik
 
 if __name__ == '__main__':
+
     app.run(debug=True)
