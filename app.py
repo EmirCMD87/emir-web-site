@@ -78,7 +78,7 @@ def home():
         <div class="game-card" onclick="window.location.href='/glitch-in-me'" style="border-color: #9b59b6;">
             <div class="status" style="color:#9b59b6; border-color: #9b59b6;">NARRATIVE</div>
             <h2 style="color:#9b59b6">THE GLITCH IN ME</h2>
-            <p style="color:#555; font-size: 0.8rem;">Gerçeklik ve dijital dünya arasındaki ince çizgi.</p>
+            <p style="color:#555; font-size: 0.8rem;">İçindeki hatayı bulamazsan, sistem seni siler.</p>
         </div>
     </div>
     
@@ -144,7 +144,7 @@ def arcade():
 """
     return html.replace("VAR_BACK", back_button_html)
 
-# --- 3. THE LOST FOREST (FPS + LEVEL + ZAMAN) ---
+# --- 3. THE LOST FOREST ---
 @app.route('/lost-forest')
 def horror():
     html = """
@@ -225,7 +225,7 @@ def horror():
 """
     return html.replace("VAR_BACK", back_button_html)
 
-# --- 4. VOID COMMAND (GEZEGEN) ---
+# --- 4. VOID COMMAND ---
 @app.route('/void-command')
 def strategy():
     html = """
@@ -274,36 +274,142 @@ def strategy():
 """
     return html.replace("VAR_BACK", back_button_html)
 
-# --- 5. THE GLITCH IN ME (HİKAYE) ---
+# --- 5. THE GLITCH IN ME (GELİŞTİRİLMİŞ GERİLİM HİKAYESİ + GÖRSEL) ---
 @app.route('/glitch-in-me')
 def story_game():
     html = """
 <!DOCTYPE html>
 <html>
-<head><title>Glitch in Me</title><style>body{background:#050505;color:#e0e0e0;font-family:sans-serif;margin:0;display:flex;align-items:center;justify-content:center;height:100vh;overflow:hidden;}
-#sc{max-width:600px;padding:40px;background:#0a0a0a;border:1px solid #1a1a1a;border-radius:4px;}
-.txt{font-size:1.1rem;line-height:1.8;margin-bottom:30px;min-height:100px;}
-.chs{display:flex;flex-direction:column;gap:10px;}
-btn{background:transparent;border:1px solid #333;color:#888;padding:12px;cursor:pointer;text-align:left;transition:0.3s;}
-btn:hover{border-color:#9b59b6;color:#fff;}
-</style></head>
+<head>
+    <title>The Glitch in Me | Cano Studio</title>
+    <style>
+        body { background: #050505; color: #e0e0e0; font-family: 'Segoe UI', serif; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+        #story-container { max-width: 700px; width: 90%; padding: 40px; background: #0a0a0a; border: 1px solid #1a1a1a; position: relative; }
+        #story-image { width: 100%; height: 300px; object-fit: cover; margin-bottom: 25px; filter: grayscale(80%) brightness(0.6) contrast(1.2); }
+        .text { font-size: 1.1rem; line-height: 1.8; margin-bottom: 30px; min-height: 150px; color: #bbb; }
+        .choices { display: flex; flex-direction: column; gap: 12px; }
+        button { background: transparent; border: 1px solid #222; color: #666; padding: 15px; cursor: pointer; text-align: left; transition: 0.3s; font-size: 0.9rem; }
+        button:hover { border-color: #9b59b6; color: #fff; background: rgba(155, 89, 182, 0.05); }
+        .glitch-text { color: #9b59b6; font-weight: bold; text-shadow: 2px 2px #ff000033; }
+        #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0.05; background: repeating-linear-gradient(0deg, #000, #000 2px, #fff 4px); }
+        .warning { color: #ff4500; font-size: 0.8rem; letter-spacing: 2px; margin-bottom: 10px; display: block; }
+    </style>
+</head>
 <body>
     VAR_BACK
-    <div id="sc"><div id="ta" class="txt">Yükleniyor...</div><div id="ca" class="chs"></div></div>
+    <div id="story-container">
+        <div id="overlay"></div>
+        <span class="warning">SİSTEM DURUMU: KRİTİK</span>
+        <img id="story-image" src="" alt="Hikaye Görseli">
+        <div id="ta" class="text">Başlatılıyor...</div>
+        <div id="ca" class="choices"></div>
+    </div>
+
     <script>
         const s = {
-            start: { text: "Saat 04:12. Ekranın mavi ışığı gözlerini yakıyor. Kodlar arasında bir şeyin 'hareket ettiğini' gördüğünü sanıyorsun. Ne yaparsın?", choices: [{ t: "Kahve alıp devam et.", n: "coffee" }, { t: "Kapat ve uyu.", n: "sleep" }] },
-            coffee: { text: "Mutfaktasın. Buzdolabındaki yansımanda yüzün statik bir gürültüden ibaret. Bir HATA var.", choices: [{ t: "Su iç ve rahatla.", n: "water" }, { t: "Telefonla yardım çağır.", n: "phone" }] },
-            sleep: { text: "Yataktasın ama tavan bir web sayfası gibi aşağı kayıyor. Gerçeklik parçalanıyor.", choices: [{ t: "Gözlerini kapat.", n: "end" }, { t: "Tavana dokun.", n: "digital" }] },
-            water: { text: "Her şey normale dönüyor... Ya da sen öyle sanıyorsun. Yarın aynı döngü tekrar başlayacak. (Normal Son)", choices: [{ t: "Kütüphaneye Dön", n: "exit" }] },
-            digital: { text: "Parmakların veriye dönüşüyor. Artık sistemin bir parçasısın. (Dijital Son)", choices: [{ t: "Kütüphaneye Dön", n: "exit" }] },
-            end: { text: "Karanlıkta kayboldun.", choices: [{ t: "Tekrar Dene", n: "start" }] }
+            start: {
+                image: 'https://i.ibb.co/hR9cR85/glitch-in-me-start.jpg', // Yüksek kaliteli görsel URL'si
+                text: "Saat 04:12. Odan zifiri karanlık, tek ışık kaynağın 27 inçlik monitörün. Kod satırları arasında bir <span class='glitch-text'>gölgenin</span> hızla geçtiğini görüyorsun. Boynun soğuk bir nefesle ürperiyor.",
+                choices: [
+                    { t: "Arkanı dönüp bak.", n: "look_back" },
+                    { t: "Ekrana odaklanmaya zorla kendini.", n: "focus_screen" }
+                ]
+            },
+            look_back: {
+                image: 'https://i.ibb.co/Y0y0b2h/glitch-in-me-look-back.jpg',
+                text: "Arkanı dönüyorsun. Hiçbir şey yok. Ama çalışma koltuğunun üzerindeki hırkanın şekli, sanki birisi orada oturuyormuş gibi duruyor. Kapı aralığından bir fısıltı duyuyorsun: 'Henüz bitmedi...'",
+                choices: [
+                    { t: "Kapıyı kapatmaya git.", n: "door_close" },
+                    { t: "Işıkları açmayı dene.", n: "lights_on" }
+                ]
+            },
+            focus_screen: {
+                image: 'https://i.ibb.co/L82S0Fw/glitch-in-me-focus-screen.jpg',
+                text: "Ekrana bakıyorsun ama kodlar artık anlamsız. Birden terminal ekranında şu yazı beliriyor: <span class='glitch-text'>'NEDEN BAKMIYORSUN?'</span>. Klavyen kendi kendine tuşlara basmaya başlıyor.",
+                choices: [
+                    { t: "Fişi çek.", n: "unplug" },
+                    { t: "Yazılanları oku.", n: "read_text" }
+                ]
+            },
+            door_close: {
+                image: 'https://i.ibb.co/C0y0g2c/glitch-in-me-door-close.jpg',
+                text: "Kapıya doğru yürürken koridorun sonundaki aynada yansımanı görüyorsun. Ama yansıman sana bakmıyor; o da senin gibi arkasına, karanlığa bakıyor. Dehşet içindesin.",
+                choices: [
+                    { t: "Aynaya yaklaş.", n: "mirror" },
+                    { t: "Odana geri koş.", n: "run_back" }
+                ]
+            },
+            lights_on: {
+                image: 'https://i.ibb.co/QJ2F3kR/glitch-in-me-lights-on.jpg',
+                text: "Düğmeye basıyorsun. Tık. Tık. Tık. Işıklar yanmıyor. Ama bilgisayarının fan sesi o kadar yükseldi ki, oda titremeye başladı. Monitörden sızan mavi ışık kan kırmızısına dönüyor.",
+                choices: [
+                    { t: "Masaya geri dön.", n: "focus_screen" },
+                    { t: "Telefonunu bulmaya çalış.", n: "phone_search" }
+                ]
+            },
+            read_text: {
+                image: 'https://i.ibb.co/8Y4B0F7/glitch-in-me-read-text.jpg',
+                text: "Ekranda kendi çocukluk anılarını, hiç kimseye anlatmadığın sırlarını görüyorsun. Altında şu yazıyor: <span class='glitch-text'>'SENİ SİLİYORUM.'</span> Parmak uçlarının yavaş yavaş şeffaflaştığını fark ediyorsun.",
+                choices: [
+                    { t: "Yalvar.", n: "beg" },
+                    { t: "Sisteme saldır.", n: "counter_hack" }
+                ]
+            },
+            unplug: {
+                image: 'https://i.ibb.co/R2N7C9g/glitch-in-me-unplug.jpg',
+                text: "Fişi çekiyorsun. Ama monitör sönmüyor. Bilgisayarın kasasından siyah bir sıvı sızmaya başlıyor ve odanın zeminini kaplıyor. 'Elektrik sadece bir illüzyon,' diyor bir ses.",
+                choices: [
+                    { t: "Odayı terk et.", n: "exit_room" },
+                    { t: "Sıvıya dokun.", n: "touch_liquid" }
+                ]
+            },
+            mirror: {
+                image: 'https://i.ibb.co/L82S0Fw/glitch-in-me-mirror.jpg', // Ayna sahnesi için daha uygun bir görsel
+                text: "Aynadaki yansıman yavaşça sana dönüyor. Ağzı yok, sadece piksellerden oluşan bir boşluk var. Elini aynadan dışarı uzatıyor ve boğazına yapışıyor. Gerçeklik burada bitiyor. (Kabus Sonu)",
+                choices: [{ t: "Yeniden Başlat", n: "start" }]
+            },
+            exit_room: {
+                image: 'https://i.ibb.co/Y0y0b2h/glitch-in-me-exit-room.jpg', // Sonsuz boşluk hissi veren bir görsel
+                text: "Dış kapıya ulaşıyorsun. Açıyorsun ama dışarısı yok. Sadece sonsuz bir veri denizi ve boşluk var. Sen sadece bir kod satırıymışsın. (Varoluşsal Son)",
+                choices: [{ t: "Sistemi Kapat", n: "exit_lib" }]
+            },
+            beg: {
+                image: 'https://i.ibb.co/hR9cR85/glitch-in-me-beg.jpg', // Paranoya sonrası yorgunluk hissi
+                text: "Ekrana yalvarıyorsun. Bir süre sessizlik oluyor. Sonra ekran kararıyor. Odanın ışığı yanıyor. Her şey normal... ama her aynaya baktığında arkanda o parazitli gölgeyi görüyorsun. (Paranoya Sonu)",
+                choices: [{ t: "Kütüphaneye Dön", n: "exit_lib" }]
+            }
         };
+
         function r(id) {
-            if(id === "exit") { window.location.href = "/"; return; }
-            const n = s[id]; document.getElementById("ta").innerText = n.text;
-            const a = document.getElementById("ca"); a.innerHTML = "";
-            n.choices.forEach(c => { const b = document.createElement("btn"); b.innerText = c.t; b.onclick = () => r(c.n); a.appendChild(b); });
+            if(id === "exit_lib") { window.location.href = "/"; return; }
+            const node = s[id];
+            const ta = document.getElementById("ta");
+            const ca = document.getElementById("ca");
+            const img = document.getElementById("story-image");
+
+            // Görseli güncelle
+            if (node.image) {
+                img.src = node.image;
+                img.style.display = 'block'; // Görseli göster
+            } else {
+                img.style.display = 'none'; // Görsel yoksa gizle
+            }
+            
+            ta.innerHTML = node.text;
+            ca.innerHTML = "";
+            
+            node.choices.forEach(c => {
+                const btn = document.createElement("button");
+                btn.innerHTML = c.t;
+                btn.onclick = () => {
+                    document.getElementById("story-container").style.animation = "glitch 0.1s 3";
+                    setTimeout(() => {
+                        document.getElementById("story-container").style.animation = "none";
+                        r(c.n);
+                    }, 150);
+                };
+                ca.appendChild(btn);
+            });
         }
         r("start");
     </script>
