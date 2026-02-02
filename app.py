@@ -10,7 +10,7 @@ scores = {
     "lost_forest": [1]
 }
 
-# --- BİLEŞENLER ---
+# --- GENEL BİLEŞENLER ---
 footer_html = """
 <footer style="background: #080808; padding: 30px; border-top: 1px solid #1a1a1a; text-align: center; margin-top: auto;">
     <p style="color: #444; font-size: 0.8rem; letter-spacing: 2px;">© 2026 CANO STUDIO - CREATIVE LABS</p>
@@ -42,12 +42,11 @@ def home():
         body { background: #020202; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; min-height: 100vh; }
         .header { padding: 40px 20px; text-align: center; }
         h1 { font-size: 2.5rem; letter-spacing: 12px; margin: 0; color: #fff; font-weight: 200; }
-        .section-title { padding-left: 45px; color: #333; letter-spacing: 3px; font-size: 0.8rem; margin-top: 20px; }
-        .container { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; padding: 20px 40px; max-width: 1400px; margin: 0 auto; width:100%; }
-        .game-card { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 25px; border-radius: 8px; cursor: pointer; position: relative; }
+        .container { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; padding: 40px; max-width: 1200px; margin: 0 auto; width:100%; }
+        .game-card { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 30px; border-radius: 8px; cursor: pointer; }
         .game-card:hover { border-color: #fff; background: #111; transform: translateY(-5px); }
         .status { font-size: 9px; letter-spacing: 2px; border: 1px solid; display: inline-block; padding: 2px 8px; margin-bottom: 15px; border-radius: 4px; }
-        .leaderboard { background: #050505; border: 1px solid #1a1a1a; padding: 30px; margin: 20px 40px; border-radius: 8px; }
+        .leaderboard { background: #050505; border: 1px solid #1a1a1a; padding: 30px; margin: 0 40px 40px 40px; border-radius: 8px; }
         table { width: 100%; border-collapse: collapse; }
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #111; }
         th { color: #555; text-transform: uppercase; font-size: 0.7rem; }
@@ -56,8 +55,6 @@ def home():
 </head>
 <body>
     <div class="header"><h1>CANO STUDIO</h1></div>
-    
-    <div class="section-title">KLASİK VE FPS KÜTÜPHANESİ</div>
     <div class="container">
         <div class="game-card" onclick="window.location.href='/neon-arcade'">
             <div class="status" style="color:#00d4ff;">ARCADE</div>
@@ -71,17 +68,11 @@ def home():
             <div class="status" style="color:#ff4500;">FPS HORROR</div>
             <h2>LOST FOREST</h2>
         </div>
-    </div>
-
-    <div class="section-title">HİKAYELİ OYUNLAR</div>
-    <div class="container">
         <div class="game-card" onclick="window.location.href='/glitch-in-me'" style="border-color: #9b59b6;">
-            <div class="status" style="color:#9b59b6; border-color: #9b59b6;">NARRATIVE</div>
+            <div class="status" style="color:#9b59b6;">NARRATIVE</div>
             <h2 style="color:#9b59b6">THE GLITCH IN ME</h2>
-            <p style="color:#555; font-size: 0.8rem;">İçindeki hatayı bulamazsan, sistem seni siler.</p>
         </div>
     </div>
-    
     <div class="leaderboard">
         <table>
             <tr><th>MODÜL</th><th style="text-align:right">DURUM</th></tr>
@@ -144,7 +135,7 @@ def arcade():
 """
     return html.replace("VAR_BACK", back_button_html)
 
-# --- 3. THE LOST FOREST ---
+# --- 3. THE LOST FOREST (FPS) ---
 @app.route('/lost-forest')
 def horror():
     html = """
@@ -274,7 +265,7 @@ def strategy():
 """
     return html.replace("VAR_BACK", back_button_html)
 
-# --- 5. THE GLITCH IN ME (GELİŞTİRİLMİŞ GERİLİM HİKAYESİ + GÖRSEL) ---
+# --- 5. THE GLITCH IN ME (GÖRSEL DESTEKLİ HİKAYE) ---
 @app.route('/glitch-in-me')
 def story_game():
     html = """
@@ -285,130 +276,53 @@ def story_game():
     <style>
         body { background: #050505; color: #e0e0e0; font-family: 'Segoe UI', serif; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
         #story-container { max-width: 700px; width: 90%; padding: 40px; background: #0a0a0a; border: 1px solid #1a1a1a; position: relative; }
-        #story-image { width: 100%; height: 300px; object-fit: cover; margin-bottom: 25px; filter: grayscale(80%) brightness(0.6) contrast(1.2); }
+        #story-image { width: 100%; height: 350px; object-fit: cover; margin-bottom: 25px; border-radius: 4px; border: 1px solid #9b59b633; }
         .text { font-size: 1.1rem; line-height: 1.8; margin-bottom: 30px; min-height: 150px; color: #bbb; }
         .choices { display: flex; flex-direction: column; gap: 12px; }
         button { background: transparent; border: 1px solid #222; color: #666; padding: 15px; cursor: pointer; text-align: left; transition: 0.3s; font-size: 0.9rem; }
         button:hover { border-color: #9b59b6; color: #fff; background: rgba(155, 89, 182, 0.05); }
-        .glitch-text { color: #9b59b6; font-weight: bold; text-shadow: 2px 2px #ff000033; }
-        #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0.05; background: repeating-linear-gradient(0deg, #000, #000 2px, #fff 4px); }
-        .warning { color: #ff4500; font-size: 0.8rem; letter-spacing: 2px; margin-bottom: 10px; display: block; }
+        .glitch-text { color: #9b59b6; font-weight: bold; }
     </style>
 </head>
 <body>
     VAR_BACK
     <div id="story-container">
-        <div id="overlay"></div>
-        <span class="warning">SİSTEM DURUMU: KRİTİK</span>
-        <img id="story-image" src="" alt="Hikaye Görseli">
-        <div id="ta" class="text">Başlatılıyor...</div>
+        <img id="story-image" src="" style="display:none;">
+        <div id="ta" class="text">Yükleniyor...</div>
         <div id="ca" class="choices"></div>
     </div>
 
     <script>
         const s = {
             start: {
-                image: 'https://i.ibb.co/hR9cR85/glitch-in-me-start.jpg', // Yüksek kaliteli görsel URL'si
-                text: "Saat 04:12. Odan zifiri karanlık, tek ışık kaynağın 27 inçlik monitörün. Kod satırları arasında bir <span class='glitch-text'>gölgenin</span> hızla geçtiğini görüyorsun. Boynun soğuk bir nefesle ürperiyor.",
-                choices: [
-                    { t: "Arkanı dönüp bak.", n: "look_back" },
-                    { t: "Ekrana odaklanmaya zorla kendini.", n: "focus_screen" }
-                ]
+                img: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80&w=1000',
+                text: "Saat 04:12. Odan zifiri karanlık, tek ışık kaynağın monitörün. Kodlar arasında bir <span class='glitch-text'>gölgenin</span> geçtiğini görüyorsun. Ne yaparsın?",
+                choices: [{ t: "Arkanı dönüp bak.", n: "look_back" }, { t: "Ekrana odaklan.", n: "focus" }]
             },
             look_back: {
-                image: 'https://i.ibb.co/Y0y0b2h/glitch-in-me-look-back.jpg',
-                text: "Arkanı dönüyorsun. Hiçbir şey yok. Ama çalışma koltuğunun üzerindeki hırkanın şekli, sanki birisi orada oturuyormuş gibi duruyor. Kapı aralığından bir fısıltı duyuyorsun: 'Henüz bitmedi...'",
-                choices: [
-                    { t: "Kapıyı kapatmaya git.", n: "door_close" },
-                    { t: "Işıkları açmayı dene.", n: "lights_on" }
-                ]
+                img: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=1000',
+                text: "Arkanı dönüyorsun. Kimse yok. Ama çalışma koltuğunun üzerindeki hırkanın şekli, sanki birisi orada oturuyormuş gibi duruyor.",
+                choices: [{ t: "Kapıyı kapatmaya git.", n: "door" }, { t: "Işıkları aç.", n: "lights" }]
             },
-            focus_screen: {
-                image: 'https://i.ibb.co/L82S0Fw/glitch-in-me-focus-screen.jpg',
-                text: "Ekrana bakıyorsun ama kodlar artık anlamsız. Birden terminal ekranında şu yazı beliriyor: <span class='glitch-text'>'NEDEN BAKMIYORSUN?'</span>. Klavyen kendi kendine tuşlara basmaya başlıyor.",
-                choices: [
-                    { t: "Fişi çek.", n: "unplug" },
-                    { t: "Yazılanları oku.", n: "read_text" }
-                ]
+            focus: {
+                img: 'https://images.unsplash.com/photo-1542831371-29b0f74f9713?auto=format&fit=crop&q=80&w=1000',
+                text: "Ekrana odaklanıyorsun ama terminalde şu beliriyor: <span class='glitch-text'>'SENİ SİLİYORUM.'</span> Parmakların yavaşça şeffaflaşıyor.",
+                choices: [{ t: "Fişi çek.", n: "start" }, { t: "Sisteme yalvar.", n: "start" }]
             },
-            door_close: {
-                image: 'https://i.ibb.co/C0y0g2c/glitch-in-me-door-close.jpg',
-                text: "Kapıya doğru yürürken koridorun sonundaki aynada yansımanı görüyorsun. Ama yansıman sana bakmıyor; o da senin gibi arkasına, karanlığa bakıyor. Dehşet içindesin.",
-                choices: [
-                    { t: "Aynaya yaklaş.", n: "mirror" },
-                    { t: "Odana geri koş.", n: "run_back" }
-                ]
-            },
-            lights_on: {
-                image: 'https://i.ibb.co/QJ2F3kR/glitch-in-me-lights-on.jpg',
-                text: "Düğmeye basıyorsun. Tık. Tık. Tık. Işıklar yanmıyor. Ama bilgisayarının fan sesi o kadar yükseldi ki, oda titremeye başladı. Monitörden sızan mavi ışık kan kırmızısına dönüyor.",
-                choices: [
-                    { t: "Masaya geri dön.", n: "focus_screen" },
-                    { t: "Telefonunu bulmaya çalış.", n: "phone_search" }
-                ]
-            },
-            read_text: {
-                image: 'https://i.ibb.co/8Y4B0F7/glitch-in-me-read-text.jpg',
-                text: "Ekranda kendi çocukluk anılarını, hiç kimseye anlatmadığın sırlarını görüyorsun. Altında şu yazıyor: <span class='glitch-text'>'SENİ SİLİYORUM.'</span> Parmak uçlarının yavaş yavaş şeffaflaştığını fark ediyorsun.",
-                choices: [
-                    { t: "Yalvar.", n: "beg" },
-                    { t: "Sisteme saldır.", n: "counter_hack" }
-                ]
-            },
-            unplug: {
-                image: 'https://i.ibb.co/R2N7C9g/glitch-in-me-unplug.jpg',
-                text: "Fişi çekiyorsun. Ama monitör sönmüyor. Bilgisayarın kasasından siyah bir sıvı sızmaya başlıyor ve odanın zeminini kaplıyor. 'Elektrik sadece bir illüzyon,' diyor bir ses.",
-                choices: [
-                    { t: "Odayı terk et.", n: "exit_room" },
-                    { t: "Sıvıya dokun.", n: "touch_liquid" }
-                ]
-            },
-            mirror: {
-                image: 'https://i.ibb.co/L82S0Fw/glitch-in-me-mirror.jpg', // Ayna sahnesi için daha uygun bir görsel
-                text: "Aynadaki yansıman yavaşça sana dönüyor. Ağzı yok, sadece piksellerden oluşan bir boşluk var. Elini aynadan dışarı uzatıyor ve boğazına yapışıyor. Gerçeklik burada bitiyor. (Kabus Sonu)",
-                choices: [{ t: "Yeniden Başlat", n: "start" }]
-            },
-            exit_room: {
-                image: 'https://i.ibb.co/Y0y0b2h/glitch-in-me-exit-room.jpg', // Sonsuz boşluk hissi veren bir görsel
-                text: "Dış kapıya ulaşıyorsun. Açıyorsun ama dışarısı yok. Sadece sonsuz bir veri denizi ve boşluk var. Sen sadece bir kod satırıymışsın. (Varoluşsal Son)",
-                choices: [{ t: "Sistemi Kapat", n: "exit_lib" }]
-            },
-            beg: {
-                image: 'https://i.ibb.co/hR9cR85/glitch-in-me-beg.jpg', // Paranoya sonrası yorgunluk hissi
-                text: "Ekrana yalvarıyorsun. Bir süre sessizlik oluyor. Sonra ekran kararıyor. Odanın ışığı yanıyor. Her şey normal... ama her aynaya baktığında arkanda o parazitli gölgeyi görüyorsun. (Paranoya Sonu)",
-                choices: [{ t: "Kütüphaneye Dön", n: "exit_lib" }]
-            }
+            door: { text: "Kapıya yürürken aynada yansımanın sana değil, arkandaki karanlığa baktığını görüyorsun. (Kabus Sonu)", choices: [{ t: "Başa Dön", n: "start" }] },
+            lights: { text: "Düğmeye basıyorsun ama ışıklar yanmıyor. Bilgisayar fanı çığlık atar gibi dönmeye başlıyor. (Hata Sonu)", choices: [{ t: "Başa Dön", n: "start" }] }
         };
 
         function r(id) {
-            if(id === "exit_lib") { window.location.href = "/"; return; }
+            if(id === "exit") { window.location.href = "/"; return; }
             const node = s[id];
-            const ta = document.getElementById("ta");
-            const ca = document.getElementById("ca");
             const img = document.getElementById("story-image");
-
-            // Görseli güncelle
-            if (node.image) {
-                img.src = node.image;
-                img.style.display = 'block'; // Görseli göster
-            } else {
-                img.style.display = 'none'; // Görsel yoksa gizle
-            }
-            
-            ta.innerHTML = node.text;
-            ca.innerHTML = "";
-            
+            if (node.img) { img.src = node.img; img.style.display = 'block'; } else { img.style.display = 'none'; }
+            document.getElementById("ta").innerHTML = node.text;
+            const ca = document.getElementById("ca"); ca.innerHTML = "";
             node.choices.forEach(c => {
-                const btn = document.createElement("button");
-                btn.innerHTML = c.t;
-                btn.onclick = () => {
-                    document.getElementById("story-container").style.animation = "glitch 0.1s 3";
-                    setTimeout(() => {
-                        document.getElementById("story-container").style.animation = "none";
-                        r(c.n);
-                    }, 150);
-                };
-                ca.appendChild(btn);
+                const b = document.createElement("button"); b.innerHTML = c.t;
+                b.onclick = () => r(c.n); ca.appendChild(b);
             });
         }
         r("start");
