@@ -3,17 +3,17 @@ import os
 
 app = Flask(__name__)
 
-# --- SKOR VERİTABANI ---
+# --- SKOR VE İLERLEME VERİTABANI ---
 scores = {
     "neon_arcade": [0],
     "void_command": [1],
-    "lost_forest": [1] # Level bilgisi tutar
+    "lost_forest": [1]
 }
 
 # --- BİLEŞENLER ---
 footer_html = """
 <footer style="background: #080808; padding: 30px; border-top: 1px solid #1a1a1a; text-align: center; margin-top: auto;">
-    <p style="color: #444; font-size: 0.8rem; letter-spacing: 2px;">© 2026 CANO STUDIO - GLOBAL SYSTEMS</p>
+    <p style="color: #444; font-size: 0.8rem; letter-spacing: 2px;">© 2026 CANO STUDIO - CREATIVE LABS</p>
 </footer>
 """
 
@@ -40,45 +40,54 @@ def home():
     <style>
         * { box-sizing: border-box; transition: 0.3s ease; }
         body { background: #020202; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; min-height: 100vh; }
-        .header { padding: 60px 20px; text-align: center; }
-        h1 { font-size: 3rem; letter-spacing: 12px; margin: 0; color: #fff; font-weight: 200; }
-        .container { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; padding: 40px; max-width: 1200px; margin: 0 auto; width:100%; }
-        .game-card { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 30px; border-radius: 8px; cursor: pointer; }
+        .header { padding: 40px 20px; text-align: center; }
+        h1 { font-size: 2.5rem; letter-spacing: 12px; margin: 0; color: #fff; font-weight: 200; }
+        .section-title { padding-left: 45px; color: #333; letter-spacing: 3px; font-size: 0.8rem; margin-top: 20px; }
+        .container { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; padding: 20px 40px; max-width: 1400px; margin: 0 auto; width:100%; }
+        .game-card { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 25px; border-radius: 8px; cursor: pointer; position: relative; }
         .game-card:hover { border-color: #fff; background: #111; transform: translateY(-5px); }
         .status { font-size: 9px; letter-spacing: 2px; border: 1px solid; display: inline-block; padding: 2px 8px; margin-bottom: 15px; border-radius: 4px; }
-        .leaderboard { background: #050505; border: 1px solid #1a1a1a; padding: 30px; margin: 0 40px 40px 40px; border-radius: 8px; }
+        .leaderboard { background: #050505; border: 1px solid #1a1a1a; padding: 30px; margin: 20px 40px; border-radius: 8px; }
         table { width: 100%; border-collapse: collapse; }
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #111; }
-        th { color: #555; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 2px; }
+        th { color: #555; text-transform: uppercase; font-size: 0.7rem; }
         .val { color: #fff; font-weight: bold; text-align: right; }
     </style>
 </head>
 <body>
     <div class="header"><h1>CANO STUDIO</h1></div>
+    
+    <div class="section-title">KLASİK VE FPS KÜTÜPHANESİ</div>
     <div class="container">
         <div class="game-card" onclick="window.location.href='/neon-arcade'">
-            <div class="status" style="color:#00d4ff; border-color:#00d4ff;">ARCADE</div>
+            <div class="status" style="color:#00d4ff;">ARCADE</div>
             <h2>NEON ARCADE</h2>
-            <p style="color:#555">Refleks testi. Anlık sıfırlama aktif.</p>
         </div>
         <div class="game-card" onclick="window.location.href='/void-command'">
-            <div class="status" style="color:#00ff88; border-color:#00ff88;">STRATEGY</div>
+            <div class="status" style="color:#00ff88;">STRATEGY</div>
             <h2>VOID COMMAND</h2>
-            <p style="color:#555">Gezegen fethi. Tıklama sorunları giderildi.</p>
         </div>
         <div class="game-card" onclick="window.location.href='/lost-forest'">
-            <div class="status" style="color:#ff4500; border-color:#ff4500;">FPS HORROR</div>
-            <h2 style="color:#ff4500">LOST FOREST</h2>
-            <p style="color:#555">5 Dakika süre sınırı. FPS Kamera. Level sistemi.</p>
+            <div class="status" style="color:#ff4500;">FPS HORROR</div>
+            <h2>LOST FOREST</h2>
         </div>
     </div>
+
+    <div class="section-title">HİKAYELİ OYUNLAR</div>
+    <div class="container">
+        <div class="game-card" onclick="window.location.href='/glitch-in-me'" style="border-color: #9b59b6;">
+            <div class="status" style="color:#9b59b6; border-color: #9b59b6;">NARRATIVE</div>
+            <h2 style="color:#9b59b6">THE GLITCH IN ME</h2>
+            <p style="color:#555; font-size: 0.8rem;">Gerçeklik ve dijital dünya arasındaki ince çizgi.</p>
+        </div>
+    </div>
+    
     <div class="leaderboard">
-        <h3 style="letter-spacing: 5px; color:#444; margin-top:0;">GLOBAL LEADERBOARD</h3>
         <table>
-            <tr><th>OYUN MODÜLÜ</th><th style="text-align:right">BAŞARI</th></tr>
-            <tr><td>Neon Arcade</td><td class="val">VAR_ARCADE Puan</td></tr>
-            <tr><td>Void Command</td><td class="val">Level VAR_VOID</td></tr>
-            <tr><td>Lost Forest</td><td class="val">Level VAR_FOREST</td></tr>
+            <tr><th>MODÜL</th><th style="text-align:right">DURUM</th></tr>
+            <tr><td>Neon High Score</td><td class="val">VAR_ARCADE</td></tr>
+            <tr><td>Strategy Level</td><td class="val">Lvl VAR_VOID</td></tr>
+            <tr><td>Horror Progress</td><td class="val">Lvl VAR_FOREST</td></tr>
         </table>
     </div>
     VAR_FOOTER
@@ -135,7 +144,7 @@ def arcade():
 """
     return html.replace("VAR_BACK", back_button_html)
 
-# --- 3. THE LOST FOREST (FPS + LEVEL SİSTEMİ + 5 DK SÜRE) ---
+# --- 3. THE LOST FOREST (FPS + LEVEL + ZAMAN) ---
 @app.route('/lost-forest')
 def horror():
     html = """
@@ -143,7 +152,7 @@ def horror():
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Lost Forest FPS | Cano Studio</title>
+    <title>Lost Forest FPS</title>
     <style>
         body{background:#000; margin:0; overflow:hidden; color:white; font-family:monospace;}
         #ui{position:fixed; top:20px; width:100%; text-align:center; z-index:10; pointer-events:none;}
@@ -159,35 +168,24 @@ def horror():
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-
-        let level = 1;
-        let timeLeft = 300;
-        let player = { x: 1.5, y: 1.5, dir: 0, speed: 0.06 };
-        let map = [];
-        let keys = {};
+        let level = 1, timeLeft = 300, player = { x: 1.5, y: 1.5, dir: 0, speed: 0.06 }, map = [], keys = {};
 
         function generateMap(size) {
             let newMap = Array.from({length: size}, () => Array(size).fill(1));
             for(let y=1; y<size-1; y++) for(let x=1; x<size-1; x++) if(Math.random() > 0.3) newMap[y][x] = 0;
-            newMap[1][1] = 0; // Başlangıç yolu
-            newMap[size-2][size-2] = 2; // Kapı
-            return newMap;
+            newMap[1][1] = 0; newMap[size-2][size-2] = 2; return newMap;
         }
 
         function resetLevel() {
-            let size = 8 + (level * 2);
-            map = generateMap(size);
-            player.x = 1.5; player.y = 1.5; player.dir = 0;
-            timeLeft = 300;
+            let size = 8 + (level * 2); map = generateMap(size);
+            player.x = 1.5; player.y = 1.5; player.dir = 0; timeLeft = 300;
             document.getElementById("lvlDisplay").innerText = level;
         }
 
         window.onkeydown=(e)=>keys[e.code]=true;
         window.onkeyup=(e)=>keys[e.code]=false;
 
-        setInterval(() => {
-            if(timeLeft > 0) timeLeft--;
-            else { alert("SÜRE BİTTİ!"); level=1; resetLevel(); }
+        setInterval(() => { if(timeLeft > 0) timeLeft--; else { alert("SÜRE BİTTİ!"); level=1; resetLevel(); }
             document.getElementById("timer").innerText = timeLeft;
         }, 1000);
 
@@ -195,29 +193,21 @@ def horror():
             let ox=player.x, oy=player.y;
             if(keys['KeyW']) { player.x+=Math.cos(player.dir)*player.speed; player.y+=Math.sin(player.dir)*player.speed; }
             if(keys['KeyS']) { player.x-=Math.cos(player.dir)*player.speed; player.y-=Math.sin(player.dir)*player.speed; }
-            if(keys['KeyA']) player.dir-=0.06;
-            if(keys['KeyD']) player.dir+=0.06;
-
+            if(keys['KeyA']) player.dir-=0.06; if(keys['KeyD']) player.dir+=0.06;
             if(map[Math.floor(player.y)][Math.floor(player.x)] === 1) { player.x=ox; player.y=oy; }
             if(map[Math.floor(player.y)][Math.floor(player.x)] === 2) { 
-                fetch('/submit_score/lost_forest/'+level);
-                alert("LEVEL " + level + " TAMAMLANDI!"); 
-                level++; resetLevel(); 
+                fetch('/submit_score/lost_forest/'+level); alert("LEVEL TAMAMLANDI!"); level++; resetLevel(); 
             }
         }
 
         function draw() {
             ctx.fillStyle="#050805"; ctx.fillRect(0,0,canvas.width,canvas.height/2);
             ctx.fillStyle="#020402"; ctx.fillRect(0,canvas.height/2,canvas.width,canvas.height);
-
-            const rays=120, fov=Math.PI/3;
+            const rays=100, fov=Math.PI/3;
             for(let i=0; i<rays; i++){
                 let a=(player.dir-fov/2)+(i/rays)*fov, d=0, hit=0;
-                while(d<15){
-                    d+=0.06;
-                    let tx=Math.floor(player.x+Math.cos(a)*d), ty=Math.floor(player.y+Math.sin(a)*d);
-                    if(ty<0||ty>=map.length||tx<0||tx>=map[0].length) break;
-                    if(map[ty][tx]>0){ hit=map[ty][tx]; break; }
+                while(d<15){ d+=0.06; let tx=Math.floor(player.x+Math.cos(a)*d), ty=Math.floor(player.y+Math.sin(a)*d);
+                    if(ty<0||ty>=map.length||tx<0||tx>=map[0].length) break; if(map[ty][tx]>0){ hit=map[ty][tx]; break; }
                 }
                 let h=canvas.height/(d*Math.cos(a-player.dir));
                 ctx.fillStyle=hit===2?"#fff":`rgb(0,${Math.max(0,180-d*12)},0)`;
@@ -235,7 +225,7 @@ def horror():
 """
     return html.replace("VAR_BACK", back_button_html)
 
-# --- 4. VOID COMMAND (GEZEGEN OYUNU - TAMİR EDİLDİ) ---
+# --- 4. VOID COMMAND (GEZEGEN) ---
 @app.route('/void-command')
 def strategy():
     html = """
@@ -250,56 +240,31 @@ def strategy():
         const c=document.getElementById("g"), ctx=c.getContext("2d");
         c.width=window.innerWidth; c.height=window.innerHeight;
         let lvl=1, planets=[], sel=null;
-
-        class P {
-            constructor(x,y,r,o){this.x=x;this.y=y;this.r=r;this.o=o;this.e=o==='neutral'?5:20;}
-            draw(){
-                ctx.beginPath(); ctx.arc(this.x,this.y,this.r,0,Math.PI*2);
+        class P { constructor(x,y,r,o){this.x=x;this.y=y;this.r=r;this.o=o;this.e=o==='neutral'?5:20;}
+            draw(){ ctx.beginPath(); ctx.arc(this.x,this.y,this.r,0,Math.PI*2);
                 ctx.strokeStyle=this.o==='player'?'#00ff88':(this.o==='enemy'?'#f40':'#333');
                 ctx.lineWidth=sel===this?5:2; ctx.stroke();
-                ctx.fillStyle=ctx.strokeStyle; ctx.textAlign="center"; 
-                ctx.font="bold 14px Arial"; ctx.fillText(Math.floor(this.e),this.x,this.y+5);
+                ctx.fillStyle=ctx.strokeStyle; ctx.textAlign="center"; ctx.font="bold 14px Arial"; ctx.fillText(Math.floor(this.e),this.x,this.y+5);
             }
         }
-
         function init(){
             planets=[new P(150,c.height/2,45,'player')];
             for(let i=0;i<lvl;i++) planets.push(new P(c.width-150,(c.height/(lvl+1))*(i+1),40,'enemy'));
             for(let i=0;i<6;i++) planets.push(new P(Math.random()*(c.width-400)+200, Math.random()*(c.height-200)+100, 30, 'neutral'));
         }
-
         c.addEventListener('mousedown', (e) => {
-            const rect = c.getBoundingClientRect();
-            const mx = e.clientX - rect.left;
-            const my = e.clientY - rect.top;
-            
+            const rect = c.getBoundingClientRect(); const mx = e.clientX - rect.left; const my = e.clientY - rect.top;
             let clicked = planets.find(p => Math.hypot(p.x - mx, p.y - my) < p.r);
-            
-            if(clicked) {
-                if(clicked.o === 'player') { sel = clicked; }
-                else if(sel) {
-                    let force = sel.e / 2;
-                    sel.e -= force;
-                    clicked.e -= force;
-                    if(clicked.e < 0) {
-                        clicked.o = 'player';
-                        clicked.e = Math.abs(clicked.e);
-                    }
-                    sel = null;
+            if(clicked) { if(clicked.o === 'player') { sel = clicked; }
+                else if(sel) { let force = sel.e / 2; sel.e -= force; clicked.e -= force;
+                    if(clicked.e < 0) { clicked.o = 'player'; clicked.e = Math.abs(clicked.e); } sel = null;
                 }
             } else { sel = null; }
         });
-
         function loop(){
             ctx.fillStyle="black"; ctx.fillRect(0,0,c.width,c.height);
-            planets.forEach(p=>{
-                if(p.o !== 'neutral') p.e += 0.012 * lvl;
-                p.draw();
-            });
-            if(!planets.some(p => p.o === 'enemy')){
-                lvl++; fetch('/submit_score/void_command/'+lvl); 
-                document.getElementById("l").innerText="LEVEL: "+lvl; init();
-            }
+            planets.forEach(p=>{ if(p.o !== 'neutral') p.e += 0.012 * lvl; p.draw(); });
+            if(!planets.some(p => p.o === 'enemy')){ lvl++; fetch('/submit_score/void_command/'+lvl); document.getElementById("l").innerText="LEVEL: "+lvl; init(); }
             requestAnimationFrame(loop);
         }
         init(); loop();
@@ -309,11 +274,48 @@ def strategy():
 """
     return html.replace("VAR_BACK", back_button_html)
 
-# --- API: SKOR KAYIT ---
+# --- 5. THE GLITCH IN ME (HİKAYE) ---
+@app.route('/glitch-in-me')
+def story_game():
+    html = """
+<!DOCTYPE html>
+<html>
+<head><title>Glitch in Me</title><style>body{background:#050505;color:#e0e0e0;font-family:sans-serif;margin:0;display:flex;align-items:center;justify-content:center;height:100vh;overflow:hidden;}
+#sc{max-width:600px;padding:40px;background:#0a0a0a;border:1px solid #1a1a1a;border-radius:4px;}
+.txt{font-size:1.1rem;line-height:1.8;margin-bottom:30px;min-height:100px;}
+.chs{display:flex;flex-direction:column;gap:10px;}
+btn{background:transparent;border:1px solid #333;color:#888;padding:12px;cursor:pointer;text-align:left;transition:0.3s;}
+btn:hover{border-color:#9b59b6;color:#fff;}
+</style></head>
+<body>
+    VAR_BACK
+    <div id="sc"><div id="ta" class="txt">Yükleniyor...</div><div id="ca" class="chs"></div></div>
+    <script>
+        const s = {
+            start: { text: "Saat 04:12. Ekranın mavi ışığı gözlerini yakıyor. Kodlar arasında bir şeyin 'hareket ettiğini' gördüğünü sanıyorsun. Ne yaparsın?", choices: [{ t: "Kahve alıp devam et.", n: "coffee" }, { t: "Kapat ve uyu.", n: "sleep" }] },
+            coffee: { text: "Mutfaktasın. Buzdolabındaki yansımanda yüzün statik bir gürültüden ibaret. Bir HATA var.", choices: [{ t: "Su iç ve rahatla.", n: "water" }, { t: "Telefonla yardım çağır.", n: "phone" }] },
+            sleep: { text: "Yataktasın ama tavan bir web sayfası gibi aşağı kayıyor. Gerçeklik parçalanıyor.", choices: [{ t: "Gözlerini kapat.", n: "end" }, { t: "Tavana dokun.", n: "digital" }] },
+            water: { text: "Her şey normale dönüyor... Ya da sen öyle sanıyorsun. Yarın aynı döngü tekrar başlayacak. (Normal Son)", choices: [{ t: "Kütüphaneye Dön", n: "exit" }] },
+            digital: { text: "Parmakların veriye dönüşüyor. Artık sistemin bir parçasısın. (Dijital Son)", choices: [{ t: "Kütüphaneye Dön", n: "exit" }] },
+            end: { text: "Karanlıkta kayboldun.", choices: [{ t: "Tekrar Dene", n: "start" }] }
+        };
+        function r(id) {
+            if(id === "exit") { window.location.href = "/"; return; }
+            const n = s[id]; document.getElementById("ta").innerText = n.text;
+            const a = document.getElementById("ca"); a.innerHTML = "";
+            n.choices.forEach(c => { const b = document.createElement("btn"); b.innerText = c.t; b.onclick = () => r(c.n); a.appendChild(b); });
+        }
+        r("start");
+    </script>
+</body>
+</html>
+"""
+    return html.replace("VAR_BACK", back_button_html)
+
+# --- API ---
 @app.route('/submit_score/<game>/<int:score>')
 def submit_score(game, score):
-    if game in scores:
-        scores[game].append(score)
+    if game in scores: scores[game].append(score)
     return jsonify({"status": "success"})
 
 if __name__ == "__main__":
