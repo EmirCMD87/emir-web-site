@@ -127,7 +127,7 @@ def arcade():
             ctx.fillStyle="#fff"; ctx.font="20px Arial"; ctx.fillText(score, 20, 40);
             frames++; requestAnimationFrame(draw);
         }}
-        window.onclick=()=>{ if(gameActive) bird.v=bird.j; else {{ reset(); draw(); }} };
+        window.onclick=()=>{{ if(gameActive) bird.v=bird.j; else {{ reset(); draw(); }} }};
         reset(); draw();
     </script>
 </body>
