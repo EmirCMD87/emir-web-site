@@ -10,7 +10,7 @@ scores = {
     "lost_forest": [1]
 }
 
-# --- GENEL BİLEŞENLER ---
+# --- BİLEŞENLER ---
 footer_html = """
 <footer style="background: #080808; padding: 30px; border-top: 1px solid #1a1a1a; text-align: center; margin-top: auto;">
     <p style="color: #444; font-size: 0.8rem; letter-spacing: 2px;">© 2026 CANO STUDIO - CREATIVE LABS</p>
@@ -42,11 +42,12 @@ def home():
         body { background: #020202; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; min-height: 100vh; }
         .header { padding: 40px 20px; text-align: center; }
         h1 { font-size: 2.5rem; letter-spacing: 12px; margin: 0; color: #fff; font-weight: 200; }
-        .container { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; padding: 40px; max-width: 1200px; margin: 0 auto; width:100%; }
-        .game-card { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 30px; border-radius: 8px; cursor: pointer; }
+        .section-title { padding-left: 45px; color: #333; letter-spacing: 3px; font-size: 0.8rem; margin-top: 20px; }
+        .container { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; padding: 20px 40px; max-width: 1400px; margin: 0 auto; width:100%; }
+        .game-card { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 25px; border-radius: 8px; cursor: pointer; position: relative; }
         .game-card:hover { border-color: #fff; background: #111; transform: translateY(-5px); }
         .status { font-size: 9px; letter-spacing: 2px; border: 1px solid; display: inline-block; padding: 2px 8px; margin-bottom: 15px; border-radius: 4px; }
-        .leaderboard { background: #050505; border: 1px solid #1a1a1a; padding: 30px; margin: 0 40px 40px 40px; border-radius: 8px; }
+        .leaderboard { background: #050505; border: 1px solid #1a1a1a; padding: 30px; margin: 20px 40px; border-radius: 8px; }
         table { width: 100%; border-collapse: collapse; }
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #111; }
         th { color: #555; text-transform: uppercase; font-size: 0.7rem; }
@@ -55,21 +56,25 @@ def home():
 </head>
 <body>
     <div class="header"><h1>CANO STUDIO</h1></div>
+    <div class="section-title">KLASİK VE FPS KÜTÜPHANESİ</div>
     <div class="container">
         <div class="game-card" onclick="window.location.href='/neon-arcade'">
-            <div class="status" style="color:#00d4ff;">ARCADE</div>
+            <div class="status" style="color:#00d4ff; border-color:#00d4ff;">ARCADE</div>
             <h2>NEON ARCADE</h2>
         </div>
         <div class="game-card" onclick="window.location.href='/void-command'">
-            <div class="status" style="color:#00ff88;">STRATEGY</div>
+            <div class="status" style="color:#00ff88; border-color:#00ff88;">STRATEGY</div>
             <h2>VOID COMMAND</h2>
         </div>
         <div class="game-card" onclick="window.location.href='/lost-forest'">
-            <div class="status" style="color:#ff4500;">FPS HORROR</div>
+            <div class="status" style="color:#ff4500; border-color:#ff4500;">FPS HORROR</div>
             <h2>LOST FOREST</h2>
         </div>
+    </div>
+    <div class="section-title">HİKAYELİ OYUNLAR</div>
+    <div class="container">
         <div class="game-card" onclick="window.location.href='/glitch-in-me'" style="border-color: #9b59b6;">
-            <div class="status" style="color:#9b59b6;">NARRATIVE</div>
+            <div class="status" style="color:#9b59b6; border-color: #9b59b6;">NARRATIVE</div>
             <h2 style="color:#9b59b6">THE GLITCH IN ME</h2>
         </div>
     </div>
@@ -135,7 +140,7 @@ def arcade():
 """
     return html.replace("VAR_BACK", back_button_html)
 
-# --- 3. THE LOST FOREST (FPS) ---
+# --- 3. THE LOST FOREST (FPS + LEVEL + ZAMAN) ---
 @app.route('/lost-forest')
 def horror():
     html = """
@@ -216,7 +221,7 @@ def horror():
 """
     return html.replace("VAR_BACK", back_button_html)
 
-# --- 4. VOID COMMAND ---
+# --- 4. VOID COMMAND (GEZEGEN) ---
 @app.route('/void-command')
 def strategy():
     html = """
@@ -240,7 +245,7 @@ def strategy():
         }
         function init(){
             planets=[new P(150,c.height/2,45,'player')];
-            for(let i=0;i<lvl;i++) planets.push(new P(c.width-150,(c.height/(lvl+1))*(i+1),40,'enemy'));
+            for(let i=0;i<lvl;i++) planets.push(new P(c.width-150,(c.height/(lvl+1))*(i+1),35,'enemy'));
             for(let i=0;i<6;i++) planets.push(new P(Math.random()*(c.width-400)+200, Math.random()*(c.height-200)+100, 30, 'neutral'));
         }
         c.addEventListener('mousedown', (e) => {
@@ -265,7 +270,7 @@ def strategy():
 """
     return html.replace("VAR_BACK", back_button_html)
 
-# --- 5. THE GLITCH IN ME (GÖRSEL DESTEKLİ HİKAYE) ---
+# --- 5. THE GLITCH IN ME (HİKAYE) ---
 @app.route('/glitch-in-me')
 def story_game():
     html = """
@@ -275,12 +280,12 @@ def story_game():
     <title>The Glitch in Me | Cano Studio</title>
     <style>
         body { background: #050505; color: #e0e0e0; font-family: 'Segoe UI', serif; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
-        #story-container { max-width: 700px; width: 90%; padding: 40px; background: #0a0a0a; border: 1px solid #1a1a1a; position: relative; }
-        #story-image { width: 100%; height: 350px; object-fit: cover; margin-bottom: 25px; border-radius: 4px; border: 1px solid #9b59b633; }
-        .text { font-size: 1.1rem; line-height: 1.8; margin-bottom: 30px; min-height: 150px; color: #bbb; }
+        #story-container { max-width: 750px; width: 90%; padding: 40px; background: #0a0a0a; border: 1px solid #1a1a1a; position: relative; border-radius: 8px; }
+        #story-image { width: 100%; height: 350px; object-fit: cover; margin-bottom: 25px; border-radius: 4px; border: 1px solid #9b59b633; filter: brightness(0.7); }
+        .text { font-size: 1.15rem; line-height: 1.8; margin-bottom: 30px; min-height: 120px; color: #ccc; }
         .choices { display: flex; flex-direction: column; gap: 12px; }
-        button { background: transparent; border: 1px solid #222; color: #666; padding: 15px; cursor: pointer; text-align: left; transition: 0.3s; font-size: 0.9rem; }
-        button:hover { border-color: #9b59b6; color: #fff; background: rgba(155, 89, 182, 0.05); }
+        button { background: transparent; border: 1px solid #222; color: #888; padding: 15px; cursor: pointer; text-align: left; transition: 0.3s; font-size: 0.95rem; }
+        button:hover { border-color: #9b59b6; color: #fff; background: rgba(155, 89, 182, 0.1); }
         .glitch-text { color: #9b59b6; font-weight: bold; }
     </style>
 </head>
@@ -288,29 +293,65 @@ def story_game():
     VAR_BACK
     <div id="story-container">
         <img id="story-image" src="" style="display:none;">
-        <div id="ta" class="text">Yükleniyor...</div>
+        <div id="ta" class="text">Başlatılıyor...</div>
         <div id="ca" class="choices"></div>
     </div>
 
     <script>
         const s = {
             start: {
-                img: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80&w=1000',
-                text: "Saat 04:12. Odan zifiri karanlık, tek ışık kaynağın monitörün. Kodlar arasında bir <span class='glitch-text'>gölgenin</span> geçtiğini görüyorsun. Ne yaparsın?",
+                img: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b',
+                text: "Saat 04:12. Kod satırları arasında bir <span class='glitch-text'>gölgenin</span> hızla geçtiğini görüyorsun. Boynun soğuk bir nefesle ürperiyor.",
                 choices: [{ t: "Arkanı dönüp bak.", n: "look_back" }, { t: "Ekrana odaklan.", n: "focus" }]
             },
             look_back: {
-                img: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=1000',
-                text: "Arkanı dönüyorsun. Kimse yok. Ama çalışma koltuğunun üzerindeki hırkanın şekli, sanki birisi orada oturuyormuş gibi duruyor.",
-                choices: [{ t: "Kapıyı kapatmaya git.", n: "door" }, { t: "Işıkları aç.", n: "lights" }]
+                img: 'https://images.unsplash.com/photo-1518770660439-4636190af475',
+                text: "Arkanı dönüyorsun. Kimse yok. Ama koltuğundaki hırkanın şekli, sanki birisi orada oturuyormuş gibi duruyor. Kapı aralığından bir fısıltı geliyor: 'Daha yeni başlıyoruz...'",
+                choices: [{ t: "Kapıya doğru yürü.", n: "hallway" }, { t: "Işıkları açmayı dene.", n: "lights" }]
             },
             focus: {
-                img: 'https://images.unsplash.com/photo-1542831371-29b0f74f9713?auto=format&fit=crop&q=80&w=1000',
-                text: "Ekrana odaklanıyorsun ama terminalde şu beliriyor: <span class='glitch-text'>'SENİ SİLİYORUM.'</span> Parmakların yavaşça şeffaflaşıyor.",
-                choices: [{ t: "Fişi çek.", n: "start" }, { t: "Sisteme yalvar.", n: "start" }]
+                img: 'https://images.unsplash.com/photo-1542831371-29b0f74f9713',
+                text: "Ekrana odaklanıyorsun ama terminalde şu beliriyor: <span class='glitch-text'>'SİSTEM SENİ SİLİYOR.'</span> Klavyen kendi kendine yazmaya başlıyor.",
+                choices: [{ t: "Klavyeyi durdurmaya çalış.", n: "keyboard_fight" }, { t: "Fişi çekmek için eğil.", n: "unplug_scene" }]
             },
-            door: { text: "Kapıya yürürken aynada yansımanın sana değil, arkandaki karanlığa baktığını görüyorsun. (Kabus Sonu)", choices: [{ t: "Başa Dön", n: "start" }] },
-            lights: { text: "Düğmeye basıyorsun ama ışıklar yanmıyor. Bilgisayar fanı çığlık atar gibi dönmeye başlıyor. (Hata Sonu)", choices: [{ t: "Başa Dön", n: "start" }] }
+            hallway: {
+                img: 'https://images.unsplash.com/photo-1509248961158-e54f6934749c',
+                text: "Koridorda ilerliyorsun. Mutfaktan gelen statik bir cızırtı sesi var. Buzdolabındaki fotoğrafların hepsinde yüzün silinmiş, yerine siyah kareler gelmiş.",
+                choices: [{ t: "Mutfağa gir.", n: "kitchen" }, { t: "Dış kapıya koş.", n: "exit_attempt" }]
+            },
+            lights: {
+                text: "Düğmeye basıyorsun. Yanmıyor. Ama bilgisayarının fanı bir jet motoru gibi bağırmaya başlıyor. Oda ısınmaya başladı.",
+                choices: [{ t: "Masaya dön ve bilgisayarı kapat.", n: "focus" }, { t: "Telefonunu bul.", n: "phone" }]
+            },
+            keyboard_fight: {
+                text: "Ellerini tuşların üzerine koyuyorsun ama tuşlar parmaklarını içine çekiyor gibi. Ekranda şu yazı beliriyor: <span class='glitch-text'>'VERİLERİNİ BİZE VER.'</span>",
+                choices: [{ t: "Direnmeyi bırak.", n: "digital_end" }, { t: "Tüm gücünle ellerini çek.", n: "physical_escape" }]
+            },
+            unplug_scene: {
+                img: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc51',
+                text: "Masanın altına eğiliyorsun. Fişlerin olduğu yer siyah, yapışkan bir sıvıyla kaplanmış. Sıvı nabız gibi atıyor.",
+                choices: [{ t: "Sıvıya dokun.", n: "digital_end" }, { t: "Hemen odadan dışarı fırla.", n: "hallway" }]
+            },
+            kitchen: {
+                text: "Mutfaktasın. Musluktan su yerine siyah pikseller akıyor. Arkanda birinin durduğunu hissediyorsun. 'Acıktın mı?' diye soruyor bir ses.",
+                choices: [{ t: "Arkanı dönme, hemen kaç.", n: "exit_attempt" }, { t: "Korkuyla arkana bak.", n: "horror_end" }]
+            },
+            exit_attempt: {
+                text: "Dış kapıya ulaşıyorsun. Kolu çeviriyorsun ama kapı açılmıyor. Kapının yerinde sadece dev bir '404 NOT FOUND' yazısı var.",
+                choices: [{ t: "Yumrukla.", n: "digital_end" }, { t: "Teslim ol.", n: "horror_end" }]
+            },
+            digital_end: {
+                text: "Vücudun yavaşça piksellere ayrılıyor. Artık sen bir insan değilsin, sadece 1'ler ve 0'lardan oluşan bir hatasın. <span class='glitch-text'>SİSTEME ENTEGRE EDİLDİN.</span>",
+                choices: [{ t: "Kütüphaneye Dön", n: "exit" }]
+            },
+            horror_end: {
+                text: "Karanlık seni yuttu. Gerçek dünya artık çok uzak bir anı. Kendi kodunda hapsoldun.",
+                choices: [{ t: "Tekrar Dene", n: "start" }]
+            },
+            physical_escape: {
+                text: "Ellerini kurtarıyorsun! Odanın penceresinden dışarı bakıyorsun; dışarısı normal görünüyor. Ama telefonuna bir mesaj geliyor: <span class='glitch-text'>'Görüşürüz.'</span>",
+                choices: [{ t: "Kütüphaneye Dön", n: "exit" }]
+            }
         };
 
         function r(id) {
@@ -332,7 +373,7 @@ def story_game():
 """
     return html.replace("VAR_BACK", back_button_html)
 
-# --- API ---
+# --- API VE BAŞLATMA ---
 @app.route('/submit_score/<game>/<int:score>')
 def submit_score(game, score):
     if game in scores: scores[game].append(score)
