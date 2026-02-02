@@ -4,11 +4,10 @@ import os
 app = Flask(__name__)
 
 # --- SKOR VERİTABANI ---
-# Uygulama çalıştığı sürece skorları burada tutar.
 scores = {
     "neon_arcade": [0],
     "void_command": [1],
-    "lost_forest": [0]
+    "lost_forest": [1] # Level bilgisi tutar
 }
 
 # --- BİLEŞENLER ---
@@ -29,7 +28,7 @@ back_button_html = """
 def home():
     max_arcade = max(scores["neon_arcade"])
     max_void = max(scores["void_command"])
-    forest_wins = len([x for x in scores["lost_forest"] if x > 0])
+    forest_lvl = max(scores["lost_forest"])
     
     html = """
 <!DOCTYPE html>
@@ -60,17 +59,17 @@ def home():
         <div class="game-card" onclick="window.location.href='/neon-arcade'">
             <div class="status" style="color:#00d4ff; border-color:#00d4ff;">ARCADE</div>
             <h2>NEON ARCADE</h2>
-            <p style="color:#555">Reflekslerini test et. En yüksek skorunu kaydet.</p>
+            <p style="color:#555">Refleks testi. Anlık sıfırlama aktif.</p>
         </div>
         <div class="game-card" onclick="window.location.href='/void-command'">
             <div class="status" style="color:#00ff88; border-color:#00ff88;">STRATEGY</div>
             <h2>VOID COMMAND</h2>
-            <p style="color:#555">Gezegenleri feth et. Level atladıkça zorlaşır.</p>
+            <p style="color:#555">Gezegen fethi. Tıklama sorunları giderildi.</p>
         </div>
         <div class="game-card" onclick="window.location.href='/lost-forest'">
             <div class="status" style="color:#ff4500; border-color:#ff4500;">FPS HORROR</div>
-            <h2 style="color:#ff4500">THE LOST FOREST</h2>
-            <p style="color:#555">1. Şahıs kamerasıyla ormanda kaçış yolu ara.</p>
+            <h2 style="color:#ff4500">LOST FOREST</h2>
+            <p style="color:#555">5 Dakika süre sınırı. FPS Kamera. Level sistemi.</p>
         </div>
     </div>
     <div class="leaderboard">
@@ -79,14 +78,14 @@ def home():
             <tr><th>OYUN MODÜLÜ</th><th style="text-align:right">BAŞARI</th></tr>
             <tr><td>Neon Arcade</td><td class="val">VAR_ARCADE Puan</td></tr>
             <tr><td>Void Command</td><td class="val">Level VAR_VOID</td></tr>
-            <tr><td>Lost Forest</td><td class="val">VAR_FOREST Kaçış</td></tr>
+            <tr><td>Lost Forest</td><td class="val">Level VAR_FOREST</td></tr>
         </table>
     </div>
     VAR_FOOTER
 </body>
 </html>
 """
-    return html.replace("VAR_ARCADE", str(max_arcade)).replace("VAR_VOID", str(max_void)).replace("VAR_FOREST", str(forest_wins)).replace("VAR_FOOTER", footer_html)
+    return html.replace("VAR_ARCADE", str(max_arcade)).replace("VAR_VOID", str(max_void)).replace("VAR_FOREST", str(forest_lvl)).replace("VAR_FOOTER", footer_html)
 
 # --- 2. NEON ARCADE ---
 @app.route('/neon-arcade')
@@ -136,7 +135,7 @@ def arcade():
 """
     return html.replace("VAR_BACK", back_button_html)
 
-# --- 3. THE LOST FOREST (FPS KAMERA) ---
+# --- 3. THE LOST FOREST (FPS + LEVEL SİSTEMİ + 5 DK SÜRE) ---
 @app.route('/lost-forest')
 def horror():
     html = """
@@ -144,60 +143,99 @@ def horror():
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Lost Forest FPS</title>
+    <title>Lost Forest FPS | Cano Studio</title>
     <style>
         body{background:#000; margin:0; overflow:hidden; color:white; font-family:monospace;}
-        #ui{position:fixed; top:20px; width:100%; text-align:center; z-index:10; pointer-events:none; letter-spacing:2px;}
+        #ui{position:fixed; top:20px; width:100%; text-align:center; z-index:10; pointer-events:none;}
+        #stats{position:fixed; bottom:20px; right:20px; text-align:right; color:#ff4500; font-size:1.2rem;}
     </style>
 </head>
 <body>
     VAR_BACK
-    <div id="ui">ORMANIN SONUNDAKİ BEYAZ KAPIYI BUL...</div>
+    <div id="ui">LEVEL <span id="lvlDisplay">1</span> - KAPIDAN KAÇ!</div>
+    <div id="stats">SÜRE: <span id="timer">300</span>s</div>
     <canvas id="canvas"></canvas>
     <script>
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-        let player = { x: 2, y: 2, dir: 0, speed: 0.05 };
-        let map = [[1,1,1,1,1,1,1],[1,0,0,0,0,0,1],[1,0,1,1,1,0,1],[1,0,0,0,1,0,1],[1,1,1,0,1,0,1],[1,0,0,0,0,2,1],[1,1,1,1,1,1,1]];
+
+        let level = 1;
+        let timeLeft = 300;
+        let player = { x: 1.5, y: 1.5, dir: 0, speed: 0.06 };
+        let map = [];
         let keys = {};
+
+        function generateMap(size) {
+            let newMap = Array.from({length: size}, () => Array(size).fill(1));
+            for(let y=1; y<size-1; y++) for(let x=1; x<size-1; x++) if(Math.random() > 0.3) newMap[y][x] = 0;
+            newMap[1][1] = 0; // Başlangıç yolu
+            newMap[size-2][size-2] = 2; // Kapı
+            return newMap;
+        }
+
+        function resetLevel() {
+            let size = 8 + (level * 2);
+            map = generateMap(size);
+            player.x = 1.5; player.y = 1.5; player.dir = 0;
+            timeLeft = 300;
+            document.getElementById("lvlDisplay").innerText = level;
+        }
+
         window.onkeydown=(e)=>keys[e.code]=true;
         window.onkeyup=(e)=>keys[e.code]=false;
 
+        setInterval(() => {
+            if(timeLeft > 0) timeLeft--;
+            else { alert("SÜRE BİTTİ!"); level=1; resetLevel(); }
+            document.getElementById("timer").innerText = timeLeft;
+        }, 1000);
+
         function update() {
             let ox=player.x, oy=player.y;
-            if(keys['KeyW']) { player.x+=Math.cos(player.dir)*0.05; player.y+=Math.sin(player.dir)*0.05; }
-            if(keys['KeyS']) { player.x-=Math.cos(player.dir)*0.05; player.y-=Math.sin(player.dir)*0.05; }
-            if(keys['KeyA']) player.dir-=0.05;
-            if(keys['KeyD']) player.dir+=0.05;
-            if(map[Math.floor(player.y)][Math.floor(player.x)]===1) { player.x=ox; player.y=oy; }
-            if(map[Math.floor(player.y)][Math.floor(player.x)]===2) { fetch('/submit_score/lost_forest/1'); alert("KURTULDUN!"); location.href="/"; }
+            if(keys['KeyW']) { player.x+=Math.cos(player.dir)*player.speed; player.y+=Math.sin(player.dir)*player.speed; }
+            if(keys['KeyS']) { player.x-=Math.cos(player.dir)*player.speed; player.y-=Math.sin(player.dir)*player.speed; }
+            if(keys['KeyA']) player.dir-=0.06;
+            if(keys['KeyD']) player.dir+=0.06;
+
+            if(map[Math.floor(player.y)][Math.floor(player.x)] === 1) { player.x=ox; player.y=oy; }
+            if(map[Math.floor(player.y)][Math.floor(player.x)] === 2) { 
+                fetch('/submit_score/lost_forest/'+level);
+                alert("LEVEL " + level + " TAMAMLANDI!"); 
+                level++; resetLevel(); 
+            }
         }
 
         function draw() {
             ctx.fillStyle="#050805"; ctx.fillRect(0,0,canvas.width,canvas.height/2);
             ctx.fillStyle="#020402"; ctx.fillRect(0,canvas.height/2,canvas.width,canvas.height);
-            const rays=100, fov=Math.PI/3;
+
+            const rays=120, fov=Math.PI/3;
             for(let i=0; i<rays; i++){
                 let a=(player.dir-fov/2)+(i/rays)*fov, d=0, hit=0;
-                while(d<15){ d+=0.05; let tx=Math.floor(player.x+Math.cos(a)*d), ty=Math.floor(player.y+Math.sin(a)*d); if(map[ty][tx]>0){hit=map[ty][tx];break;}}
+                while(d<15){
+                    d+=0.06;
+                    let tx=Math.floor(player.x+Math.cos(a)*d), ty=Math.floor(player.y+Math.sin(a)*d);
+                    if(ty<0||ty>=map.length||tx<0||tx>=map[0].length) break;
+                    if(map[ty][tx]>0){ hit=map[ty][tx]; break; }
+                }
                 let h=canvas.height/(d*Math.cos(a-player.dir));
-                ctx.fillStyle=hit===2?"#fff":`rgb(0,${Math.max(0,150-d*10)},0)`;
+                ctx.fillStyle=hit===2?"#fff":`rgb(0,${Math.max(0,180-d*12)},0)`;
                 ctx.fillRect(i*(canvas.width/rays), (canvas.height-h)/2, canvas.width/rays+1, h);
             }
-            let g=ctx.createRadialGradient(canvas.width/2,canvas.height/2,50,canvas.width/2,canvas.height/2,350);
-            g.addColorStop(0,"transparent"); g.addColorStop(1,"rgba(0,0,0,0.95)");
+            let g=ctx.createRadialGradient(canvas.width/2,canvas.height/2,50,canvas.width/2,canvas.height/2,400);
+            g.addColorStop(0,"transparent"); g.addColorStop(1,"rgba(0,0,0,0.98)");
             ctx.fillStyle=g; ctx.fillRect(0,0,canvas.width,canvas.height);
         }
         function loop(){ update(); draw(); requestAnimationFrame(loop); }
-        loop();
+        resetLevel(); loop();
     </script>
 </body>
 </html>
 """
     return html.replace("VAR_BACK", back_button_html)
 
-# --- 4. VOID COMMAND (STRATEJİ) ---
+# --- 4. VOID COMMAND (GEZEGEN OYUNU - TAMİR EDİLDİ) ---
 @app.route('/void-command')
 def strategy():
     html = """
@@ -212,29 +250,58 @@ def strategy():
         const c=document.getElementById("g"), ctx=c.getContext("2d");
         c.width=window.innerWidth; c.height=window.innerHeight;
         let lvl=1, planets=[], sel=null;
+
         class P {
             constructor(x,y,r,o){this.x=x;this.y=y;this.r=r;this.o=o;this.e=o==='neutral'?5:20;}
             draw(){
                 ctx.beginPath(); ctx.arc(this.x,this.y,this.r,0,Math.PI*2);
                 ctx.strokeStyle=this.o==='player'?'#00ff88':(this.o==='enemy'?'#f40':'#333');
-                ctx.lineWidth=sel===this?4:2; ctx.stroke();
-                ctx.fillStyle=ctx.strokeStyle; ctx.textAlign="center"; ctx.fillText(Math.floor(this.e),this.x,this.y+5);
+                ctx.lineWidth=sel===this?5:2; ctx.stroke();
+                ctx.fillStyle=ctx.strokeStyle; ctx.textAlign="center"; 
+                ctx.font="bold 14px Arial"; ctx.fillText(Math.floor(this.e),this.x,this.y+5);
             }
         }
+
         function init(){
-            planets=[new P(150,c.height/2,40,'player')];
-            for(let i=0;i<lvl;i++) planets.push(new P(c.width-150,(c.height/(lvl+1))*(i+1),35,'enemy'));
-            for(let i=0;i<5;i++) planets.push(new P(Math.random()*c.width, Math.random()*c.height, 25, 'neutral'));
+            planets=[new P(150,c.height/2,45,'player')];
+            for(let i=0;i<lvl;i++) planets.push(new P(c.width-150,(c.height/(lvl+1))*(i+1),40,'enemy'));
+            for(let i=0;i<6;i++) planets.push(new P(Math.random()*(c.width-400)+200, Math.random()*(c.height-200)+100, 30, 'neutral'));
         }
-        c.onclick=(e)=>{
-            let p=planets.find(p=>Math.hypot(p.x-e.clientX,p.y-e.clientY)<p.r);
-            if(p){ 
-                if(p.o==='player') sel=p;
-                else if(sel){ let f=sel.e/2; sel.e-=f; p.e-=f; if(p.e<0){p.o='player';p.e=Math.abs(p.e);} sel=null;}
+
+        c.addEventListener('mousedown', (e) => {
+            const rect = c.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+            
+            let clicked = planets.find(p => Math.hypot(p.x - mx, p.y - my) < p.r);
+            
+            if(clicked) {
+                if(clicked.o === 'player') { sel = clicked; }
+                else if(sel) {
+                    let force = sel.e / 2;
+                    sel.e -= force;
+                    clicked.e -= force;
+                    if(clicked.e < 0) {
+                        clicked.o = 'player';
+                        clicked.e = Math.abs(clicked.e);
+                    }
+                    sel = null;
+                }
+            } else { sel = null; }
+        });
+
+        function loop(){
+            ctx.fillStyle="black"; ctx.fillRect(0,0,c.width,c.height);
+            planets.forEach(p=>{
+                if(p.o !== 'neutral') p.e += 0.012 * lvl;
+                p.draw();
+            });
+            if(!planets.some(p => p.o === 'enemy')){
+                lvl++; fetch('/submit_score/void_command/'+lvl); 
+                document.getElementById("l").innerText="LEVEL: "+lvl; init();
             }
-            if(!planets.some(p=>p.o==='enemy')){lvl++; fetch('/submit_score/void_command/'+lvl); document.getElementById("l").innerText="LEVEL: "+lvl; init();}
-        };
-        function loop(){ ctx.fillStyle="black"; ctx.fillRect(0,0,c.width,c.height); planets.forEach(p=>{if(p.o!=='neutral')p.e+=0.01*lvl; p.draw();}); requestAnimationFrame(loop); }
+            requestAnimationFrame(loop);
+        }
         init(); loop();
     </script>
 </body>
