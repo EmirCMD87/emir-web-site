@@ -23,61 +23,86 @@ back_button_html = """
 </a>
 """
 
-# İNİNAL DESTEK VE TEŞEKKÜR SİSTEMİ
+# GELİŞMİŞ DESTEK SİSTEMİ (İninal + Banka/EFT + Teşekkür)
 support_button_html = """
 <a href="#" onclick="showSupport()" style="position: fixed; top: 20px; right: 20px; color: #00bcd4; text-decoration: none; font-family: sans-serif; font-size: 0.8rem; border: 1px solid #00bcd4; padding: 5px 15px; border-radius: 4px; z-index: 1000; transition: 0.3s; background: rgba(0, 188, 212, 0.05); font-weight: bold;" onmouseover="this.style.background='#00bcd4';this.style.color='#fff'" onmouseout="this.style.background='rgba(0, 188, 212, 0.05)';this.style.color='#00bcd4'">
-    💳 ininal DESTEK
+    💳 DESTEK OL
 </a>
 
-<div id="supportModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.97); z-index:2000; align-items:center; justify-content:center; flex-direction:column; font-family:sans-serif; text-align:center; padding:20px;">
-    <div id="supportBox" style="background:#0a0a0a; padding:30px; border-radius:15px; border:1px solid #00bcd4; max-width:450px; width:100%; box-shadow: 0 0 50px rgba(0, 188, 212, 0.15);">
+<div id="supportModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.98); z-index:2000; align-items:center; justify-content:center; flex-direction:column; font-family:sans-serif; text-align:center; padding:20px;">
+    <div id="supportBox" style="background:#0a0a0a; padding:30px; border-radius:15px; border:1px solid #00bcd4; max-width:480px; width:100%; box-shadow: 0 0 50px rgba(0, 188, 212, 0.15);">
         <div id="supportContent">
-            <h2 style="color:#00bcd4; margin-bottom:10px;">Cano Studio'yu Destekle</h2>
-            <p style="color:#666; font-size:0.85rem; margin-bottom:25px;">Bir miktar seçerek projenin gelişmesine katkıda bulunabilirsin.</p>
+            <h2 style="color:#00bcd4; margin-bottom:5px;">Cano Studio'yu Destekle</h2>
+            <p style="color:#555; font-size:0.8rem; margin-bottom:20px;">Sana uygun olan destek yöntemini seçebilirsin.</p>
             
-            <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; margin-bottom:25px;">
-                <button class="amt-btn" onclick="copyBarkod(10)">10 TL</button>
-                <button class="amt-btn" onclick="copyBarkod(20)">20 TL</button>
-                <button class="amt-btn" onclick="copyBarkod(50)">50 TL</button>
-                <button class="amt-btn" onclick="copyBarkod(70)">70 TL</button>
-                <button class="amt-btn" onclick="copyBarkod(100)">100 TL</button>
-                <button class="amt-btn" onclick="copyBarkod(150)">150 TL</button>
-                <button class="amt-btn" style="grid-column: span 3;" onclick="copyBarkod('Özel')">Daha Fazla...</button>
+            <div style="display:flex; gap:10px; margin-bottom:20px;">
+                <button onclick="switchTab('ininal')" id="tab-ininal" style="flex:1; padding:10px; border:1px solid #00bcd4; background:#00bcd4; color:#000; cursor:pointer; font-weight:bold; border-radius:4px;">ininal</button>
+                <button onclick="switchTab('banka')" id="tab-banka" style="flex:1; padding:10px; border:1px solid #333; background:transparent; color:#666; cursor:pointer; font-weight:bold; border-radius:4px;">Banka / EFT</button>
             </div>
 
-            <div style="background:#000; padding:15px; border-radius:8px; border:1px dashed #333; margin-bottom:20px;">
-                <span style="color:#444; font-size:0.6rem; text-transform:uppercase; letter-spacing:2px;">ininal BARKOD</span>
-                <div style="color:#fff; font-size:1.1rem; font-weight:bold; margin-top:5px; letter-spacing:2px;">4000 0000 0000 0</div>
+            <div id="panel-ininal">
+                <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; margin-bottom:20px;">
+                    <button class="amt-btn" onclick="copyAction('ininal', 10)">10 TL</button>
+                    <button class="amt-btn" onclick="copyAction('ininal', 20)">20 TL</button>
+                    <button class="amt-btn" onclick="copyAction('ininal', 50)">50 TL</button>
+                    <button class="amt-btn" onclick="copyAction('ininal', 100)">100 TL</button>
+                    <button class="amt-btn" onclick="copyAction('ininal', 150)">150 TL</button>
+                    <button class="amt-btn" onclick="copyAction('ininal', '+')">+</button>
+                </div>
+                <div style="background:#000; padding:10px; border:1px dashed #333; border-radius:8px;">
+                    <span style="color:#444; font-size:0.6rem;">BARKOD NO:</span>
+                    <div style="color:#fff; font-size:1rem; font-weight:bold; letter-spacing:2px;">4000 0000 0000 0</div>
+                </div>
             </div>
 
-            <button onclick="hideSupport()" style="background:transparent; color:#444; border:none; cursor:pointer; font-size:0.8rem; text-decoration:underline;">Kapat</button>
+            <div id="panel-banka" style="display:none;">
+                <div style="text-align:left; background:#000; padding:15px; border-radius:8px; border:1px solid #222;">
+                    <span style="color:#00bcd4; font-size:0.7rem; font-weight:bold;">HAVALE / FAST / EFT</span>
+                    <div style="color:#fff; font-size:0.85rem; margin-top:10px; line-height:1.6;">
+                        <b>ALICI:</b> [Senin Adın Soyadın]<br>
+                        <b>IBAN:</b> TR00 0000 0000 0000 0000 0000 00<br>
+                        <span style="color:#ff4500; font-size:0.7rem;">* Açıklamaya ininal barkodunu yazmayı unutma!</span>
+                    </div>
+                </div>
+                <button class="amt-btn" style="width:100%; margin-top:15px; border-color:#00bcd4;" onclick="copyAction('Banka', 'IBAN')">IBAN KOPYALA</button>
+            </div>
+
+            <button onclick="hideSupport()" style="background:transparent; color:#444; border:none; cursor:pointer; font-size:0.8rem; text-decoration:underline; margin-top:20px;">Vazgeç</button>
         </div>
     </div>
 </div>
 
 <style>
-.amt-btn { background: #111; border: 1px solid #222; color: #fff; padding: 12px; border-radius: 6px; cursor: pointer; transition: 0.2s; font-weight: bold; }
-.amt-btn:hover { border-color: #00bcd4; background: rgba(0, 188, 212, 0.1); transform: scale(1.05); }
+.amt-btn { background: #111; border: 1px solid #222; color: #fff; padding: 10px; border-radius: 4px; cursor: pointer; transition: 0.2s; font-size: 0.8rem; font-weight:bold;}
+.amt-btn:hover { border-color: #00bcd4; color:#00bcd4; background: rgba(0, 188, 212, 0.05);}
 </style>
 
 <script>
 function showSupport() { document.getElementById('supportModal').style.display='flex'; }
 function hideSupport() { document.getElementById('supportModal').style.display='none'; location.reload(); }
 
-function copyBarkod(amt) {
-    const barkod = "4000 0000 0000 0"; // BURAYA KENDI NUMARANI YAZ
-    navigator.clipboard.writeText(barkod.replace(/ /g, ''));
+function switchTab(type) {
+    const iTab = document.getElementById('tab-ininal'), bTab = document.getElementById('tab-banka');
+    const iPanel = document.getElementById('panel-ininal'), bPanel = document.getElementById('panel-banka');
+    if(type === 'ininal') {
+        iTab.style.background='#00bcd4'; iTab.style.color='#000'; bTab.style.background='transparent'; bTab.style.color='#666';
+        iPanel.style.display='block'; bPanel.style.display='none';
+    } else {
+        bTab.style.background='#00bcd4'; bTab.style.color='#000'; iTab.style.background='transparent'; iTab.style.color='#666';
+        iPanel.style.display='none'; bPanel.style.display='block';
+    }
+}
+
+function copyAction(method, amt) {
+    const barkod = "4000 0000 0000 0"; // KENDI BARKODUN
+    const iban = "TR00 0000 0000 0000 0000 0000 00"; // KENDI IBANIN
+    const textToCopy = method === 'ininal' ? barkod : iban;
+    navigator.clipboard.writeText(textToCopy.replace(/ /g, ''));
     
     document.getElementById('supportBox').innerHTML = `
         <h2 style="color:#00bcd4; margin-top:0;">Adamsın! ❤️</h2>
-        <p style="color:#fff; font-size:1.1rem; line-height:1.6;">
-            ${amt === 'Özel' ? 'Özel' : amt + ' TL'} desteğin için çok teşekkürler!
-        </p>
-        <p style="color:#888; font-size:0.9rem;">
-            ininal barkodun başarıyla kopyalandı.<br>
-            Uygulamaya girip gönderimi tamamlayabilirsin.<br><br>
-            <b>Senin desteğinle Cano Studio büyüyecek!</b>
-        </p>
+        <p style="color:#fff; font-size:1.1rem; line-height:1.6;">${amt !== 'IBAN' ? amt + ' TL ' : ''}Desteğin İçin Teşekkürler!</p>
+        <p style="color:#888; font-size:0.9rem;">${method} bilgisi kopyalandı. İşlemi banka uygulamanızdan tamamlayabilirsiniz.<br><br><b>Cano Studio seninle büyüyor!</b></p>
         <button onclick="hideSupport()" style="background:#00bcd4; color:#000; border:none; padding:12px 30px; border-radius:4px; cursor:pointer; font-weight:bold; margin-top:20px;">OYUNA DÖN</button>
     `;
 }
@@ -103,7 +128,7 @@ def home():
         body { background: #020202; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; min-height: 100vh; }
         .header { padding: 40px 20px; text-align: center; }
         h1 { font-size: 2.5rem; letter-spacing: 12px; margin: 0; color: #fff; font-weight: 200; }
-        .container { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; padding: 40px; max-width: 1200px; margin: 0 auto; width:100%; }
+        .container { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; padding: 40px; max-width: 1400px; margin: 0 auto; width:100%; }
         .game-card { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 30px; border-radius: 8px; cursor: pointer; }
         .game-card:hover { border-color: #fff; background: #111; transform: translateY(-5px); }
         .status { font-size: 9px; letter-spacing: 2px; border: 1px solid; display: inline-block; padding: 2px 8px; margin-bottom: 15px; border-radius: 4px; }
@@ -138,9 +163,9 @@ def home():
     <div class="leaderboard">
         <table>
             <tr><th>MODÜL</th><th style="text-align:right">DURUM</th></tr>
-            <tr><td>Neon High Score</td><td class="val">VAR_ARCADE</td></tr>
-            <tr><td>Strategy Level</td><td class="val">Lvl VAR_VOID</td></tr>
-            <tr><td>Horror Progress</td><td class="val">Lvl VAR_FOREST</td></tr>
+            <tr><td>Neon Score</td><td class="val">VAR_ARCADE</td></tr>
+            <tr><td>Strategy Lvl</td><td class="val">VAR_VOID</td></tr>
+            <tr><td>Horror Lvl</td><td class="val">VAR_FOREST</td></tr>
         </table>
     </div>
     VAR_FOOTER
@@ -149,7 +174,7 @@ def home():
 """
     return html.replace("VAR_ARCADE", str(max_arcade)).replace("VAR_VOID", str(max_void)).replace("VAR_FOREST", str(forest_lvl)).replace("VAR_FOOTER", footer_html).replace("VAR_SUPPORT", support_button_html)
 
-# --- 2. NEON ARCADE ---
+# --- OYUN ROUTE'LARI ---
 @app.route('/neon-arcade')
 def arcade():
     html = """<!DOCTYPE html><html><head><title>Arcade</title><style>body{background:#000;margin:0;overflow:hidden;display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;}canvas{border:2px solid #00d4ff;}</style></head>
@@ -163,10 +188,9 @@ def arcade():
     window.onclick=()=>{ if(gameActive) bird.v=bird.j; else { reset(); draw(); } }; reset(); draw();</script></body></html>"""
     return html.replace("VAR_BACK", back_button_html).replace("VAR_SUPPORT", support_button_html)
 
-# --- 3. THE LOST FOREST (FPS) ---
 @app.route('/lost-forest')
 def horror():
-    html = """<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Horror</title><style>body{background:#000;margin:0;overflow:hidden;color:white;font-family:monospace;} #ui{position:fixed;top:20px;width:100%;text-align:center;z-index:10;} #stats{position:fixed;bottom:20px;right:20px;color:#ff4500;} #joystick{position:fixed;bottom:40px;left:40px;width:100px;height:100px;background:rgba(255,255,255,0.1);border-radius:50%;display:none;touch-action:none;} #stick{position:absolute;top:30px;left:30px;width:40px;height:40px;background:rgba(255,255,255,0.2);border-radius:50%;} @media (max-width:768px){#joystick{display:block;}}</style></head>
+    html = """<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Lost Forest</title><style>body{background:#000;margin:0;overflow:hidden;color:white;font-family:monospace;} #ui{position:fixed;top:20px;width:100%;text-align:center;} #stats{position:fixed;bottom:20px;right:20px;color:#ff4500;} #joystick{position:fixed;bottom:40px;left:40px;width:100px;height:100px;background:rgba(255,255,255,0.1);border-radius:50%;display:none;touch-action:none;} #stick{position:absolute;top:30px;left:30px;width:40px;height:40px;background:rgba(255,255,255,0.2);border-radius:50%;} @media (max-width:768px){#joystick{display:block;}}</style></head>
     <body>VAR_BACK VAR_SUPPORT <div id="ui">LEVEL <span id="lvlDisplay">1</span></div><div id="stats">SÜRE: <span id="timer">300</span></div><div id="joystick"><div id="stick"></div></div><canvas id="canvas"></canvas>
     <script>const canvas=document.getElementById('canvas'), ctx=canvas.getContext('2d'); canvas.width=window.innerWidth; canvas.height=window.innerHeight; let level=1, timeLeft=300, player={x:1.5,y:1.5,dir:0,speed:0.06}, map=[], keys={}; let joy={active:false,x:0,y:0};
     function generateMap(size) { let newMap=Array.from({length:size},()=>Array(size).fill(1)); for(let y=1;y<size-1;y++) for(let x=1;x<size-1;x++) if(Math.random()>0.3) newMap[y][x]=0; newMap[1][1]=0; newMap[size-2][size-2]=2; return newMap; }
@@ -183,7 +207,6 @@ def horror():
     function loop(){ update(); draw(); requestAnimationFrame(loop); } resetLevel(); loop();</script></body></html>"""
     return html.replace("VAR_BACK", back_button_html).replace("VAR_SUPPORT", support_button_html)
 
-# --- 4. VOID COMMAND (STRATEJİ) ---
 @app.route('/void-command')
 def strategy():
     html = """<!DOCTYPE html><html><head><title>Strategy</title><style>body{background:#000;color:#00ff88;margin:0;overflow:hidden;font-family:monospace;} #l{margin-top:50px;padding:20px;}</style></head>
@@ -195,10 +218,9 @@ def strategy():
     function loop(){ ctx.fillStyle="black"; ctx.fillRect(0,0,c.width,c.height); planets.forEach(p=>{if(p.o!=='neutral')p.e+=0.012*lvl; p.draw();}); if(!planets.some(p=>p.o==='enemy')){lvl++; fetch('/submit_score/void_command/'+lvl); document.getElementById("l").innerText="LEVEL: "+lvl; init();} requestAnimationFrame(loop); } init(); loop();</script></body></html>"""
     return html.replace("VAR_BACK", back_button_html).replace("VAR_SUPPORT", support_button_html)
 
-# --- 5. THE GLITCH IN ME (HİKAYE) ---
 @app.route('/glitch-in-me')
 def story_game():
-    html = """<!DOCTYPE html><html><head><title>Glitch</title><style>body{background:#050505;color:#e0e0e0;font-family:sans-serif;margin:0;display:flex;align-items:center;justify-content:center;height:100vh;overflow:hidden;} #sc{max-width:650px;width:90%;padding:40px;background:#0a0a0a;border:1px solid #1a1a1a;position:relative;} .img-s{width:100%;height:300px;object-fit:cover;margin-bottom:20px;filter:brightness(0.6);} .chs{display:flex;flex-direction:column;gap:12px;} button{background:transparent;border:1px solid #222;color:#888;padding:15px;cursor:pointer;text-align:left;}</style></head>
+    html = """<!DOCTYPE html><html><head><title>Glitch</title><style>body{background:#050505;color:#e0e0e0;font-family:sans-serif;margin:0;display:flex;align-items:center;justify-content:center;height:100vh;overflow:hidden;} #sc{max-width:650px;width:90%;padding:40px;background:#0a0a0a;border:1px solid #1a1a1a;} .img-s{width:100%;height:300px;object-fit:cover;margin-bottom:20px;filter:brightness(0.6);} .chs{display:flex;flex-direction:column;gap:12px;} button{background:transparent;border:1px solid #222;color:#888;padding:15px;cursor:pointer;text-align:left;}</style></head>
     <body>VAR_BACK VAR_SUPPORT <div id="sc"><img id="si" class="img-s" src="" style="display:none;"><div id="ta" style="margin-bottom:30px;line-height:1.8;"></div><div id="ca" class="chs"></div></div>
     <script>const s={start:{i:'https://images.unsplash.com/photo-1550751827-4bd374c3f58b',t:"Saat 04:12. Kodlarda bir gölge gördün.",c:[{t:"Bak",n:"look"},{t:"Odaklan",n:"focus"}]},look:{i:'https://images.unsplash.com/photo-1518770660439-4636190af475',t:"Kimse yok ama kapı aralandı...",c:[{t:"Kaç",n:"exit"}]},focus:{t:"'SENİ SİLİYORUM' yazıyor.",c:[{t:"Yalvar",n:"exit"}]},exit:{t:"Oyun Bitti.",c:[{t:"Kütüphane",n:"lib"}]}};
     function r(id){if(id==="lib"){location.href="/";return;} const n=s[id]; const img=document.getElementById("si"); if(n.i){img.src=n.i;img.style.display='block';}else img.style.display='none'; document.getElementById("ta").innerText=n.t; const ca=document.getElementById("ca"); ca.innerHTML=""; n.c.forEach(ch=>{const b=document.createElement("button"); b.innerText=ch.t; b.onclick=()=>r(ch.n); ca.appendChild(b);});} r("start");</script></body></html>"""
