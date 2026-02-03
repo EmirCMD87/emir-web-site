@@ -3,7 +3,11 @@ import os
 
 app = Flask(__name__)
 
-# --- SKOR VE İLERLEME VERİTABANI ---
+# --- VERİTABANI (Sayaçlar ve Skorlar) ---
+stats = {
+    "total_visits": 0
+}
+
 scores = {
     "neon_arcade": [0],
     "void_command": [1],
@@ -11,9 +15,11 @@ scores = {
 }
 
 # --- GENEL BİLEŞENLER ---
-footer_html = """
+def get_footer():
+    return f"""
 <footer style="background: #080808; padding: 30px; border-top: 1px solid #1a1a1a; text-align: center; margin-top: auto;">
     <p style="color: #444; font-size: 0.8rem; letter-spacing: 2px;">© 2026 CANO STUDIO - CREATIVE LABS</p>
+    <p style="color: #00bcd4; font-size: 0.7rem; margin-top: 10px; font-family: monospace;">TOPLAM ZİYARETÇİ: {stats['total_visits']}</p>
 </footer>
 """
 
@@ -23,7 +29,7 @@ back_button_html = """
 </a>
 """
 
-# GELİŞMİŞ DESTEK SİSTEMİ (İninal + Banka/EFT + Teşekkür)
+# DESTEK VE TEŞEKKÜR SİSTEMİ
 support_button_html = """
 <a href="#" onclick="showSupport()" style="position: fixed; top: 20px; right: 20px; color: #00bcd4; text-decoration: none; font-family: sans-serif; font-size: 0.8rem; border: 1px solid #00bcd4; padding: 5px 15px; border-radius: 4px; z-index: 1000; transition: 0.3s; background: rgba(0, 188, 212, 0.05); font-weight: bold;" onmouseover="this.style.background='#00bcd4';this.style.color='#fff'" onmouseout="this.style.background='rgba(0, 188, 212, 0.05)';this.style.color='#00bcd4'">
     💳 DESTEK OL
@@ -33,9 +39,7 @@ support_button_html = """
     <div id="supportBox" style="background:#0a0a0a; padding:30px; border-radius:15px; border:1px solid #00bcd4; max-width:480px; width:100%; box-shadow: 0 0 50px rgba(0, 188, 212, 0.15);">
         <div id="supportContent">
             <h2 style="color:#00bcd4; margin-bottom:5px;">Cano Studio'yu Destekle</h2>
-            <p style="color:#555; font-size:0.8rem; margin-bottom:20px;">Sana uygun olan destek yöntemini seçebilirsin.</p>
-            
-            <div style="display:flex; gap:10px; margin-bottom:20px;">
+            <div style="display:flex; gap:10px; margin-bottom:20px; margin-top:20px;">
                 <button onclick="switchTab('ininal')" id="tab-ininal" style="flex:1; padding:10px; border:1px solid #00bcd4; background:#00bcd4; color:#000; cursor:pointer; font-weight:bold; border-radius:4px;">ininal</button>
                 <button onclick="switchTab('banka')" id="tab-banka" style="flex:1; padding:10px; border:1px solid #333; background:transparent; color:#666; cursor:pointer; font-weight:bold; border-radius:4px;">Banka / EFT</button>
             </div>
@@ -43,67 +47,47 @@ support_button_html = """
             <div id="panel-ininal">
                 <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; margin-bottom:20px;">
                     <button class="amt-btn" onclick="copyAction('ininal', 10)">10 TL</button>
-                    <button class="amt-btn" onclick="copyAction('ininal', 20)">20 TL</button>
                     <button class="amt-btn" onclick="copyAction('ininal', 50)">50 TL</button>
                     <button class="amt-btn" onclick="copyAction('ininal', 100)">100 TL</button>
-                    <button class="amt-btn" onclick="copyAction('ininal', 150)">150 TL</button>
-                    <button class="amt-btn" onclick="copyAction('ininal', '+')">+</button>
                 </div>
-                <div style="background:#000; padding:10px; border:1px dashed #333; border-radius:8px;">
-                    <span style="color:#444; font-size:0.6rem;">BARKOD NO:</span>
-                    <div style="color:#fff; font-size:1rem; font-weight:bold; letter-spacing:2px;">4000 0000 0000 0</div>
-                </div>
+                <div style="background:#000; padding:10px; border:1px dashed #333; border-radius:8px; color:#fff; font-weight:bold; letter-spacing:2px;">4000 0000 0000 0</div>
             </div>
 
             <div id="panel-banka" style="display:none;">
-                <div style="text-align:left; background:#000; padding:15px; border-radius:8px; border:1px solid #222;">
-                    <span style="color:#00bcd4; font-size:0.7rem; font-weight:bold;">HAVALE / FAST / EFT</span>
-                    <div style="color:#fff; font-size:0.85rem; margin-top:10px; line-height:1.6;">
-                        <b>ALICI:</b> [Senin Adın Soyadın]<br>
-                        <b>IBAN:</b> TR00 0000 0000 0000 0000 0000 00<br>
-                        <span style="color:#ff4500; font-size:0.7rem;">* Açıklamaya ininal barkodunu yazmayı unutma!</span>
-                    </div>
+                <div style="text-align:left; background:#000; padding:15px; border-radius:8px; border:1px solid #222; color:#fff; font-size:0.8rem;">
+                    <b>ALICI:</b> [İSMİNİZ]<br>
+                    <b>IBAN:</b> TR00 0000 0000 0000 0000 0000 00<br>
+                    <span style="color:#ff4500; font-size:0.7rem;">* Açıklamaya barkod numaranızı yazmayı unutmayın!</span>
                 </div>
-                <button class="amt-btn" style="width:100%; margin-top:15px; border-color:#00bcd4;" onclick="copyAction('Banka', 'IBAN')">IBAN KOPYALA</button>
+                <button class="amt-btn" style="width:100%; margin-top:15px;" onclick="copyAction('IBAN', 'Tümü')">IBAN KOPYALA</button>
             </div>
 
-            <button onclick="hideSupport()" style="background:transparent; color:#444; border:none; cursor:pointer; font-size:0.8rem; text-decoration:underline; margin-top:20px;">Vazgeç</button>
+            <button onclick="hideSupport()" style="background:transparent; color:#444; border:none; cursor:pointer; font-size:0.8rem; text-decoration:underline; margin-top:20px;">Kapat</button>
         </div>
     </div>
 </div>
 
 <style>
-.amt-btn { background: #111; border: 1px solid #222; color: #fff; padding: 10px; border-radius: 4px; cursor: pointer; transition: 0.2s; font-size: 0.8rem; font-weight:bold;}
-.amt-btn:hover { border-color: #00bcd4; color:#00bcd4; background: rgba(0, 188, 212, 0.05);}
+.amt-btn { background: #111; border: 1px solid #222; color: #fff; padding: 10px; border-radius: 4px; cursor: pointer; transition: 0.2s; font-size: 0.8rem; }
+.amt-btn:hover { border-color: #00bcd4; color:#00bcd4; }
 </style>
 
 <script>
 function showSupport() { document.getElementById('supportModal').style.display='flex'; }
 function hideSupport() { document.getElementById('supportModal').style.display='none'; location.reload(); }
-
-function switchTab(type) {
-    const iTab = document.getElementById('tab-ininal'), bTab = document.getElementById('tab-banka');
-    const iPanel = document.getElementById('panel-ininal'), bPanel = document.getElementById('panel-banka');
-    if(type === 'ininal') {
-        iTab.style.background='#00bcd4'; iTab.style.color='#000'; bTab.style.background='transparent'; bTab.style.color='#666';
-        iPanel.style.display='block'; bPanel.style.display='none';
-    } else {
-        bTab.style.background='#00bcd4'; bTab.style.color='#000'; iTab.style.background='transparent'; iTab.style.color='#666';
-        iPanel.style.display='none'; bPanel.style.display='block';
-    }
+function switchTab(t) {
+    document.getElementById('panel-ininal').style.display = t==='ininal'?'block':'none';
+    document.getElementById('panel-banka').style.display = t==='banka'?'block':'none';
+    document.getElementById('tab-ininal').style.background = t==='ininal'?'#00bcd4':'transparent';
+    document.getElementById('tab-banka').style.background = t==='banka'?'#00bcd4':'transparent';
 }
-
 function copyAction(method, amt) {
-    const barkod = "4000 0000 0000 0"; // KENDI BARKODUN
-    const iban = "TR00 0000 0000 0000 0000 0000 00"; // KENDI IBANIN
-    const textToCopy = method === 'ininal' ? barkod : iban;
-    navigator.clipboard.writeText(textToCopy.replace(/ /g, ''));
-    
+    const val = method === 'ininal' ? "4000000000000" : "TR000000000000000000000000";
+    navigator.clipboard.writeText(val);
     document.getElementById('supportBox').innerHTML = `
-        <h2 style="color:#00bcd4; margin-top:0;">Adamsın! ❤️</h2>
-        <p style="color:#fff; font-size:1.1rem; line-height:1.6;">${amt !== 'IBAN' ? amt + ' TL ' : ''}Desteğin İçin Teşekkürler!</p>
-        <p style="color:#888; font-size:0.9rem;">${method} bilgisi kopyalandı. İşlemi banka uygulamanızdan tamamlayabilirsiniz.<br><br><b>Cano Studio seninle büyüyor!</b></p>
-        <button onclick="hideSupport()" style="background:#00bcd4; color:#000; border:none; padding:12px 30px; border-radius:4px; cursor:pointer; font-weight:bold; margin-top:20px;">OYUNA DÖN</button>
+        <h2 style="color:#00bcd4;">Adamsın! ❤️</h2>
+        <p style="color:#fff;">${amt} desteğin için teşekkürler! Bilgiler kopyalandı.</p>
+        <button onclick="location.reload()" style="background:#00bcd4; color:#000; border:none; padding:10px 30px; border-radius:4px; cursor:pointer; font-weight:bold; margin-top:20px;">OYUNA DÖN</button>
     `;
 }
 </script>
@@ -112,6 +96,7 @@ function copyAction(method, amt) {
 # --- 1. ANA SAYFA ---
 @app.route('/')
 def home():
+    stats["total_visits"] += 1
     max_arcade = max(scores["neon_arcade"])
     max_void = max(scores["void_command"])
     forest_lvl = max(scores["lost_forest"])
@@ -162,7 +147,7 @@ def home():
     </div>
     <div class="leaderboard">
         <table>
-            <tr><th>MODÜL</th><th style="text-align:right">DURUM</th></tr>
+            <tr><th>MODÜL</th><th style="text-align:right">BAŞARI</th></tr>
             <tr><td>Neon Score</td><td class="val">VAR_ARCADE</td></tr>
             <tr><td>Strategy Lvl</td><td class="val">VAR_VOID</td></tr>
             <tr><td>Horror Lvl</td><td class="val">VAR_FOREST</td></tr>
@@ -172,7 +157,7 @@ def home():
 </body>
 </html>
 """
-    return html.replace("VAR_ARCADE", str(max_arcade)).replace("VAR_VOID", str(max_void)).replace("VAR_FOREST", str(forest_lvl)).replace("VAR_FOOTER", footer_html).replace("VAR_SUPPORT", support_button_html)
+    return html.replace("VAR_ARCADE", str(max_arcade)).replace("VAR_VOID", str(max_void)).replace("VAR_FOREST", str(forest_lvl)).replace("VAR_FOOTER", get_footer()).replace("VAR_SUPPORT", support_button_html)
 
 # --- OYUN ROUTE'LARI ---
 @app.route('/neon-arcade')
