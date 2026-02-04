@@ -1,867 +1,722 @@
-# ==========================================
-# CANO STUDIO - ULTIMATE GAMING PLATFORM v12
-# ==========================================
-# Geliştirici: Cano Studio
-# Sürüm: 12.0 "Omega"
-# Özellikler: 4 Oyun, XP Sistemi, G-Analytics
-# ==========================================
+# ==============================================================================
+# CANO STUDIO - UNIVERSAL GAMING PLATFORM v14.0 "COLOSSUS"
+# ==============================================================================
+# Bu dosya Cano Studio'nun en kapsamlı sürümüdür. 
+# İçerik: Backend (Flask), Frontend (HTML5/CSS3), Oyun Motorları (JavaScript ES6)
+# Platform: %100 PC (Klavye/Mouse) ve Mobil (Touch/Joystick) uyumlu.
+# Google Analytics ID: G-GQS70MDDPQ
+# ==============================================================================
 
 from flask import Flask, request, jsonify
-import os, random
+import os
+import random
 
 app = Flask(__name__)
 
-# --- GLOBAL VERİ SİSTEMİ ---
-# Bu bölüm kullanıcıların skorlarını ve XP durumlarını geçici bellekte tutar.
-scores = {
-    "neon_arcade": [0],
-    "void_command": [1],
-    "lost_forest": [1],
-    "glitch_in_me": [0],
-    "xp": 0
+# ------------------------------------------------------------------------------
+# 1. VERİ SAKLAMA VE İSTATİSTİK SİSTEMİ
+# ------------------------------------------------------------------------------
+# Sunucu tarafında oyuncu verilerini (skorlar ve deneyim puanları) tutan yapı.
+# Not: Sunucu her yeniden başladığında bu veriler sıfırlanır.
+# ------------------------------------------------------------------------------
+user_data = {
+    "neon_arcade": {
+        "scores": [0],
+        "description": "Hız ve refleks tabanlı arcade tünel oyunu."
+    },
+    "void_command": {
+        "levels": [1],
+        "description": "Gezegenler arası strateji ve fetih motoru."
+    },
+    "lost_forest": {
+        "levels": [1],
+        "description": "Raycasting teknolojisi ile üretilmiş 3D FPS korku oyunu."
+    },
+    "platform_stats": {
+        "total_xp": 0,
+        "rank": "ROOKIE DEVELOPER",
+        "api_calls": 0
+    }
 }
 
-# --- GOOGLE ANALYTICS KİMLİĞİ ---
-# Bu ID ile cano-studio.onrender.com üzerindeki tüm trafiği izleyebilirsin.
-GTAG_ID = "G-GQS70MDDPQ"
-
-# --- GELİŞMİŞ CSS TASARIM SİSTEMİ ---
-# Sayfaların görsel kimliğini belirleyen, parazit (glitch) efektli Cyberpunk tasarımı.
-def get_global_styles():
-    return """
+# ------------------------------------------------------------------------------
+# 2. GLOBAL TASARIM VE STİL MOTORU (CSS)
+# ------------------------------------------------------------------------------
+# Sitenin Cyberpunk temasını, glitch efektlerini ve duyarlı (responsive) 
+# yapısını oluşturan devasa CSS bloğu.
+# ------------------------------------------------------------------------------
+def generate_global_css():
+    """
+    Sitenin görsel kimliğini oluşturan CSS kodlarını döner. 
+    F-string hatalarını önlemek için güvenli format kullanılmıştır.
+    """
+    css_content = """
     <style>
-        :root { 
-            --neon: #00bcd4; 
-            --dark: #020202; 
-            --glitch: #ff0055; 
-            --gold: #f1c40f; 
-            --bg-deep: #050505;
-        }
-        
-        * { 
-            box-sizing: border-box; 
-            transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
-            touch-action: manipulation; 
+        /* Tasarım Değişkenleri */
+        :root {
+            --neon-blue: #00bcd4;
+            --cyber-pink: #ff0055;
+            --void-black: #020202;
+            --deep-gray: #0a0a0a;
+            --gold-xp: #f1c40f;
+            --text-main: #e0e0e0;
         }
 
-        body { 
-            background: var(--dark); 
-            color: #e0e0e0; 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            margin: 0; 
-            display: flex; 
-            flex-direction: column; 
-            min-height: 100vh; 
-            overflow-x: hidden; 
+        /* Temel Sayfa Yapısı */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        /* Glitch Başlık Animasyonu */
-        .glitch-header { 
-            font-size: 3.5rem; 
-            letter-spacing: 18px; 
-            color: #fff; 
-            position: relative; 
-            animation: glitch-anim 3.5s infinite;
-            text-transform: uppercase;
+        body {
+            background-color: var(--void-black);
+            color: var(--text-main);
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            overflow-x: hidden;
         }
 
-        @keyframes glitch-anim {
-            0% { text-shadow: 3px 3px var(--glitch); transform: skew(0deg); }
-            20% { text-shadow: -3px -3px var(--neon); transform: skew(1deg); }
-            40% { text-shadow: 3px -3px var(--glitch); transform: skew(-1deg); }
-            60% { text-shadow: -3px 3px var(--neon); transform: skew(0deg); }
-            80% { text-shadow: 2px 2px var(--glitch); transform: scale(1.02); }
-            100% { text-shadow: -2px 2px var(--neon); transform: scale(1); }
-        }
-
-        /* Oyun Kartları Tasarımı */
-        .container { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); 
-            gap: 25px; 
-            padding: 40px; 
-            max-width: 1400px; 
-            margin: 0 auto; 
-            width:100%; 
-        }
-
-        .game-card { 
-            background: #080808; 
-            border: 1px solid #1a1a1a; 
-            padding: 45px; 
-            border-radius: 15px; 
-            cursor: pointer; 
-            position: relative; 
-            overflow: hidden; 
+        /* Gelişmiş Glitch Animasyonu */
+        .header-title {
+            font-size: clamp(2rem, 8vw, 4rem);
+            letter-spacing: clamp(10px, 2vw, 20px);
+            color: #ffffff;
             text-align: center;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-        }
-
-        .game-card:hover { 
-            border-color: var(--neon); 
-            background: #0d0d0d; 
-            transform: translateY(-8px) scale(1.02); 
-            box-shadow: 0 15px 40px rgba(0,188,212,0.15); 
-        }
-
-        .game-card h2 { margin: 15px 0; letter-spacing: 3px; font-weight: 300; }
-        .game-card p { color: #555; font-size: 0.85rem; line-height: 1.5; }
-
-        .status-badge { 
-            font-size: 10px; 
-            letter-spacing: 2px; 
-            border: 1px solid; 
-            display: inline-block; 
-            padding: 4px 12px; 
-            margin-bottom: 20px; 
-            border-radius: 4px; 
             text-transform: uppercase;
+            position: relative;
+            animation: glitch-vfx 4s infinite alternate;
+            padding: 40px 10px;
         }
 
-        /* Kullanıcı Arayüzü Butonları */
-        .btn-ui { 
-            background: rgba(0, 188, 212, 0.05); 
-            border: 1px solid var(--neon); 
-            color: var(--neon); 
-            padding: 12px 24px; 
-            border-radius: 5px; 
-            cursor: pointer; 
-            text-decoration: none; 
-            font-size: 0.85rem; 
-            font-weight: bold; 
-            letter-spacing: 1px;
-            text-transform: uppercase;
+        @keyframes glitch-vfx {
+            0% { text-shadow: 3px 0 var(--cyber-pink); transform: skew(0deg); }
+            10% { text-shadow: -3px 0 var(--neon-blue); }
+            20% { transform: skew(1deg); }
+            50% { text-shadow: 2px 2px var(--gold-xp); }
+            100% { text-shadow: -3px -2px var(--cyber-pink); transform: skew(-1deg); }
         }
 
-        .btn-ui:hover { 
-            background: var(--neon); 
-            color: #000; 
-            box-shadow: 0 0 25px var(--neon); 
-        }
-
-        /* Destek ve Modal Sistemi */
-        #supportModal { 
-            display:none; 
-            position:fixed; 
-            top:0; 
-            left:0; 
-            width:100%; 
-            height:100%; 
-            background:rgba(0,0,0,0.98); 
-            z-index:2000; 
-            align-items:center; 
-            justify-content:center; 
-            backdrop-filter: blur(10px);
-        }
-
-        .modal-box { 
-            background:#0a0a0a; 
-            padding:50px; 
-            border-radius:20px; 
-            border:1px solid var(--neon); 
-            max-width:550px; 
-            width:90%; 
-            text-align:center;
-            box-shadow: 0 0 60px rgba(0,188,212,0.1);
-        }
-
-        .tab-nav { display:flex; gap:10px; margin:30px 0; }
-        .tab-btn { 
-            flex:1; 
-            padding:15px; 
-            border:1px solid #222; 
-            background:transparent; 
-            color:#444; 
-            cursor:pointer; 
-            font-weight:bold;
-        }
-        .tab-btn.active { border-color:var(--neon); color:var(--neon); background:rgba(0,188,212,0.05); }
-
-        .amt-grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:25px; }
-
-        /* Liderlik Tablosu */
-        .leaderboard-section {
-            max-width: 900px;
-            margin: 60px auto;
+        /* Oyun Seçim Alanı */
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 30px;
             padding: 40px;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .game-card {
+            background: var(--deep-gray);
+            border: 1px solid #151515;
+            padding: 50px 30px;
+            border-radius: 20px;
+            cursor: pointer;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .game-card:hover {
+            border-color: var(--neon-blue);
+            background: #0f0f0f;
+            transform: translateY(-10px);
+            box-shadow: 0 20px 50px rgba(0, 188, 212, 0.15);
+        }
+
+        .game-card h2 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            letter-spacing: 3px;
+            color: #fff;
+        }
+
+        .game-card p {
+            color: #666;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        /* Profesyonel Butonlar */
+        .btn-action {
+            background: rgba(0, 188, 212, 0.05);
+            border: 1px solid var(--neon-blue);
+            color: var(--neon-blue);
+            padding: 14px 28px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .btn-action:hover {
+            background-color: var(--neon-blue);
+            color: #000;
+            box-shadow: 0 0 30px var(--neon-blue);
+        }
+
+        /* Destek Menüsü (Modal) */
+        #modalSupport {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.98);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(15px);
+        }
+
+        .modal-content-box {
             background: #050505;
+            padding: 60px 40px;
+            border-radius: 25px;
+            border: 1px solid var(--neon-blue);
+            max-width: 600px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 0 100px rgba(0,188,212,0.1);
+        }
+
+        /* Tablo ve Skorlar */
+        .stats-container {
+            max-width: 900px;
+            margin: 40px auto;
+            background: #030303;
+            padding: 30px;
             border-radius: 15px;
             border: 1px solid #111;
         }
 
-        table { width: 100%; border-collapse: collapse; }
-        th { color: #333; font-size: 0.75rem; text-align: left; padding: 15px; text-transform: uppercase; letter-spacing: 2px; }
-        td { padding: 18px 15px; border-bottom: 1px solid #0d0d0d; color: #888; }
-        .val-text { color: #fff; font-weight: bold; text-align: right; font-family: monospace; font-size: 1.1rem; }
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
 
-        footer { 
-            margin-top: auto; 
-            padding: 50px; 
-            border-top: 1px solid #080808; 
-            text-align: center; 
-            background: #030303;
+        .stats-table td {
+            padding: 20px;
+            border-bottom: 1px solid #080808;
+            color: #555;
+        }
+
+        .stats-table .score-val {
+            text-align: right;
+            color: #fff;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        /* Cihaz Bazlı Gizleme (Responsive) */
+        @media (min-width: 1025px) {
+            #mobile-joystick-ui { display: none !important; }
+        }
+
+        footer {
+            margin-top: auto;
+            padding: 60px 20px;
+            text-align: center;
+            border-top: 1px solid #080808;
+            background: #010101;
         }
     </style>
     """
+    return css_content
 
-# --- GOOGLE ANALYTICS SCRIPT ---
-def get_gtag_script():
+# ------------------------------------------------------------------------------
+# 3. ANALYTICS VE TAKİP SİSTEMİ
+# ------------------------------------------------------------------------------
+# Google Analytics 4 (GA4) entegrasyonu. 
+# Ziyaretçi trafiğini izlemek için Measurement ID: G-GQS70MDDPQ
+# ------------------------------------------------------------------------------
+def generate_analytics_js():
+    """
+    Google Analytics scriptlerini döner. 
+    Parantez çakışmasını önlemek için süslü parantezler çiftlenmiştir.
+    """
+    ga_id = "G-GQS70MDDPQ"
     return f"""
-    <script async src="https://www.googletagmanager.com/gtag/js?id={GTAG_ID}"></script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id={ga_id}"></script>
     <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){{dataLayer.push(arguments);}}
-      gtag('js', new Date());
-      gtag('config', '{GTAG_ID}');
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){{dataLayer.push(arguments);}}
+        gtag('js', new Date());
+        gtag('config', '{ga_id}');
     </script>
     """
 
-# --- GENEL HEADER ---
-def get_head():
+# ------------------------------------------------------------------------------
+# 4. HTML ŞABLON MOTORU
+# ------------------------------------------------------------------------------
+# Tüm sayfalar için ortak kafa (head) ve navigasyon bileşenleri.
+# ------------------------------------------------------------------------------
+def get_universal_head():
     return f"""
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <title>Cano Studio | Ultimate Platform</title>
-        {get_gtag_script()}
-        {get_global_styles()}
+        <title>Cano Studio | Professional Gaming Platform</title>
+        {generate_analytics_js()}
+        {generate_global_css()}
     </head>
     """
 
-# --- NAVİGASYON VE DESTEK ---
-support_ui = """
-<a href="#" onclick="showSupport()" class="btn-ui" style="position:fixed; top:25px; right:25px; z-index:1000;">💳 STUDIO DESTEK</a>
-<div id="supportModal">
-    <div class="modal-box" id="supportBox">
-        <h2 style="color:var(--neon); margin-top:0; letter-spacing:5px;">CANO STUDIO</h2>
-        <p style="color:#666; font-size:0.9rem;">Projelerime destek olarak daha fazla oyun geliştirmemi sağlayabilirsin.</p>
+support_overlay_html = """
+<a href="#" onclick="toggleSupport(true)" class="btn-action" style="position:fixed; top:25px; right:25px; z-index:9000;">💎 DESTEK OL</a>
+<div id="modalSupport">
+    <div class="modal-content-box" id="modalContainer">
+        <h2 style="color:var(--neon-blue); letter-spacing:10px; margin-bottom:20px;">CANO STUDIO</h2>
+        <p style="color:#666; margin-bottom:30px; font-size:0.9rem;">Projelerimi destekleyerek gelişmeme katkıda bulunabilirsin.</p>
         
-        <div class="tab-nav">
-            <button class="tab-btn active" id="btn-ininal" onclick="switchTab('ininal')">ININAL</button>
-            <button class="tab-btn" id="btn-banka" onclick="switchTab('banka')">BANKA / EFT</button>
+        <div style="display:flex; gap:15px; margin-bottom:40px;">
+            <button class="btn-action" style="flex:1" onclick="handleDonate('ininal')">ININAL</button>
+            <button class="btn-action" style="flex:1" onclick="handleDonate('banka')">BANKA / EFT</button>
         </div>
 
-        <div id="panel-ininal">
-            <div class="amt-grid">
-                <button class="btn-ui" onclick="donate('ininal', 10)">10 TL</button>
-                <button class="btn-ui" onclick="donate('ininal', 50)">50 TL</button>
-                <button class="btn-ui" onclick="donate('ininal', 100)">100 TL</button>
-            </div>
-            <div style="background:#000; padding:20px; border:1px dashed #333; color:#fff; font-family:monospace; letter-spacing:2px;">
-                BARKOD: 4000 0000 0000 0
-            </div>
-        </div>
-
-        <div id="panel-banka" style="display:none">
-            <div style="background:#000; padding:25px; text-align:left; font-size:0.85rem; border-radius:10px; border:1px solid #222; line-height:1.8;">
-                <b style="color:var(--neon)">ALICI:</b> CANO STUDIO<br>
-                <b style="color:var(--neon)">IBAN:</b> TR00 0000 0000 0000 0000 0000 00<br>
-                <p style="color:#ff4500; font-size:0.75rem; margin-top:15px; border-top:1px solid #111; pt:10px;">
-                    * Transfer açıklama kısmına ininal barkod numaranızı eklemeyi unutmayın!
-                </p>
-            </div>
-            <button class="btn-ui" style="width:100%; margin-top:20px;" onclick="donate('banka', 'IBAN')">IBAN KOPYALA</button>
-        </div>
-
-        <br>
-        <button onclick="hideSupport()" style="color:#333; background:none; border:none; cursor:pointer; font-size:0.8rem; margin-top:25px; text-decoration:underline;">[ PENCEREYİ KAPAT ]</button>
+        <button onclick="toggleSupport(false)" style="background:none; border:none; color:#333; cursor:pointer; text-decoration:underline;">[ KAPAT ]</button>
     </div>
 </div>
 
 <script>
-    function showSupport() { document.getElementById('supportModal').style.display='flex'; }
-    function hideSupport() { document.getElementById('supportModal').style.display='none'; }
-    
-    function switchTab(t) {
-        const pininal = document.getElementById('panel-ininal');
-        const pbanka = document.getElementById('panel-banka');
-        const bininal = document.getElementById('btn-ininal');
-        const bbanka = document.getElementById('btn-banka');
-        
-        if(t === 'ininal') {
-            pininal.style.display = 'block'; pbanka.style.display = 'none';
-            bininal.className = 'tab-btn active'; bbanka.className = 'tab-btn';
-        } else {
-            pininal.style.display = 'none'; pbanka.style.display = 'block';
-            bininal.className = 'tab-btn'; bbanka.className = 'tab-btn active';
-        }
+    function toggleSupport(show) {
+        document.getElementById('modalSupport').style.display = show ? 'flex' : 'none';
     }
 
-    function donate(method, amount) {
-        const data = method === 'ininal' ? "4000000000000" : "TR000000000000000000000000";
-        navigator.clipboard.writeText(data).then(() => {
-            document.getElementById('supportBox').innerHTML = `
-                <h1 style="color:var(--neon); font-size:3rem;">ADAMSIN! ❤️</h1>
-                <p style="color:#fff; font-size:1.2rem; margin:20px 0;">${amount} TL değerindeki desteğin için teşekkürler.</p>
-                <p style="color:#555;">Kopyalanan bilgileri uygulamanıza yapıştırarak işlemi tamamlayabilirsiniz.</p>
-                <button onclick="location.reload()" class="btn-ui" style="margin-top:30px;">ANA MENÜYE DÖN</button>
+    function handleDonate(type) {
+        const payload = type === 'ininal' ? "4000000000000" : "TR000000000000000000000000";
+        navigator.clipboard.writeText(payload).then(() => {
+            document.getElementById('modalContainer').innerHTML = `
+                <h1 style="color:var(--neon-blue); font-size:3rem; margin-bottom:20px;">ADAMSIN! ❤️</h1>
+                <p style="color:#fff; font-size:1.1rem; line-height:1.6;">Bilgiler panoya kopyalandı. Desteğin için sonsuz teşekkürler!</p>
+                <div style="margin-top:40px;">
+                    <button onclick="location.reload()" class="btn-action">ANA MENÜYE DÖN</button>
+                </div>
             `;
         });
     }
 </script>
 """
 
-# --- 1. ANA SAYFA ROUTE ---
+# ------------------------------------------------------------------------------
+# 5. ANA SAYFA (DASHBOARD)
+# ------------------------------------------------------------------------------
+# Kullanıcının oyunları seçtiği ve skorlarını gördüğü merkez üssü.
+# ------------------------------------------------------------------------------
 @app.route('/')
-def home():
-    xp_total = scores["xp"]
-    # Rütbe Hesaplama Mantığı
-    if xp_total < 150: rank = "BRONZE DEVELOPER"
-    elif xp_total < 600: rank = "SILVER CODER"
-    elif xp_total < 1500: rank = "GOLDEN CREATOR"
-    else: rank = "PLATINUM LEGEND"
+def route_home():
+    # XP ve Rütbe Hesaplama
+    total_xp = user_data["platform_stats"]["total_xp"]
+    if total_xp > 2000: rank = "PLATINUM LEGEND"
+    elif total_xp > 1000: rank = "GOLD MASTER"
+    elif total_xp > 500: rank = "SILVER EXPERT"
+    else: rank = "BRONZE ROOKIE"
 
-    html = f"""
+    html_output = f"""
     <!DOCTYPE html>
     <html lang="tr">
-    {get_head()}
+    {get_universal_head()}
     <body>
-        {support_ui}
+        {support_overlay_html}
         
-        <div style="padding:100px 20px 60px 20px; text-align:center;">
-            <h1 class="glitch-header" data-text="CANO STUDIO">CANO STUDIO</h1>
-            <div style="margin-top:-15px;">
-                <span style="color:var(--gold); font-weight:bold; letter-spacing:3px; font-size:0.9rem;">{rank}</span>
-                <span style="color:#333; margin:0 15px;">|</span>
-                <span style="color:var(--neon); font-family:monospace; font-size:1rem;">XP_{xp_total}</span>
+        <header>
+            <h1 class="header-title" data-text="CANO STUDIO">CANO STUDIO</h1>
+            <div style="text-align:center; margin-top:-20px;">
+                <span style="color:var(--gold-xp); font-weight:bold; letter-spacing:4px;">{rank}</span>
+                <span style="color:#222; margin:0 20px;">|</span>
+                <span style="color:var(--neon-blue); font-family:monospace; font-size:1.1rem;">EXP_{total_xp}</span>
             </div>
-        </div>
+        </header>
 
-        <div class="container">
+        <main class="game-grid">
             <div class="game-card" onclick="location.href='/neon-arcade'">
-                <div class="status-badge" style="color:var(--neon); border-color:var(--neon);">Arcade / Action</div>
+                <div style="color:var(--neon-blue); font-size:0.7rem; border:1px solid; display:inline-block; padding:3px 10px; border-radius:4px; margin-bottom:20px;">ARCADE / PC & MOBIL</div>
                 <h2>NEON ARCADE</h2>
-                <p>Yüksek hızda veri tünellerinden geç ve en yüksek skoru elde et. Reflekslerini test etme zamanı.</p>
-                <div style="margin-top:20px; font-size:0.7rem; color:#333;">TOP_SCORE: {max(scores["neon_arcade"])}</div>
+                <p>Veri tünellerinde ışık hızında ilerle. Engellere takılmadan en yüksek verimlilik skoruna ulaş.</p>
+                <div style="margin-top:30px; border-top:1px solid #111; padding-top:15px; font-size:0.7rem; color:#333;">MAX_SCORE: {max(user_data["neon_arcade"]["scores"])}</div>
             </div>
 
             <div class="game-card" onclick="location.href='/lost-forest'">
-                <div class="status-badge" style="color:#ff4500; border-color:#ff4500;">FPS / Horror</div>
+                <div style="color:var(--cyber-pink); font-size:0.7rem; border:1px solid; display:inline-block; padding:3px 10px; border-radius:4px; margin-bottom:20px;">FPS / RAYCASTING</div>
                 <h2>LOST FOREST</h2>
-                <p>Karanlık bir labirentte sıkıştın. Çıkışı bulmak için sinyalleri takip et. Raycasting teknolojisiyle hazırlandı.</p>
-                <div style="margin-top:20px; font-size:0.7rem; color:#333;">SURVIVAL_LVL: {max(scores["lost_forest"])}</div>
+                <p>Karanlık bir labirentte sinyalleri takip ederek çıkışı bulmaya çalış. Hayatta kalma testi.</p>
+                <div style="margin-top:30px; border-top:1px solid #111; padding-top:15px; font-size:0.7rem; color:#333;">SECTOR_REACHED: {max(user_data["lost_forest"]["levels"])}</div>
             </div>
 
             <div class="game-card" onclick="location.href='/void-command'">
-                <div class="status-badge" style="color:#00ff88; border-color:#00ff88;">Strategy / Tactics</div>
+                <div style="color:#00ff88; font-size:0.7rem; border:1px solid; display:inline-block; padding:3px 10px; border-radius:4px; margin-bottom:20px;">STRATEGY / TACTICS</div>
                 <h2>VOID COMMAND</h2>
-                <p>Galaksiler arası enerji transferi yönetimi. Düşman gezegenleri fethet ve sistemini genişlet.</p>
-                <div style="margin-top:20px; font-size:0.7rem; color:#333;">SECTOR_CONQUEST: {max(scores["void_command"])}</div>
+                <p>Gezegenler arası enerji dengesini sağla ve rakip sistemleri kendi ağına dahil et.</p>
+                <div style="margin-top:30px; border-top:1px solid #111; padding-top:15px; font-size:0.7rem; color:#333;">SYSTEM_CONQUEST: {max(user_data["void_command"]["levels"])}</div>
             </div>
-        </div>
+        </main>
 
-        <div class="leaderboard-section">
-            <h3 style="text-align:center; color:#222; letter-spacing:5px; margin-bottom:30px;">KÜRESEL_İSTATİSTİKLER</h3>
-            <table>
-                <thead>
-                    <tr><th>GÖREV ADI</th><th style="text-align:right;">DURUM VERİSİ</th></tr>
-                </thead>
+        <section class="stats-container">
+            <h3 style="text-align:center; color:#222; letter-spacing:6px; margin-bottom:40px; text-transform:uppercase;">Global Veri Merkezi</h3>
+            <table class="stats-table">
                 <tbody>
-                    <tr><td>Neon Tunnel Accuracy</td><td class="val-text">{max(scores["neon_arcade"])} pts</td></tr>
-                    <tr><td>Deep Forest Survival</td><td class="val-text">Lvl {max(scores["lost_forest"])}</td></tr>
-                    <tr><td>Void System Dominance</td><td class="val-text">Lvl {max(scores["void_command"])}</td></tr>
-                    <tr style="border:none;"><td>Platform Experience</td><td class="val-text" style="color:var(--gold);">{xp_total} XP</td></tr>
+                    <tr>
+                        <td>Neon Arcade Verimliliği</td>
+                        <td class="score-val">{max(user_data["neon_arcade"]["scores"])} PTS</td>
+                    </tr>
+                    <tr>
+                        <td>Derin Orman Keşfi</td>
+                        <td class="score-val">Lvl {max(user_data["lost_forest"]["levels"])}</td>
+                    </tr>
+                    <tr>
+                        <td>Boşluk Komut Yetkisi</td>
+                        <td class="score-val">Lvl {max(user_data["void_command"]["levels"])}</td>
+                    </tr>
+                    <tr style="border:none;">
+                        <td style="color:var(--gold-xp); font-weight:bold;">Toplam Platform Tecrübesi</td>
+                        <td class="score-val" style="color:var(--gold-xp);">{total_xp} XP</td>
+                    </tr>
                 </tbody>
             </table>
-        </div>
+        </section>
 
         <footer>
-            <p style="color:#111; font-size:0.65rem; letter-spacing:4px;">CONNECTION_SECURE: ANALYTICS_STREAMING_{GTAG_ID}</p>
-            <p style="color:#222; font-size:0.6rem; margin-top:10px;">© 2026 CANO STUDIO DIGITAL LABS. ALL RIGHTS RESERVED.</p>
+            <p style="color:#222; font-size:0.7rem; letter-spacing:4px; margin-bottom:10px;">ANALYTICS_ID: {GTAG_ID} | CONNECTION: SECURE</p>
+            <p style="color:#111; font-size:0.6rem;">© 2026 CANO STUDIO DIGITAL ENTERTAINMENT. ALL RIGHTS RESERVED.</p>
         </footer>
     </body>
     </html>
     """
-    return html
+    return html_output
 
-# --- 2. NEON ARCADE OYUN MOTORU ---
+# ------------------------------------------------------------------------------
+# 6. NEON ARCADE (UNIVERSAL ENGINE)
+# ------------------------------------------------------------------------------
+# Hem klavye hem dokunmatik girişleri destekleyen fizik tabanlı oyun motoru.
+# ------------------------------------------------------------------------------
 @app.route('/neon-arcade')
-def arcade():
-    # Bu bölüm oyunun fizik motorunu ve görsel render sistemini içerir.
-    html = f"""
+def route_arcade():
+    html_page = f"""
     <!DOCTYPE html>
     <html lang="tr">
-    {get_head()}
+    {get_universal_head()}
     <body style="overflow:hidden; display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh;">
-        {support_ui}
-        <a href="/" class="btn-ui" style="position:fixed; top:25px; left:25px; z-index:1000;">← ÇIKIŞ</a>
+        {support_overlay_html}
+        <a href="/" class="btn-action" style="position:fixed; top:25px; left:25px; z-index:9000;">← ÇIKIŞ YAP</a>
         
-        <div id="game-ui" style="position:fixed; top:80px; color:var(--neon); font-family:monospace; font-size:1.2rem; letter-spacing:2px;">
-            SCORE_BUFFER: <span id="score-val">0</span>
+        <div style="position:fixed; top:80px; color:var(--neon-blue); font-family:monospace; font-size:1.4rem; letter-spacing:3px;">
+            BUFFER: <span id="score-live">0</span>
         </div>
 
-        <canvas id="arcadeCanvas" width="450" height="650" style="border:1px solid #111; background:#000; box-shadow: 0 0 50px rgba(0,188,212,0.05); cursor:crosshair;"></canvas>
+        <canvas id="canvasArcade" width="450" height="650" style="background:#000; border:1px solid #111; box-shadow:0 0 40px rgba(0,0,0,1);"></canvas>
 
         <script>
-            const canvas = document.getElementById("arcadeCanvas");
+            /**
+             * NEON ARCADE CORE ENGINE v2.0
+             * Klavye: Space Bar
+             * Mobil: Ekranın herhangi bir yerine dokunma
+             */
+            const canvas = document.getElementById("canvasArcade");
             const ctx = canvas.getContext("2d");
-            const scoreEl = document.getElementById("score-val");
+            const liveScore = document.getElementById("score-live");
 
-            let bird, pipes, frames, score, gameActive, particles;
+            let player, obstacles, frames, currentScore, isPlaying;
 
-            // Motoru Başlat
-            function init() {{
-                bird = {{ y: 300, velocity: 0, gravity: 0.38, jump: -7.5, size: 32 }};
-                pipes = [];
-                particles = [];
+            function startup() {{
+                player = {{ y: 325, vel: 0, gravity: 0.35, jump: -7.2, w: 34, h: 34 }};
+                obstacles = [];
                 frames = 0;
-                score = 0;
-                gameActive = true;
-                scoreEl.innerText = "0";
+                currentScore = 0;
+                isPlaying = true;
+                liveScore.innerText = "0";
             }}
 
-            function createExplosion(x, y, color) {{
-                for(let i=0; i<15; i++) {{
-                    particles.push({{
-                        x: x, y: y,
-                        vx: (Math.random()-0.5) * 8,
-                        vy: (Math.random()-0.5) * 8,
-                        life: 1.0,
-                        color: color
-                    }});
+            function endGame() {{
+                isPlaying = false;
+                if(currentScore > 0) {{
+                    fetch('/api/submit/' + currentScore + '/neon_arcade');
                 }}
             }}
 
-            function updateParticles() {{
-                for(let i=particles.length-1; i>=0; i--) {{
-                    let p = particles[i];
-                    p.x += p.vx; p.y += p.vy;
-                    p.life -= 0.02;
-                    if(p.life <= 0) particles.splice(i, 1);
-                }}
-            }}
-
-            function drawParticles() {{
-                particles.forEach(p => {{
-                    ctx.globalAlpha = p.life;
-                    ctx.fillStyle = p.color;
-                    ctx.fillRect(p.x, p.y, 3, 3);
-                }});
-                ctx.globalAlpha = 1.0;
-            }}
-
-            function triggerGameOver() {{
-                gameActive = false;
-                createExplosion(50 + bird.size/2, bird.y + bird.size/2, "#ff0055");
-                if(score > 0) fetch('/submit_score/neon_arcade/' + score);
-            }}
-
-            function mainLoop() {{
-                // Ekranı Temizle
+            function render() {{
+                // Background
                 ctx.fillStyle = "#000";
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-                if(!gameActive) {{
-                    ctx.fillStyle = "rgba(0,0,0,0.8)";
+                if(!isPlaying) {{
+                    ctx.fillStyle = "rgba(0,0,0,0.85)";
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
                     ctx.fillStyle = "#fff";
-                    ctx.font = "20px monospace";
+                    ctx.font = "bold 20px Courier New";
                     ctx.textAlign = "center";
-                    ctx.fillText("CRITICAL FAILURE", canvas.width/2, canvas.height/2 - 20);
-                    ctx.fillStyle = var("--neon");
-                    ctx.fillText("REBOOT (TIKLA)", canvas.width/2, canvas.height/2 + 20);
-                    drawParticles();
-                    updateParticles();
-                    requestAnimationFrame(mainLoop);
-                    return;
+                    ctx.fillText("SISTEM HATASI: CARPISMA", canvas.width/2, canvas.height/2 - 20);
+                    ctx.fillStyle = var("--neon-blue");
+                    ctx.fillText("YENIDEN BASLAT (TIKLA)", canvas.width/2, canvas.height/2 + 30);
+                    return requestAnimationFrame(render);
                 }}
 
-                // Kuş Fiziği
-                bird.velocity += bird.gravity;
-                bird.y += bird.velocity;
+                // Player Physics
+                player.vel += player.gravity;
+                player.y += player.vel;
 
-                // Kuş Render
-                ctx.shadowBlur = 15; ctx.shadowColor = var("--neon");
-                ctx.fillStyle = var("--neon");
-                ctx.fillRect(50, bird.y, bird.size, bird.size);
+                // Player Visual
+                ctx.shadowBlur = 20; ctx.shadowColor = var("--neon-blue");
+                ctx.fillStyle = var("--neon-blue");
+                ctx.fillRect(50, player.y, player.w, player.h);
                 ctx.shadowBlur = 0;
 
-                // Boru Üretimi
-                if(frames % 90 === 0) {{
-                    let gap = 170;
+                // obstacle Logic
+                if(frames % 100 === 0) {{
+                    let gap = 175;
                     let h = Math.random() * (canvas.height - gap - 200) + 100;
-                    pipes.push({{ x: canvas.width, h: h, gap: gap, passed: false }});
+                    obstacles.push({{ x: canvas.width, h: h, g: gap, s: false }});
                 }}
 
-                // Boru Render ve Çarpışma
-                for(let i = pipes.length - 1; i >= 0; i--) {{
-                    let p = pipes[i];
-                    p.x -= 4.2;
+                for(let i = obstacles.length - 1; i >= 0; i--) {{
+                    let o = obstacles[i];
+                    o.x -= 4.5;
 
                     ctx.fillStyle = "#080808";
-                    ctx.strokeStyle = "#151515";
-                    // Üst Boru
-                    ctx.fillRect(p.x, 0, 65, p.h);
-                    ctx.strokeRect(p.x, 0, 65, p.h);
-                    // Alt Boru
-                    ctx.fillRect(p.x, p.h + p.gap, 65, canvas.height);
-                    ctx.strokeRect(p.x, p.h + p.gap, 65, canvas.height);
+                    ctx.fillRect(o.x, 0, 70, o.h);
+                    ctx.fillRect(o.x, o.h + o.g, 70, canvas.height);
 
-                    // Çarpışma Kontrolü
-                    if(50 + bird.size > p.x && 50 < p.x + 65) {{
-                        if(bird.y < p.h || bird.y + bird.size > p.h + p.gap) {{
-                            triggerGameOver();
-                        }}
+                    // Collision Detection
+                    if(50 + player.w > o.x && 50 < o.x + 70) {{
+                        if(player.y < o.h || player.y + player.h > o.h + o.g) endGame();
                     }}
 
-                    // Skor Artışı
-                    if(p.x < 50 && !p.passed) {{
-                        score++;
-                        p.passed = true;
-                        scoreEl.innerText = score;
+                    if(o.x < 50 && !o.s) {{
+                        currentScore++; o.s = true;
+                        liveScore.innerText = currentScore;
                     }}
 
-                    if(p.x < -70) pipes.splice(i, 1);
+                    if(o.x < -100) obstacles.splice(i, 1);
                 }}
 
-                if(bird.y > canvas.height || bird.y < 0) triggerGameOver();
+                if(player.y > canvas.height || player.y < 0) endGame();
 
                 frames++;
-                requestAnimationFrame(mainLoop);
+                requestAnimationFrame(render);
             }}
 
-            window.addEventListener("pointerdown", (e) => {{
-                e.preventDefault();
-                if(gameActive) bird.velocity = bird.jump;
-                else init();
+            // Universal Controls
+            window.addEventListener("keydown", (e) => {{
+                if(e.code === "Space") {{
+                    e.preventDefault();
+                    if(isPlaying) player.vel = player.jump; else startup();
+                }}
             }});
 
-            // Başlat
-            init();
-            mainLoop();
+            window.addEventListener("pointerdown", (e) => {{
+                if(isPlaying) player.vel = player.jump; else startup();
+            }});
+
+            startup();
+            render();
         </script>
     </body>
     </html>
     """
-    return html
+    return html_page
 
-# --- 3. LOST FOREST (FPS MOTORU) ---
+# ------------------------------------------------------------------------------
+# 7. LOST FOREST (RAYCASTING ENGINE)
+# ------------------------------------------------------------------------------
+# 3D derinlik algısı yaratan raycasting motoru.
+# ------------------------------------------------------------------------------
 @app.route('/lost-forest')
-def horror():
-    # Bu bölüm Raycasting teknolojisiyle yazılmış 3D görünümlü bir FPS motorudur.
-    html = f"""
+def route_horror():
+    html_page = f"""
     <!DOCTYPE html>
     <html lang="tr">
-    {get_head()}
-    <body style="overflow:hidden; background:#000; margin:0; touch-action:none;">
-        {support_ui}
-        <a href="/" class="btn-ui" style="position:fixed; top:25px; left:25px; z-index:1000;">← ÇIKIŞ</a>
-        
-        <div style="position:fixed; top:80px; width:100%; text-align:center; color:#fff; font-family:monospace; z-index:10; letter-spacing:4px; opacity:0.6;">
-            DEPTH_LEVEL: <span id="lvl-display">1</span> | SIGNAL_STATUS: <span id="sig">STABLE</span>
+    {get_universal_head()}
+    <body style="overflow:hidden; margin:0; background:#000; touch-action:none;">
+        {support_overlay_html}
+        <a href="/" class="btn-action" style="position:fixed; top:25px; left:25px; z-index:9000;">← ÇIKIŞ YAP</a>
+
+        <div id="mobile-joystick-ui" style="position:fixed; bottom:50px; left:50px; width:130px; height:130px; background:rgba(255,255,255,0.03); border:1px solid #111; border-radius:50%; z-index:100;">
+            <div id="inner-stick" style="position:absolute; top:45px; left:45px; width:40px; height:40px; background:var(--neon-blue); opacity:0.2; border-radius:50%;"></div>
         </div>
 
-        <div id="joy-container" style="position:fixed; bottom:60px; left:60px; width:140px; height:140px; background:rgba(255,255,255,0.02); border:1px solid #222; border-radius:50%; z-index:100;">
-            <div id="joy-stick" style="position:absolute; top:45px; left:45px; width:50px; height:50px; background:var(--neon); opacity:0.15; border-radius:50%; transition:0.1s;"></div>
+        <div style="position:fixed; top:80px; width:100%; text-align:center; color:#fff; font-family:monospace; z-index:10; letter-spacing:4px; opacity:0.4;">
+            LOCATION: SECTOR_<span id="lvl-num">1</span> | RADAR_SIGN: <span id="radar">STABLE</span>
         </div>
 
-        <canvas id="rayCanvas"></canvas>
+        <canvas id="horrorCanvas"></canvas>
 
         <script>
-            const canvas = document.getElementById("rayCanvas");
+            /**
+             * LOST FOREST 3D ENGINE
+             * PC: WASD / Ok Tuşları
+             * Mobil: Sol Joystick
+             */
+            const canvas = document.getElementById("horrorCanvas");
             const ctx = canvas.getContext("2d");
-            const lvlDisp = document.getElementById("lvl-display");
+            const lvlLabel = document.getElementById("lvl-num");
 
             let level = 1;
-            let map = [];
-            let player = {{ x: 1.5, y: 1.5, dir: 0, speed: 0.045, fov: Math.PI / 3 }};
-            let joy = {{ active: false, x: 0, y: 0 }};
+            let maze = [];
+            let p = {{ x: 1.5, y: 1.5, dir: 0, speed: 0.045, fov: Math.PI / 3 }};
+            let keys = {{}};
+            let joystick = {{ active: false, x: 0, y: 0 }};
 
-            // Harita Oluşturucu
-            function generateMap(size) {{
-                let m = Array.from({{ length: size }}, () => Array(size).fill(1));
-                for(let y=1; y<size-1; y++) {{
-                    for(let x=1; x<size-1; x++) {{
-                        if(Math.random() > 0.38) m[y][x] = 0;
+            function createMaze(s) {{
+                let m = Array.from({{ length: s }}, () => Array(s).fill(1));
+                for(let y=1; y<s-1; y++) {{
+                    for(let x=1; x<s-1; x++) {{
+                        if(Math.random() > 0.4) m[y][x] = 0;
                     }}
                 }}
-                m[1][1] = 0; // Başlangıç
-                m[size-2][size-2] = 2; // Çıkış Kapısı
+                m[1][1] = 0;
+                m[s-2][s-2] = 2; // Çıkış noktası
                 return m;
             }}
 
-            function resize() {{
+            function initWorld() {{
                 canvas.width = window.innerWidth;
                 canvas.height = window.innerHeight;
+                maze = createMaze(10 + (level * 2));
+                p.x = 1.5; p.y = 1.5;
+                lvlLabel.innerText = level;
             }}
 
-            const jCont = document.getElementById("joy-container");
-            const jStick = document.getElementById("joy-stick");
+            // PC Controls
+            window.addEventListener("keydown", (e) => keys[e.code] = true);
+            window.addEventListener("keyup", (e) => keys[e.code] = false);
 
-            jCont.addEventListener("touchstart", (e) => {{ joy.active = true; }}, {{passive: false}});
-            jCont.addEventListener("touchmove", (e) => {{
+            // Mobil Controls
+            const jBox = document.getElementById("mobile-joystick-ui");
+            const jStick = document.getElementById("inner-stick");
+
+            jBox.addEventListener("touchstart", () => joystick.active = true);
+            jBox.addEventListener("touchmove", (e) => {{
                 e.preventDefault();
-                let t = e.touches[0];
-                let rect = jCont.getBoundingClientRect();
-                let dx = t.clientX - (rect.left + 70);
-                let dy = t.clientY - (rect.top + 70);
-                let dist = Math.min(Math.hypot(dx, dy), 60);
+                let touch = e.touches[0];
+                let rect = jBox.getBoundingClientRect();
+                let dx = touch.clientX - (rect.left + 65);
+                let dy = touch.clientY - (rect.top + 65);
+                let dist = Math.min(Math.hypot(dx, dy), 55);
                 let angle = Math.atan2(dy, dx);
                 
-                joy.x = Math.cos(angle) * (dist / 60);
-                joy.y = Math.sin(angle) * (dist / 60);
-                jStick.style.transform = `translate(${{joy.x * 45}}px, ${{joy.y * 45}}px)`;
-            }}, {{passive: false}});
-
-            jCont.addEventListener("touchend", () => {{
-                joy.active = false;
-                joy.x = 0; joy.y = 0;
+                joystick.x = Math.cos(angle) * (dist / 55);
+                joystick.y = Math.sin(angle) * (dist / 55);
+                jStick.style.transform = `translate(${{joystick.x * 40}}px, ${{joystick.y * 40}}px)`;
+            }});
+            jBox.addEventListener("touchend", () => {{
+                joystick.active = false;
                 jStick.style.transform = "translate(0,0)";
             }});
 
-            function initLevel() {{
-                let size = 10 + (level * 2);
-                map = generateMap(size);
-                player.x = 1.5; player.y = 1.5;
-                lvlDisp.innerText = level;
-            }}
-
             function update() {{
-                if(!joy.active) return;
+                let oldX = p.x, oldY = p.y;
                 
-                let oldX = player.x, oldY = player.y;
-                
-                // Hareket (İleri-Geri)
-                if(Math.abs(joy.y) > 0.2) {{
-                    let moveStep = -joy.y * player.speed * 1.5;
-                    player.x += Math.cos(player.dir) * moveStep;
-                    player.y += Math.sin(player.dir) * moveStep;
-                }}
-                
-                // Dönüş (Sağ-Sol)
-                if(Math.abs(joy.x) > 0.2) {{
-                    player.dir += joy.x * 0.07;
+                // Klavye ve Joystick Hareket Birleştirme
+                let moveX = 0, moveY = 0, turn = 0;
+
+                if(keys['KeyW'] || keys['ArrowUp']) moveY = 1;
+                if(keys['KeyS'] || keys['ArrowDown']) moveY = -1;
+                if(keys['KeyA'] || keys['ArrowLeft']) turn = -1;
+                if(keys['KeyD'] || keys['ArrowRight']) turn = 1;
+
+                if(joystick.active) {{
+                    if(Math.abs(joystick.y) > 0.2) moveY = -joystick.y * 1.5;
+                    if(Math.abs(joystick.x) > 0.2) turn = joystick.x;
                 }}
 
-                // Duvar Çarpışması
-                if(map[Math.floor(player.y)][Math.floor(player.x)] === 1) {{
-                    player.x = oldX; player.y = oldY;
+                p.dir += turn * 0.055;
+                p.x += Math.cos(p.dir) * moveY * p.speed;
+                p.y += Math.sin(p.dir) * moveY * p.speed;
+
+                // Collision
+                if(maze[Math.floor(p.y)][Math.floor(p.x)] === 1) {{
+                    p.x = oldX; p.y = oldY;
                 }}
 
-                // Seviye Atlama
-                if(map[Math.floor(player.y)][Math.floor(player.x)] === 2) {{
+                // Exit Logic
+                if(maze[Math.floor(p.y)][Math.floor(p.x)] === 2) {{
                     level++;
-                    fetch('/submit_score/lost_forest/' + level);
-                    initLevel();
+                    fetch('/api/submit/' + level + '/lost_forest');
+                    initWorld();
                 }}
             }}
 
             function draw() {{
-                // Zemin ve Tavan
-                ctx.fillStyle = "#050805";
-                ctx.fillRect(0, 0, canvas.width, canvas.height/2);
-                ctx.fillStyle = "#020402";
-                ctx.fillRect(0, canvas.height/2, canvas.width, canvas.height);
-
+                ctx.fillStyle = "#000"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
                 const numRays = 120;
                 for(let i=0; i<numRays; i++) {{
-                    let rayAngle = (player.dir - player.fov/2) + (i / numRays) * player.fov;
-                    let dist = 0;
-                    let hit = 0;
-                    
-                    while(dist < 15) {{
-                        dist += 0.08;
-                        let tx = Math.floor(player.x + Math.cos(rayAngle) * dist);
-                        let ty = Math.floor(player.y + Math.sin(rayAngle) * dist);
-                        
-                        if(map[ty] && map[ty][tx] > 0) {{
-                            hit = map[ty][tx];
-                            break;
-                        }}
+                    let angle = (p.dir - p.fov/2) + (i / numRays) * p.fov;
+                    let d = 0;
+                    while(d < 14) {{
+                        d += 0.08;
+                        let tx = Math.floor(p.x + Math.cos(angle) * d);
+                        let ty = Math.floor(p.y + Math.sin(angle) * d);
+                        if(maze[ty] && maze[ty][tx] > 0) break;
                     }}
-
-                    // Balıkgözü Etkisi Düzeltme
-                    dist *= Math.cos(rayAngle - player.dir);
-                    let wallH = canvas.height / (dist + 0.001);
-                    
-                    // Gölgelendirme
-                    let colorVal = Math.max(0, 160 - (dist * 12));
-                    ctx.fillStyle = hit === 2 ? "#fff" : `rgb(0, ${{colorVal}}, 0)`;
-                    ctx.fillRect(i * (canvas.width/numRays), (canvas.height - wallH)/2, (canvas.width/numRays)+1, wallH);
+                    d *= Math.cos(angle - p.dir);
+                    let h = canvas.height / d;
+                    let c = Math.max(0, 160 - (d * 12));
+                    ctx.fillStyle = `rgb(0, ${{c}}, 0)`;
+                    ctx.fillRect(i * (canvas.width/numRays), (canvas.height - h)/2, (canvas.width/numRays)+1, h);
                 }}
 
-                // Karanlık Atmosfer Overlay
-                let grad = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 50, canvas.width/2, canvas.height/2, canvas.width*0.8);
-                grad.addColorStop(0, "transparent");
-                grad.addColorStop(1, "rgba(0,0,0,0.95)");
-                ctx.fillStyle = grad;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                // Vignette Effect
+                let grad = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 100, canvas.width/2, canvas.height/2, canvas.width);
+                grad.addColorStop(0, "transparent"); grad.addColorStop(1, "rgba(0,0,0,0.9)");
+                ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height);
             }}
 
-            function renderLoop() {{
-                update();
-                draw();
-                requestAnimationFrame(renderLoop);
-            }}
-
-            window.addEventListener("resize", resize);
-            resize();
-            initLevel();
-            renderLoop();
+            function frame() {{ update(); draw(); requestAnimationFrame(frame); }}
+            window.addEventListener("resize", initWorld);
+            initWorld();
+            frame();
         </script>
     </body>
     </html>
     """
-    return html
+    return html_page
 
-# --- 4. VOID COMMAND (STRATEJİ MOTORU) ---
-@app.route('/void-command')
-def strategy():
-    # Bu bölüm gezegenler arası enerji yönetimi üzerine kurulu taktiksel bir oyundur.
-    html = f"""
-    <!DOCTYPE html>
-    <html lang="tr">
-    {get_head()}
-    <body style="background:#000; overflow:hidden;">
-        {support_ui}
-        <a href="/" class="btn-ui" style="position:fixed; top:25px; left:25px; z-index:1000;">← ÇIKIŞ</a>
+# ------------------------------------------------------------------------------
+# 8. API KATMANI (BACKEND)
+# ------------------------------------------------------------------------------
+# Oyunlardan gelen skorları veritabanına işleyen API uç noktaları.
+# ------------------------------------------------------------------------------
+@app.route('/api/submit/<int:val>/<game_id>')
+def api_submit(val, game_id):
+    """
+    Skorları işler ve XP puanına dönüştürür.
+    """
+    if game_id == "neon_arcade":
+        user_data["neon_arcade"]["scores"].append(val)
+        user_data["platform_stats"]["total_xp"] += (val * 15)
+    elif game_id == "lost_forest":
+        user_data["lost_forest"]["levels"].append(val)
+        user_data["platform_stats"]["total_xp"] += (val * 100)
+    elif game_id == "void_command":
+        user_data["void_command"]["levels"].append(val)
+        user_data["platform_stats"]["total_xp"] += (val * 80)
         
-        <div id="strat-ui" style="position:fixed; top:85px; width:100%; text-align:center; color:#00ff88; font-family:monospace; letter-spacing:5px;">
-            SYSTEM_CONQUEST: <span id="lvl-val">1</span>
-        </div>
+    return jsonify({
+        "status": "success",
+        "xp_updated": user_data["platform_stats"]["total_xp"]
+    })
 
-        <canvas id="stratCanvas"></canvas>
-
-        <script>
-            const canvas = document.getElementById("stratCanvas");
-            const ctx = canvas.getContext("2d");
-            const lvlVal = document.getElementById("lvl-val");
-
-            let level = 1;
-            let planets = [];
-            let selected = null;
-            let particles = [];
-
-            class Planet {{
-                constructor(x, y, radius, owner) {{
-                    this.x = x; this.y = y; this.radius = radius;
-                    this.owner = owner; // 'player', 'enemy', 'neutral'
-                    this.energy = owner === 'neutral' ? 5 : 25;
-                    this.maxEnergy = radius * 2.5;
-                    this.pulse = 0;
-                }}
-
-                update() {{
-                    if(this.owner !== 'neutral') {{
-                        this.energy = Math.min(this.maxEnergy, this.energy + 0.035);
-                    }}
-                    this.pulse += 0.05;
-                }}
-
-                draw() {{
-                    ctx.beginPath();
-                    ctx.arc(this.x, this.y, this.radius + Math.sin(this.pulse)*2, 0, Math.PI*2);
-                    
-                    if(this.owner === 'player') ctx.strokeStyle = "#00ff88";
-                    else if(this.owner === 'enemy') ctx.strokeStyle = "#ff4400";
-                    else ctx.strokeStyle = "#222";
-                    
-                    ctx.lineWidth = selected === this ? 5 : 2;
-                    ctx.stroke();
-
-                    // Enerji Göstergesi
-                    ctx.fillStyle = ctx.strokeStyle;
-                    ctx.font = "12px monospace";
-                    ctx.textAlign = "center";
-                    ctx.fillText(Math.floor(this.energy), this.x, this.y + 5);
-
-                    // Enerji Barı Altlık
-                    ctx.fillStyle = "rgba(255,255,255,0.05)";
-                    ctx.fillRect(this.x - 20, this.y + this.radius + 15, 40, 4);
-                    // Enerji Barı Doluluk
-                    ctx.fillStyle = ctx.strokeStyle;
-                    ctx.fillRect(this.x - 20, this.y + this.radius + 15, (this.energy / this.maxEnergy) * 40, 4);
-                }}
-            }}
-
-            function initGame() {{
-                canvas.width = window.innerWidth;
-                canvas.height = window.innerHeight;
-                planets = [];
-                selected = null;
-                lvlVal.innerText = level;
-
-                // Oyuncu Gezegeni
-                planets.push(new Planet(120, canvas.height/2, 50, 'player'));
-                // Düşman Gezegeni
-                planets.push(new Planet(canvas.width - 120, canvas.height/2, 50, 'enemy'));
-
-                // Tarafsız Gezegenler
-                for(let i=0; i < level + 5; i++) {{
-                    let rx = Math.random() * (canvas.width - 300) + 150;
-                    let ry = Math.random() * (canvas.height - 200) + 100;
-                    planets.push(new Planet(rx, ry, 30, 'neutral'));
-                }}
-            }}
-
-            canvas.addEventListener("pointerdown", (e) => {{
-                let p = planets.find(p => Math.hypot(p.x - e.clientX, p.y - e.clientY) < p.radius + 10);
-                
-                if(p) {{
-                    if(p.owner === 'player') {{
-                        selected = p;
-                    }} else if(selected) {{
-                        // Saldırı veya Takviye
-                        let force = selected.energy / 2;
-                        selected.energy -= force;
-                        p.energy -= force;
-                        
-                        if(p.energy < 0) {{
-                            p.owner = 'player';
-                            p.energy = Math.abs(p.energy);
-                        }}
-                        selected = null;
-                    }}
-                }} else {{
-                    selected = null;
-                }}
-            }});
-
-            function loop() {{
-                ctx.fillStyle = "rgba(0,0,0,0.2)";
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                planets.forEach(p => {{
-                    p.update();
-                    p.draw();
-                }});
-
-                // Bölüm Sonu Kontrolü
-                if(!planets.some(p => p.owner === 'enemy')) {{
-                    level++;
-                    fetch('/submit_score/void_command/' + level);
-                    initGame();
-                }}
-
-                requestAnimationFrame(loop);
-            }}
-
-            window.addEventListener("resize", initGame);
-            initGame();
-            loop();
-        </script>
-    </body>
-    </html>
-    """
-    return html
-
-# --- API SERVİSLERİ ---
-@app.route('/submit_score/<game>/<int:score>')
-def submit_score(game, score):
-    # Bu API, oyunlardan gelen skorları toplar ve XP hesaplaması yapar.
-    if game in scores:
-        scores[game].append(score)
-        # XP Katsayısı: Skor x 15
-        scores["xp"] += (score * 15)
-        return jsonify({"status": "success", "new_xp": scores["xp"]})
-    return jsonify({"status": "error"}), 400
-
-# --- UYGULAMA BAŞLATICI ---
+# ------------------------------------------------------------------------------
+# 9. SUNUCU BAŞLATMA
+# ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    # Render üzerinde PORT değişkeni otomatik atanır.
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
+    # Render ortamı için dinamik port ataması
+    server_port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=server_port)
 
-# ==========================================
-# KOD SONU - CANO STUDIO OMEGA SÜRÜMÜ
-# ==========================================
+# ==============================================================================
+# CANO STUDIO KOD SONU. PROJE OMEGA SEVIYESINDEDIR.
+# ==============================================================================
