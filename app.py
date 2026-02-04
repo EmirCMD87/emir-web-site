@@ -1,9 +1,10 @@
 # ==============================================================================
-# CANO STUDIO - FINAL ULTRA EDITION v15.5
+# CANO STUDIO - NEBULA EDITION v16.0
 # ==============================================================================
-# Bu dosya tüm cihazlarla (PC & Mobil) uyumlu, 650+ satırlık bir oyun platformudur.
-# Google Analytics Kimliği: G-GQS70MDDPQ
-# Tasarım: Cyberpunk / Glitch / Studio Estetiği
+# Geliştirici: Cano Studio
+# Tema: Cyberpunk Neon / Deep Space
+# Sistem: PC & Mobil Universal Controller
+# Analytics: G-GQS70MDDPQ
 # ==============================================================================
 
 from flask import Flask, request, jsonify
@@ -12,75 +13,77 @@ import random
 
 app = Flask(__name__)
 
-# --- SİSTEM VERİ MERKEZİ ---
-# Sunucu tarafında tutulan geçici skor ve tecrübe puanı verileri.
-game_database = {
+# --- STUDIO DATA ENGINE ---
+# XP ve Skor verileri burada işlenir.
+studio_data = {
     "neon_arcade": {"scores": [0]},
     "void_command": {"levels": [1]},
     "lost_forest": {"levels": [1]},
-    "global_xp": 0,
-    "platform_status": "OPERATIONAL"
+    "total_xp": 0,
+    "current_rank": "ROOKIE"
 }
 
-# Google Analytics Kimliği (NameError'ı önlemek için burada tanımlandı)
-GTAG_ID = "G-GQS70MDDPQ"
+GTAG_ID = "G-GQS70MDDPQ" #
 
-# --- PROFESYONEL TASARIM MOTORU (CSS) ---
-# SyntaxError almamak için tüm süslü parantezler çiftlenmiştir {{ }}.
-def get_studio_styles():
+# --- DESIGN SYSTEM (ADVANCED CSS) ---
+# Tasarımı tamamen yenileyen devasa CSS bloğu.
+def get_nebula_styles():
     return """
     <style>
         :root {{
-            --neon-cyan: #00bcd4;
-            --cyber-pink: #ff0055;
-            --deep-void: #020202;
-            --studio-gray: #0a0a0a;
-            --xp-gold: #f1c40f;
-            --white-text: #ffffff;
+            --accent: #00f2ff;
+            --pink: #ff007f;
+            --bg: #030305;
+            --card-bg: rgba(15, 15, 25, 0.7);
+            --gold: #ffcc00;
         }}
 
         * {{
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             touch-action: manipulation;
         }}
 
         body {{
-            background-color: var(--deep-void);
-            color: #e0e0e0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg);
+            background-image: radial-gradient(circle at 50% 50%, #0a0a1a 0%, #030305 100%);
+            color: #ffffff;
+            font-family: 'Inter', -apple-system, sans-serif;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
-            min-height: 100vh;
             overflow-x: hidden;
         }}
 
-        /* --- GLITCH LOGO ANIMASYONU --- */
-        .glitch-logo {{
-            font-size: clamp(2.5rem, 10vw, 4.5rem);
-            letter-spacing: 15px;
-            color: var(--white-text);
-            text-transform: uppercase;
+        /* --- GLITCH HEADER --- */
+        .studio-header {{
+            padding: 80px 20px;
             text-align: center;
-            padding: 60px 20px;
-            position: relative;
-            animation: glitch-vfx 4s infinite alternate;
+            perspective: 1000px;
         }}
 
-        @keyframes glitch-vfx {{
-            0% {{ text-shadow: 3px 0 var(--cyber-pink); transform: skew(0deg); }}
-            20% {{ text-shadow: -3px 0 var(--neon-cyan); transform: skew(0.5deg); }}
-            40% {{ text-shadow: 2px 2px var(--xp-gold); }}
-            100% {{ text-shadow: -3px -2px var(--cyber-pink); transform: skew(-0.5deg); }}
+        .studio-title {{
+            font-size: clamp(3rem, 12vw, 5rem);
+            letter-spacing: 20px;
+            text-transform: uppercase;
+            font-weight: 900;
+            color: #fff;
+            text-shadow: 0 0 20px var(--accent);
+            animation: nebula-float 6s ease-in-out infinite;
         }}
 
-        /* --- OYUN KÜTÜPHANESİ DÜZENİ --- */
-        .grid-container {{
+        @keyframes nebula-float {{
+            0%, 100% {{ transform: translateY(0) rotateX(0); }}
+            50% {{ transform: translateY(-10px) rotateX(5deg); }}
+        }}
+
+        /* --- MODERN GAMING CARDS --- */
+        .library-grid {{
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 40px;
             padding: 40px;
             max-width: 1400px;
             margin: 0 auto;
@@ -88,86 +91,77 @@ def get_studio_styles():
         }}
 
         .game-card {{
-            background: var(--studio-gray);
-            border: 1px solid #151515;
-            padding: 50px 30px;
-            border-radius: 20px;
-            cursor: pointer;
-            text-align: center;
             position: relative;
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 24px;
+            padding: 60px 40px;
             overflow: hidden;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }}
+
+        .game-card::before {{
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+            transition: 0.5s;
         }}
 
         .game-card:hover {{
-            border-color: var(--neon-cyan);
-            background: #0f0f0f;
-            transform: translateY(-10px);
-            box-shadow: 0 20px 50px rgba(0, 188, 212, 0.2);
+            transform: scale(1.05) translateY(-15px);
+            border-color: var(--accent);
+            box-shadow: 0 20px 60px rgba(0, 242, 255, 0.15);
         }}
 
-        .badge {{
-            font-size: 10px;
-            letter-spacing: 2px;
-            border: 1px solid;
-            display: inline-block;
-            padding: 4px 12px;
+        .game-card:hover::before {{ left: 100%; }}
+
+        .game-icon {{
+            font-size: 3rem;
             margin-bottom: 20px;
-            border-radius: 4px;
-            text-transform: uppercase;
+            filter: drop-shadow(0 0 10px currentColor);
         }}
 
-        /* --- BUTON TASARIMLARI --- */
-        .btn-action {{
-            background: rgba(0, 188, 212, 0.05);
-            border: 1px solid var(--neon-cyan);
-            color: var(--neon-cyan);
-            padding: 14px 28px;
-            border-radius: 8px;
-            cursor: pointer;
-            text-decoration: none;
-            font-size: 0.85rem;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            display: inline-block;
+        .game-card h2 {{
+            font-size: 1.8rem;
+            letter-spacing: 4px;
+            margin-bottom: 15px;
+            font-weight: 800;
         }}
 
-        .btn-action:hover {{
-            background-color: var(--neon-cyan);
-            color: #000;
-            box-shadow: 0 0 30px var(--neon-cyan);
-        }}
-
-        /* --- DESTEK MENÜSÜ --- */
-        #supportModal {{
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.99);
-            z-index: 9999;
-            align-items: center; justify-content: center;
-            backdrop-filter: blur(20px);
-        }}
-
-        .modal-inner {{
-            background: #050505;
-            padding: 60px 40px;
-            border-radius: 30px;
-            border: 1px solid var(--neon-cyan);
-            max-width: 550px;
-            width: 90%;
+        .game-card p {{
+            color: #888;
+            font-size: 0.95rem;
+            line-height: 1.6;
             text-align: center;
         }}
 
-        /* --- İSTATİSTİK TABLOSU --- */
-        .stats-section {{
-            max-width: 900px;
-            margin: 50px auto;
-            background: #030303;
+        /* --- XP & RANK UI --- */
+        .rank-badge {{
+            background: linear-gradient(45deg, var(--gold), #ff6600);
+            padding: 5px 20px;
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: #000;
+            letter-spacing: 2px;
+            margin-top: 10px;
+            display: inline-block;
+        }}
+
+        /* --- STATS SECTION --- */
+        .stats-panel {{
+            max-width: 1000px;
+            margin: 60px auto;
             padding: 40px;
-            border-radius: 15px;
-            border: 1px solid #111;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }}
 
         .stats-table {{
@@ -176,221 +170,227 @@ def get_studio_styles():
         }}
 
         .stats-table td {{
-            padding: 18px;
-            border-bottom: 1px solid #080808;
-            color: #555;
+            padding: 25px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            font-size: 1.1rem;
+            color: #666;
         }}
 
-        .stats-table .val-cell {{
+        .stats-table .val {{
             text-align: right;
             color: #fff;
             font-weight: bold;
-            font-family: 'Courier New', monospace;
-            font-size: 1.2rem;
+            font-family: 'JetBrains Mono', monospace;
+        }}
+
+        /* --- BUTTONS --- */
+        .btn-nebula {{
+            background: transparent;
+            border: 2px solid var(--accent);
+            color: var(--accent);
+            padding: 15px 35px;
+            border-radius: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            cursor: pointer;
+            text-decoration: none;
+        }}
+
+        .btn-nebula:hover {{
+            background: var(--accent);
+            color: #000;
+            box-shadow: 0 0 30px var(--accent);
         }}
 
         @media (min-width: 1025px) {{
-            #mobile-joy-ui {{ display: none !important; }}
+            #mobile-ui {{ display: none !important; }}
         }}
 
         footer {{
             margin-top: auto;
-            padding: 50px;
+            padding: 60px;
             text-align: center;
-            border-top: 1px solid #080808;
-            background: #010101;
-            color: #1a1a1a;
-            letter-spacing: 5px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
             font-size: 0.7rem;
+            color: #222;
+            letter-spacing: 5px;
         }}
     </style>
     """
 
-# --- ANALYTICS TAKİP ---
-def get_analytics_code():
+def get_gtag():
     return f"""
     <script async src="https://www.googletagmanager.com/gtag/js?id={GTAG_ID}"></script>
     <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){{dataLayer.push(arguments);}}
-        gtag('js', new Date());
-        gtag('config', '{GTAG_ID}');
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){{dataLayer.push(arguments);}}
+      gtag('js', new Date());
+      gtag('config', '{GTAG_ID}');
     </script>
     """
 
-# --- SAYFA BAŞLIK YAPILANDIRICISI ---
-def get_head_content():
+def build_head():
     return f"""
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <title>Cano Studio | Official Elite</title>
-        {get_analytics_code()}
-        {get_studio_styles()}
+        <title>Cano Studio | Nebula Platform</title>
+        {get_gtag()}
+        {get_nebula_styles()}
     </head>
     """
 
-# --- ORTAK DESTEK BİLEŞENİ ---
-support_component = """
-<a href="#" onclick="openSupport(true)" class="btn-action" style="position:fixed; top:25px; right:25px; z-index:9000;">💎 DESTEK OL</a>
-<div id="supportModal">
-    <div class="modal-inner" id="modalTarget">
-        <h2 style="color:var(--neon-cyan); letter-spacing:8px; margin-bottom:20px;">CANO STUDIO</h2>
-        <p style="color:#666; margin-bottom:40px; font-size:0.9rem;">Projelerime destek olarak stüdyonun büyümesine katkıda bulunabilirsin.</p>
-        
+# --- OVERLAY COMPONENTS ---
+support_ui = """
+<a href="#" onclick="showM(true)" class="btn-nebula" style="position:fixed; top:30px; right:30px; z-index:9999;">💎 SUPPORT</a>
+<div id="mOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.98); z-index:10000; align-items:center; justify-content:center;">
+    <div class="stats-panel" id="mContent" style="max-width:550px; text-align:center;">
+        <h2 style="color:var(--accent); letter-spacing:8px; margin-bottom:20px;">STUDIO SUPPORT</h2>
+        <p style="color:#555; margin-bottom:30px;">Geliştirmeye devam etmemiz için bize destek olabilirsin.</p>
         <div style="display:flex; gap:15px; margin-bottom:40px;">
-            <button class="btn-action" style="flex:1" onclick="processCopy('ininal')">ININAL</button>
-            <button class="btn-action" style="flex:1" onclick="processCopy('banka')">BANKA / EFT</button>
+            <button class="btn-nebula" style="flex:1" onclick="copyAction('ininal')">ININAL</button>
+            <button class="btn-nebula" style="flex:1" onclick="copyAction('banka')">BANKA</button>
         </div>
-
-        <button onclick="openSupport(false)" style="background:none; border:none; color:#222; cursor:pointer; text-decoration:underline;">[ PENCEREYİ KAPAT ]</button>
+        <button onclick="showM(false)" style="background:none; border:none; color:#333; cursor:pointer; text-decoration:underline;">[ CLOSE ]</button>
     </div>
 </div>
-
 <script>
-    function openSupport(show) { document.getElementById('supportModal').style.display = show ? 'flex' : 'none'; }
-    function processCopy(mode) {
-        const value = mode === 'ininal' ? "4000000000000" : "TR000000000000000000000000";
-        navigator.clipboard.writeText(value).then(() => {
-            document.getElementById('modalTarget').innerHTML = `
-                <h1 style="color:var(--neon-cyan); font-size:3rem; margin-bottom:20px;">ADAMSIN! ❤️</h1>
-                <p style="color:#fff; font-size:1.1rem; line-height:1.6;">Veriler kopyalandı. Desteğin için teşekkürler!</p>
-                <div style="margin-top:40px;">
-                    <button onclick="location.reload()" class="btn-action">MENÜYE DÖN</button>
-                </div>
+    function showM(s) { document.getElementById('mOverlay').style.display = s ? 'flex' : 'none'; }
+    function copyAction(t) {
+        const v = t === 'ininal' ? "4000000000000" : "TR000000000000000000000000";
+        navigator.clipboard.writeText(v).then(() => {
+            document.getElementById('mContent').innerHTML = `
+                <h1 style="color:var(--accent); font-size:3rem; margin-bottom:20px;">THANK YOU! ❤️</h1>
+                <p style="color:#fff;">Veriler kopyalandı. Desteğin için teşekkürler!</p>
+                <button onclick="location.reload()" class="btn-nebula" style="margin-top:30px;">DASHBOARD</button>
             `;
         });
     }
 </script>
 """
 
-# --- ANA SAYFA ---
+# --- PAGE ROUTES ---
 @app.route('/')
-def home_index():
-    xp = game_database["global_xp"]
-    rank = "LEGEND" if xp > 2000 else "EXPERT" if xp > 1000 else "STUDENT"
+def home():
+    xp = studio_data["total_xp"]
+    rank = "ULTRA" if xp > 2000 else "EXPERIENCE" if xp > 800 else "ROOKIE"
     return f"""
     <!DOCTYPE html>
     <html lang="tr">
-    {get_head_content()}
+    {build_head()}
     <body>
-        {support_component}
-        <header>
-            <h1 class="glitch-logo" data-text="CANO STUDIO">CANO STUDIO</h1>
-            <div style="text-align:center; margin-top:-30px; letter-spacing:5px; color:var(--xp-gold); font-weight:bold;">
-                {rank} | EXPERIENCE: {xp} XP
-            </div>
+        {support_ui}
+        <header class="studio-header">
+            <h1 class="studio-title">CANO STUDIO</h1>
+            <div class="rank-badge">{rank} | TOTAL EXP: {xp}</div>
         </header>
 
-        <main class="grid-container">
+        <main class="library-grid">
             <div class="game-card" onclick="location.href='/neon-arcade'">
-                <div class="badge" style="color:var(--neon-cyan); border-color:var(--neon-cyan);">ARCADE / SPEED</div>
+                <div class="game-icon" style="color:var(--accent);">⚡</div>
                 <h2>NEON ARCADE</h2>
-                <p>Yüksek hızlı tünelde engelleri aş. PC: SPACE | MOBIL: DOKUN</p>
-                <div style="margin-top:30px; border-top:1px solid #111; padding-top:15px; font-size:0.7rem; color:#222;">MAX_SCORE: {max(game_database["neon_arcade"]["scores"])}</div>
+                <p>Yüksek hızda veri tünellerinden geç ve engelleri aş. PC: SPACE | MOBIL: TOUCH</p>
+                <div style="margin-top:30px; font-weight:bold; color:var(--accent);">BEST: {max(studio_data["neon_arcade"]["scores"])}</div>
             </div>
 
             <div class="game-card" onclick="location.href='/lost-forest'">
-                <div class="badge" style="color:var(--cyber-pink); border-color:var(--cyber-pink);">FPS / 3D</div>
+                <div class="game-icon" style="color:var(--pink);">👁️</div>
                 <h2>LOST FOREST</h2>
-                <p>Raycasting motoru ile 3D labirent keşfi. PC: WASD | MOBIL: JOYSTICK</p>
-                <div style="margin-top:30px; border-top:1px solid #111; padding-top:15px; font-size:0.7rem; color:#222;">SURVIVAL: {max(game_database["lost_forest"]["levels"])}</div>
+                <p>3D Raycasting motoru ile karanlık labirent keşfi. PC: WASD | MOBIL: JOYSTICK</p>
+                <div style="margin-top:30px; font-weight:bold; color:var(--pink);">SECTOR: {max(studio_data["lost_forest"]["levels"])}</div>
             </div>
 
             <div class="game-card" onclick="location.href='/void-command'">
-                <div class="badge" style="color:#00ff88; border-color:#00ff88;">STRATEGY / TACTICS</div>
+                <div class="game-icon" style="color:#00ff88;">🛡️</div>
                 <h2>VOID COMMAND</h2>
-                <p>Gezegenler arası fetih stratejisi. Rakip sistemleri asimile et.</p>
-                <div style="margin-top:30px; border-top:1px solid #111; padding-top:15px; font-size:0.7rem; color:#222;">CONQUEST: {max(game_database["void_command"]["levels"])}</div>
+                <p>Gezegenler arası stratejik fetih motoru. Rakip sistemleri ele geçir.</p>
+                <div style="margin-top:30px; font-weight:bold; color:#00ff88;">CONQUEST: {max(studio_data["void_command"]["levels"])}</div>
             </div>
         </main>
 
-        <section class="stats-section">
-            <h3 style="text-align:center; color:#222; letter-spacing:5px; margin-bottom:30px;">KÜRESEL İSTATİSTİK MERKEZİ</h3>
+        <section class="stats-panel">
             <table class="stats-table">
-                <tr><td>Neon Accuracy Index</td><td class="val-cell">{max(game_database["neon_arcade"]["scores"])} PTS</td></tr>
-                <tr><td>Deep Forest Progression</td><td class="val-cell">Lvl {max(game_database["lost_forest"]["levels"])}</td></tr>
-                <tr><td>Total Studio Experience</td><td class="val-cell" style="color:var(--xp-gold);">{xp} XP</td></tr>
+                <tr><td>Neon Accuracy Index</td><td class="val">{max(studio_data["neon_arcade"]["scores"])} PTS</td></tr>
+                <tr><td>Deep Forest Survival</td><td class="val">Lvl {max(studio_data["lost_forest"]["levels"])}</td></tr>
+                <tr><td>Global System Experience</td><td class="val" style="color:var(--gold);">{xp} XP</td></tr>
             </table>
         </section>
 
         <footer>
-            <p style="margin-bottom:10px;">ANALYTICS: {GTAG_ID}</p>
-            © 2026 CANO STUDIO DIGITAL ENTERTAINMENT.
+            ANALYTICS_ID: {GTAG_ID} | CONNECTION: ENCRYPTED
         </footer>
     </body>
     </html>
     """
 
-# --- NEON ARCADE ---
+# --- GAME: NEON ARCADE ---
 @app.route('/neon-arcade')
-def arcade_module():
+def arcade():
     return f"""
-    <!DOCTYPE html><html>{get_head_content()}
-    <body style="overflow:hidden; display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh;">
-        {support_component}
-        <a href="/" class="btn-action" style="position:fixed; top:25px; left:25px; z-index:9000;">← ÇIKIŞ YAP</a>
-        <div style="position:fixed; top:80px; color:var(--neon-cyan); font-family:monospace; font-size:1.4rem; letter-spacing:4px;">BUFFER_SCORE: <span id="sDisplay">0</span></div>
-        <canvas id="canvasA" width="450" height="650" style="background:#000; border:1px solid #111;"></canvas>
+    <!DOCTYPE html><html>{build_head()}
+    <body style="overflow:hidden; display:flex; justify-content:center; align-items:center; height:100vh;">
+        {support_ui}
+        <a href="/" class="btn-nebula" style="position:fixed; top:30px; left:30px; z-index:9999;">← BACK</a>
+        <canvas id="cA" width="450" height="650" style="background:#000; border-radius:20px; box-shadow:0 0 50px rgba(0,0,0,1);"></canvas>
         <script>
-            const c=document.getElementById("canvasA"), ctx=c.getContext("2d");
-            let player, pipes, frames, score, active;
-            function start() {{ player={{y:300,v:0,g:0.35,j:-7.2,w:32,h:32}}; pipes=[]; frames=0; score=0; active=true; }}
+            const c=document.getElementById("cA"), ctx=c.getContext("2d");
+            let p, pipes, frames, score, active;
+            function start() {{ p={{y:300,v:0,g:0.38,j:-7.2,s:32}}; pipes=[]; frames=0; score=0; active=true; }}
             function end() {{ active=false; if(score>0) fetch('/api/xp/'+score+'/neon_arcade'); }}
-            function render() {{
+            function draw() {{
                 ctx.fillStyle="#000"; ctx.fillRect(0,0,450,650);
-                if(!active) {{ ctx.fillStyle="rgba(0,0,0,0.8)"; ctx.fillRect(0,0,450,650); ctx.fillStyle="#fff"; ctx.textAlign="center"; ctx.fillText("OYUN BİTTİ - TIKLA", 225, 325); return requestAnimationFrame(render); }}
-                player.v+=player.g; player.y+=player.v; ctx.fillStyle="#00bcd4"; ctx.fillRect(50,player.y,player.w,player.h);
+                if(!active) {{ ctx.fillStyle="rgba(0,0,0,0.8)"; ctx.fillRect(0,0,450,650); ctx.fillStyle="#fff"; ctx.textAlign="center"; ctx.fillText("SYSTEM FAILURE - TIKLA", 225, 325); return requestAnimationFrame(draw); }}
+                p.v+=p.g; p.y+=p.v; ctx.fillStyle="#00f2ff"; ctx.fillRect(50,p.y,p.s,p.s);
                 if(frames%100===0) pipes.push({{x:450,h:Math.random()*300+100,p:false}});
-                pipes.forEach((p,i)=>{{ p.x-=4.2; ctx.fillStyle="#080808"; ctx.fillRect(p.x,0,65,p.h); ctx.fillRect(p.x,p.h+170,65,650);
-                if(50+player.w>p.x && 50<p.x+65 && (player.y<p.h || player.y+player.h>p.h+170)) end();
-                if(p.x<50 && !p.p){{ score++; p.p=true; document.getElementById('sDisplay').innerText=score; }}
-                if(p.x<-70) pipes.splice(i,1); }});
-                if(player.y>650 || player.y<0) end(); frames++; requestAnimationFrame(render);
+                pipes.forEach((pipe,i)=>{{ pipe.x-=4; ctx.fillStyle="#111"; ctx.fillRect(pipe.x,0,60,pipe.h); ctx.fillRect(pipe.x,pipe.h+170,60,650);
+                if(50+p.s>pipe.x && 50<pipe.x+60 && (p.y<pipe.h || p.y+p.s>pipe.h+170)) end();
+                if(pipe.x<50 && !pipe.p){{ score++; pipe.p=true; }}
+                if(pipe.x<-70) pipes.splice(i,1); }});
+                if(p.y>650 || p.y<0) end(); frames++; requestAnimationFrame(draw);
             }}
-            window.addEventListener("keydown",(e)=>{{ if(e.code==="Space") {{ e.preventDefault(); if(active) player.v=player.j; else start(); }} }});
-            window.addEventListener("pointerdown",()=>{{ if(active) player.v=player.j; else start(); }});
-            start(); render();
+            window.addEventListener("keydown",(e)=>{{ if(e.code==="Space") {{ e.preventDefault(); if(active) p.v=p.j; else start(); }} }});
+            window.addEventListener("pointerdown",()=>{{ if(active) p.v=p.j; else start(); }});
+            start(); draw();
         </script>
     </body></html>
     """
 
-# --- LOST FOREST ---
+# --- GAME: LOST FOREST ---
 @app.route('/lost-forest')
-def horror_module():
+def horror():
     return f"""
-    <!DOCTYPE html><html>{get_head_content()}
+    <!DOCTYPE html><html>{build_head()}
     <body style="overflow:hidden; margin:0; background:#000; touch-action:none;">
-        {support_component}
-        <a href="/" class="btn-action" style="position:fixed; top:25px; left:25px; z-index:9000;">← ÇIKIŞ YAP</a>
-        <div id="mobile-joy-ui" style="position:fixed; bottom:60px; left:60px; width:130px; height:130px; background:rgba(255,255,255,0.03); border:1px solid #111; border-radius:50%; z-index:100;">
-            <div id="innerStick" style="position:absolute; top:45px; left:45px; width:40px; height:40px; background:var(--neon-cyan); opacity:0.2; border-radius:50%;"></div>
+        {support_ui}
+        <a href="/" class="btn-nebula" style="position:fixed; top:30px; left:30px; z-index:9999;">← BACK</a>
+        <div id="mobile-ui" style="position:fixed; bottom:60px; left:60px; width:130px; height:130px; background:rgba(255,255,255,0.03); border:1px solid #111; border-radius:50%; z-index:100;">
+            <div id="jStick" style="position:absolute; top:45px; left:45px; width:40px; height:40px; background:var(--accent); opacity:0.2; border-radius:50%;"></div>
         </div>
-        <div style="position:fixed; top:80px; width:100%; text-align:center; color:#fff; font-family:monospace; opacity:0.4; letter-spacing:4px;">SECTOR: <span id="lvlDisp">1</span></div>
-        <canvas id="canvasV"></canvas>
+        <canvas id="cV"></canvas>
         <script>
-            const c=document.getElementById("canvasV"), ctx=c.getContext("2d");
-            let level=1, map=[], p={{x:1.5,y:1.5,dir:0,speed:0.045,fov:Math.PI/3}}, keys={{}}, joy={{active:false,x:0,y:0}};
-            function genMap(s){{ let m=Array.from({{length:s}},()=>Array(s).fill(1)); for(let y=1;y<s-1;y++)for(let x=1;x<s-1;x++)if(Math.random()>0.4)m[y][x]=0; m[1][1]=0; m[s-2][s-2]=2; return m; }}
-            function reset(){{ c.width=window.innerWidth; c.height=window.innerHeight; map=genMap(10+level*2); p.x=1.5; p.y=1.5; document.getElementById('lvlDisp').innerText=level; }}
+            const canvas=document.getElementById("cV"), ctx=canvas.getContext("2d");
+            let level=1, map=[], player={{x:1.5,y:1.5,dir:0,speed:0.045,fov:Math.PI/3}}, keys={{}}, joy={{active:false,x:0,y:0}};
+            function gen(s){{ let m=Array.from({{length:s}},()=>Array(s).fill(1)); for(let y=1;y<s-1;y++)for(let x=1;x<s-1;x++)if(Math.random()>0.4)m[y][x]=0; m[1][1]=0; m[s-2][s-2]=2; return m; }}
+            function reset(){{ canvas.width=window.innerWidth; canvas.height=window.innerHeight; map=gen(10+level*2); player.x=1.5; player.y=1.5; }}
             window.addEventListener("keydown",(e)=>keys[e.code]=true); window.addEventListener("keyup",(e)=>keys[e.code]=false);
-            const jB=document.getElementById("mobile-joy-ui"), jS=document.getElementById("innerStick");
+            const jB=document.getElementById("mobile-ui"), jS=document.getElementById("jStick");
             jB.addEventListener("touchmove",(e)=>{{ e.preventDefault(); let t=e.touches[0], r=jB.getBoundingClientRect(); let dx=t.clientX-(r.left+65), dy=t.clientY-(r.top+65); let d=Math.min(Math.hypot(dx,dy),55), a=Math.atan2(dy,dx); joy.x=Math.cos(a)*(d/55); joy.y=Math.sin(a)*(d/55); jS.style.transform=`translate(${{joy.x*40}}px,${{joy.y*40}}px)`; joy.active=true; }}, {{passive:false}});
             jB.addEventListener("touchend",()=>{{ joy.active=false; jS.style.transform="translate(0,0)"; }});
             function update(){{
-                let oX=p.x, oY=p.y, mY=0, tN=0;
-                if(keys['KeyW']||keys['ArrowUp']) mY=1; if(keys['KeyS']||keys['ArrowDown']) mY=-1; if(keys['KeyA']||keys['ArrowLeft']) tN=-1; if(keys['KeyD']||keys['ArrowRight']) tN=1;
+                let oX=player.x, oY=player.y, mY=0, tN=0;
+                if(keys['KeyW']) mY=1; if(keys['KeyS']) mY=-1; if(keys['KeyA']) tN=-1; if(keys['KeyD']) tN=1;
                 if(joy.active){{ if(Math.abs(joy.y)>0.2) mY=-joy.y*1.5; if(Math.abs(joy.x)>0.2) tN=joy.x; }}
-                p.dir+=tN*0.06; p.x+=Math.cos(p.dir)*mY*p.speed; p.y+=Math.sin(p.dir)*mY*p.speed;
-                if(map[Math.floor(p.y)][Math.floor(p.x)]===1){{p.x=oX; p.y=oY;}}
-                if(map[Math.floor(p.y)][Math.floor(p.x)]===2){{ level++; fetch('/api/xp/'+level+'/lost_forest'); reset(); }}
+                player.dir+=tN*0.06; player.x+=Math.cos(player.dir)*mY*player.speed; player.y+=Math.sin(player.dir)*mY*player.speed;
+                if(map[Math.floor(player.y)][Math.floor(player.x)]===1){{player.x=oX; player.y=oY;}}
+                if(map[Math.floor(player.y)][Math.floor(player.x)]===2){{ level++; fetch('/api/xp/'+level+'/lost_forest'); reset(); }}
             }}
             function draw(){{
-                ctx.fillStyle="#000"; ctx.fillRect(0,0,c.width,c.height);
+                ctx.fillStyle="#000"; ctx.fillRect(0,0,canvas.width,canvas.height);
                 for(let i=0;i<120;i++){{
-                    let a=(p.dir-p.fov/2)+(i/120)*p.fov, d=0;
-                    while(d<14){{ d+=0.08; let tx=Math.floor(p.x+Math.cos(a)*d), ty=Math.floor(p.y+Math.sin(a)*d); if(map[ty]&&map[ty][tx]>0)break; }}
-                    let h=c.height/(d*Math.cos(a-p.dir)); ctx.fillStyle=`rgb(0,${{Math.max(0,160-d*12)}},0)`; ctx.fillRect(i*(c.width/120),(c.height-h)/2,c.width/120+1,h);
+                    let a=(player.dir-player.fov/2)+(i/120)*player.fov, d=0;
+                    while(d<14){{ d+=0.08; let tx=Math.floor(player.x+Math.cos(a)*d), ty=Math.floor(player.y+Math.sin(a)*d); if(map[ty]&&map[ty][tx]>0)break; }}
+                    let h=canvas.height/(d*Math.cos(a-player.dir)); ctx.fillStyle=`rgb(0,${{Math.max(0,160-d*12)}},0)`; ctx.fillRect(i*(canvas.width/120),(canvas.height-h)/2,canvas.width/120+1,h);
                 }}
             }}
             function frame(){{ update(); draw(); requestAnimationFrame(frame); }}
@@ -399,35 +399,14 @@ def horror_module():
     </body></html>
     """
 
-# --- VOID COMMAND ---
-@app.route('/void-command')
-def strategy_module():
-    return f"""
-    <!DOCTYPE html><html>{get_head_content()}
-    <body style="background:#000; overflow:hidden;">
-        {support_component}
-        <a href="/" class="btn-action" style="position:fixed; top:25px; left:25px; z-index:9000;">← ÇIKIŞ YAP</a>
-        <canvas id="canvasG" style="width:100vw; height:100vh; background:#000; display:block;"></canvas>
-        <script>
-            const c=document.getElementById("canvasG"), ctx=c.getContext("2d");
-            let level=1, planets=[], selected=null;
-            class P {{ constructor(x,y,r,o){{this.x=x;this.y=y;this.r=r;this.o=o;this.e=o==='neutral'?5:25;}} draw(){{ctx.beginPath(); ctx.arc(this.x,this.y,this.r,0,Math.PI*2); ctx.strokeStyle=this.o==='player'?'#00ff88':(this.o==='enemy'?'#f40':'#222'); ctx.lineWidth=selected===this?4:1; ctx.stroke(); ctx.fillStyle=ctx.strokeStyle; ctx.textAlign="center"; ctx.fillText(Math.floor(this.e),this.x,this.y+5);}} }}
-            function init(){{ c.width=window.innerWidth; c.height=window.innerHeight; planets=[new P(100,c.height/2,45,'player'), new P(c.width-100,c.height/2,45,'enemy')]; for(let i=0;i<7;i++) planets.push(new P(Math.random()*(c.width-200)+100, Math.random()*(c.height-200)+100, 30, 'neutral')); }}
-            window.addEventListener("pointerdown",(e)=>{{ let p=planets.find(p=>Math.hypot(p.x-e.clientX,p.y-e.clientY)<p.r); if(p){{if(p.o==='player')selected=p; else if(selected){{let f=selected.e/2; selected.e-=f; p.e-=f; if(p.e<0){{p.o='player';p.e=Math.abs(p.e);}} selected=null;}} }}else selected=null; }});
-            function loop(){{ ctx.fillStyle="rgba(0,0,0,0.15)"; ctx.fillRect(0,0,c.width,c.height); planets.forEach(p=>{{if(p.o!=='neutral')p.e+=0.02; p.draw();}}); if(!planets.some(p=>p.o==='enemy')){{level++; fetch('/api/xp/'+level+'/void_command'); init();}} requestAnimationFrame(loop); }}
-            window.addEventListener("resize",init); init(); loop();
-        </script>
-    </body></html>
-    """
-
 # --- API SERVICES ---
 @app.route('/api/xp/<int:val>/<game_id>')
-def api_xp_handler(val, game_id):
-    if game_id in game_database:
-        target = "scores" if "scores" in game_database[game_id] else "levels"
-        game_database[game_id][target].append(val)
-        game_database["global_xp"] += (val * 15)
-        return jsonify({"status": "success", "xp": game_database["global_xp"]})
+def api_xp(val, game_id):
+    if game_id in studio_data:
+        target = "scores" if "scores" in studio_data[game_id] else "levels"
+        studio_data[game_id][target].append(val)
+        studio_data["total_xp"] += (val * 20)
+        return jsonify({"status": "success", "xp": studio_data["total_xp"]})
     return jsonify({"status": "error"}), 404
 
 if __name__ == "__main__":
