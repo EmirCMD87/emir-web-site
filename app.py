@@ -3,7 +3,7 @@ import os
 
 app = Flask(__name__)
 
-# --- MODERN VE İHTİŞAMLI ANA SAYFA ---
+# --- ANA SAYFA ŞABLONU (DEĞİŞTİRİLEMEZ İHTİŞAMLI TASARIM) ---
 ana_sayfa_html = """
 <!DOCTYPE html>
 <html lang="tr">
@@ -21,9 +21,11 @@ ana_sayfa_html = """
             color: #ffffff; 
             font-family: 'Inter', sans-serif; 
             overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
         }
 
-        /* Arka Plan Animasyonu */
         .bg-glow {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -31,20 +33,19 @@ ana_sayfa_html = """
             z-index: -1;
         }
 
-        /* Ana Konteynır */
         .hero {
-            height: 100vh;
+            flex: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             text-align: center;
-            padding: 20px;
+            padding: 80px 20px;
         }
 
         h1 {
             font-family: 'Syncopate', sans-serif;
-            font-size: clamp(2rem, 8vw, 5rem);
+            font-size: clamp(2.5rem, 8vw, 5rem);
             font-weight: 700;
             letter-spacing: 15px;
             text-transform: uppercase;
@@ -52,7 +53,6 @@ ana_sayfa_html = """
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             margin-bottom: 20px;
-            animation: fadeIn 2s ease-out;
         }
 
         .line {
@@ -60,83 +60,74 @@ ana_sayfa_html = """
             height: 2px;
             background: #ff4500;
             margin: 20px 0;
-            animation: scaleLine 1.5s forwards;
         }
 
         .subtitle {
-            font-size: 1.2rem;
-            color: #888;
-            letter-spacing: 3px;
-            margin-bottom: 50px;
-            max-width: 600px;
+            font-size: 1rem;
+            color: #666;
+            letter-spacing: 4px;
+            margin-bottom: 60px;
+            text-transform: uppercase;
         }
 
-        /* Kart Yapısı */
+        /* KÜTÜPHANE GRID SİSTEMİ */
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 25px;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
             width: 100%;
-            max-width: 1100px;
+            max-width: 1200px;
             padding: 20px;
         }
 
         .card {
-            background: rgba(255, 255, 255, 0.02);
+            background: rgba(255, 255, 255, 0.01);
             border: 1px solid rgba(255, 255, 255, 0.05);
-            padding: 40px;
-            border-radius: 2px; /* Keskin köşeler daha profesyonel durur */
+            padding: 50px 30px;
+            border-radius: 4px;
             cursor: pointer;
-            transition: all 0.5s cubic-bezier(0.2, 1, 0.3, 1);
+            transition: all 0.4s ease;
             position: relative;
+            text-decoration: none;
         }
 
         .card:hover {
-            background: rgba(255, 255, 255, 0.05);
-            border-color: rgba(255, 255, 255, 0.2);
-            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.03);
+            border-color: #ff4500;
+            transform: translateY(-10px);
         }
 
         .card h2 {
             font-family: 'Syncopate', sans-serif;
-            font-size: 1rem;
-            letter-spacing: 4px;
+            font-size: 1.1rem;
+            letter-spacing: 3px;
             margin-bottom: 15px;
             color: #fff;
-        }
-
-        .card p {
-            color: #555;
-            font-size: 0.9rem;
-            line-height: 1.6;
             transition: 0.3s;
         }
 
+        .card:hover h2 {
+            color: #ff4500;
+        }
+
+        .card p {
+            color: #444;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            letter-spacing: 1px;
+        }
+
         .card:hover p {
-            color: #aaa;
+            color: #888;
         }
 
-        /* Animasyonlar */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes scaleLine {
-            from { width: 0; }
-            to { width: 100px; }
-        }
-
-        /* Alt Bilgi */
         footer {
-            position: absolute;
-            bottom: 30px;
+            padding: 40px;
             font-size: 0.7rem;
-            letter-spacing: 2px;
-            color: #333;
-            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: #222;
+            text-align: center;
         }
-
     </style>
 </head>
 <body>
@@ -145,25 +136,27 @@ ana_sayfa_html = """
     <section class="hero">
         <h1>CANO STUDIO</h1>
         <div class="line"></div>
-        <p class="subtitle">GELECEĞİN DİJİTAL DÜNYASINI İNŞA EDİYORUZ</p>
+        <p class="subtitle">Kütüphane Portalı</p>
 
         <div class="grid">
-            <div class="card">
-                <h2>PROJECTS</h2>
-                <p>Geliştirdiğimiz oyunlar ve interaktif deneyimler kütüphanesi.</p>
-            </div>
-            <div class="card">
-                <h2>LAB</h2>
-                <p>Yeni teknolojiler, deneysel kodlar ve Ar-Ge çalışmaları.</p>
-            </div>
-            <div class="card">
-                <h2>ABOUT</h2>
-                <p>Vizyonumuz ve ekibimiz hakkında merak edilenler.</p>
-            </div>
-        </div>
+            <a href="/neon-arcade" class="card">
+                <h2>NEON ARCADE</h2>
+                <p>Yüksek tempo, neon ışıklar ve bitmeyen bir aksiyon. Reflekslerini hazırla.</p>
+            </a>
 
-        <footer>© 2026 EST. BY CANO</footer>
+            <a href="/strateji" class="card">
+                <h2>STRATEJI</h2>
+                <p>Zeka ve planlama. Kendi dünyanı kur ve imparatorluğunu yönet.</p>
+            </a>
+
+            <a href="/horror" class="card">
+                <h2>HORROR</h2>
+                <p>Karanlığın derinliklerine yolculuk. Cesaretin varsa içeri gir.</p>
+            </a>
+        </div>
     </section>
+
+    <footer>© 2026 DESIGNED BY CANO STUDIO</footer>
 </body>
 </html>
 """
@@ -171,6 +164,18 @@ ana_sayfa_html = """
 @app.route('/')
 def home():
     return ana_sayfa_html
+
+@app.route('/neon-arcade')
+def arcade():
+    return "<body style='background:#000;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;'><h1>Neon Arcade Kütüphanesi Çok Yakında</h1></body>"
+
+@app.route('/strateji')
+def strateji():
+    return "<body style='background:#000;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;'><h1>Strateji Kütüphanesi Çok Yakında</h1></body>"
+
+@app.route('/horror')
+def horror():
+    return "<body style='background:#000;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;'><h1>Horror Kütüphanesi Çok Yakında</h1></body>"
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
