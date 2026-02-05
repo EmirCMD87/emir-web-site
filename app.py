@@ -1,4 +1,4 @@
-from Flask import Flask
+from flask import Flask
 import os
 
 app = Flask(__name__)
@@ -137,7 +137,7 @@ arcade_html = """
                 ctx.fillStyle = "rgba(0,0,0,0.85)"; ctx.fillRect(0,0,400,500);
                 ctx.fillStyle = "#ff4500"; ctx.font = "bold 30px sans-serif"; ctx.textAlign = "center";
                 ctx.fillText("GAME OVER", 200, 240);
-                ctx.fillStyle = "#fff"; ctx.font = "14px sans-serif"; ctx.fillText("DEVAM ETMEK İÇİN DOKUN", 200, 280);
+                ctx.fillStyle = "#fff"; ctx.font = "14px sans-serif"; ctx.fillText("TEKRAR DENEMEK İÇİN DOKUN", 200, 280);
                 return;
             }
             ctx.fillStyle = "#050505"; ctx.fillRect(0,0,400,500);
@@ -147,10 +147,12 @@ arcade_html = """
             if(frames%90===0) pipes.push({x:400, h:Math.random()*250+50, gap:150});
             for(let i=pipes.length-1; i>=0; i--) {
                 pipes[i].x -= 3.5;
-                // BORULAR ARTIK PARLIYOR (MOBİLDE GÖRÜNSÜN DİYE)
-                ctx.strokeStyle = "#ff4500"; ctx.lineWidth = 3; ctx.strokeRect(pipes[i].x, 0, 50, pipes[i].h);
+                // PARLAYAN BORULAR (MOBİL FIX)
+                ctx.strokeStyle = "#ff4500"; ctx.lineWidth = 4;
+                ctx.strokeRect(pipes[i].x, 0, 50, pipes[i].h);
                 ctx.strokeRect(pipes[i].x, pipes[i].h+150, 50, 500);
-                ctx.fillStyle = "rgba(255,69,0,0.1)"; ctx.fillRect(pipes[i].x, 0, 50, pipes[i].h);
+                ctx.fillStyle = "rgba(255,69,0,0.15)";
+                ctx.fillRect(pipes[i].x, 0, 50, pipes[i].h);
                 ctx.fillRect(pipes[i].x, pipes[i].h+150, 50, 500);
                 
                 if(60+25 > pipes[i].x && 60 < pipes[i].x+50 && (bird.y < pipes[i].h || bird.y+25 > pipes[i].h+150)) isGameOver = true;
@@ -162,7 +164,11 @@ arcade_html = """
             if(bird.y > 500 || bird.y < 0) isGameOver = true;
             frames++; requestAnimationFrame(draw);
         }
-        const act = (e) => { if(isGameOver) { bird.y=250; bird.v=0; pipes=[]; score=0; document.getElementById("sc").innerText="0"; isGameOver=false; frames=0; draw(); } else { bird.v = bird.jump; } e.preventDefault(); };
+        const act = (e) => { 
+            if(isGameOver) { bird.y=250; bird.v=0; pipes=[]; score=0; document.getElementById("sc").innerText="0"; isGameOver=false; frames=0; draw(); } 
+            else { bird.v = bird.jump; } 
+            if(e.type === "touchstart") e.preventDefault();
+        };
         canvas.addEventListener("touchstart", act); canvas.addEventListener("mousedown", act);
         draw();
     </script>
@@ -170,7 +176,7 @@ arcade_html = """
 </html>
 """
 
-# --- 4. DEV HORROR (HİKAYE GENİŞLETİLDİ) ---
+# --- 4. DEV HORROR ---
 horror_html = """
 <!DOCTYPE html>
 <html lang="tr">
@@ -183,7 +189,7 @@ horror_html = """
         .choices { display: flex; flex-direction: column; gap: 10px; }
         button { background: #1a0000; border: 1px solid #500; color: #888; padding: 15px; cursor: pointer; }
         button:hover { background: #400; color: #fff; }
-        .exit { position: absolute; top: -50px; left: 0; color: #444; text-decoration: none; font-size: 0.8rem; }
+        .exit { position: absolute; top: -50px; left: 0; color: #444; text-decoration: none; font-size: 0.8rem; border: 1px solid #200; padding: 5px; }
     </style>
 </head>
 <body>
