@@ -34,8 +34,8 @@ ana_sayfa_html = """
     <section class="hero">
         <h1>CANO STUDIO</h1>
         <div class="grid">
-            <a href="/neon-arcade" class="card"><h2>NEON ARCADE</h2><p>Hız & Görsel Şölen</p></a>
-            <a href="/strateji" class="card"><h2>STRATEJI</h2><p>Galaktik Fetih</p></a>
+            <a href="/neon-arcade" class="card"><h2>NEON ARCADE</h2><p>Gece Manzaralı & Hız</p></a>
+            <a href="/strateji" class="card"><h2>STRATEJI</h2><p>Gezegen Fethetme</p></a>
             <a href="/horror" class="card"><h2>HORROR</h2><p>Kabusun Başlangıcı</p></a>
             <a href="/store" class="card store-card"><h2>MAĞAZA</h2><p style="color:#00d4ff">Market & Skinler</p></a>
         </div>
@@ -46,7 +46,7 @@ ana_sayfa_html = """
 </html>
 """
 
-# --- 2. GELİŞMİŞ MAĞAZA ---
+# --- 2. MAĞAZA ---
 store_html = """
 <!DOCTYPE html>
 <html lang="tr">
@@ -60,8 +60,7 @@ store_html = """
         .store-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; max-width: 1000px; margin: 0 auto; }
         .item { background: #0a0a0a; border: 1px solid #222; padding: 20px; border-radius: 8px; }
         .item.owned { border-color: #00ff00; opacity: 0.7; }
-        .price { color: #ff4500; font-family: 'Syncopate'; font-size: 0.8rem; margin: 10px 0; }
-        button { background: #ff4500; color: #fff; border: none; padding: 10px; width: 100%; cursor: pointer; font-weight: bold; }
+        button { background: #ff4500; color: #fff; border: none; padding: 10px; width: 100%; cursor: pointer; font-weight: bold; margin-top:10px; }
         button:disabled { background: #222; }
     </style>
 </head>
@@ -77,15 +76,14 @@ store_html = """
             {id: 'item1', name: 'ALTIN KARE', p: 500, d: 'Arcade skin.'},
             {id: 'item2', name: 'NEON MAVİ', p: 1000, d: 'Strateji skin.'},
             {id: 'item3', name: 'HIZ BOTU', p: 2000, d: 'Arcade çarpanı x2.'},
-            {id: 'item4', name: 'HAYALET MOD', p: 5000, d: 'Horror gizli son açar.'},
-            {id: 'item5', name: 'ELMAS KARE', p: 10000, d: 'En prestijli skin.'}
+            {id: 'item4', name: 'HAYALET MOD', p: 5000, d: 'Horror gizli son açar.'}
         ];
         function render() {
             document.getElementById('currentXP').innerText = xp;
             document.getElementById('grid').innerHTML = items.map(i => `
                 <div class="item ${owned.includes(i.id)?'owned':''}">
                     <h3>${i.name}</h3><p style="font-size:0.7rem; color:#666">${i.d}</p>
-                    <div class="price">${i.p} XP</div>
+                    <div style="color:#ff4500">${i.p} XP</div>
                     <button onclick="buy('${i.id}', ${i.p})" ${owned.includes(i.id)?'disabled':''}>
                         ${owned.includes(i.id)?'ALINDI':'SATIN AL'}
                     </button>
@@ -106,7 +104,7 @@ store_html = """
 </html>
 """
 
-# --- 3. NEON ARCADE (MOBİL FIX) ---
+# --- 3. NEON ARCADE (YILDIZLI GECE GÖKYÜZÜ) ---
 arcade_html = """
 <!DOCTYPE html>
 <html lang="tr">
@@ -115,126 +113,71 @@ arcade_html = """
     <style>
         * { touch-action: manipulation; }
         body { background: #000; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
-        canvas { border: 2px solid #333; background: #050505; max-width: 95vw; box-shadow: 0 0 20px rgba(255,69,0,0.1); }
+        canvas { border: 2px solid #333; background: #050505; max-width: 95vw; }
     </style>
 </head>
 <body>
-    <div style="position:fixed; top:20px; color:#ff4500; font-size:2rem; font-family:sans-serif;" id="sc">0</div>
+    <div style="position:fixed; top:20px; color:#ff4500; font-size:2rem; font-family:sans-serif; z-index:10;" id="sc">0</div>
     <canvas id="gc" width="400" height="500"></canvas>
     <a href="/" style="position:fixed; bottom:20px; color:#444; text-decoration:none;">← ÇIKIŞ</a>
     <script>
         const canvas = document.getElementById("gc"); const ctx = canvas.getContext("2d");
         let bird = { y: 250, v: 0, g: 0.5, jump: -8 };
-        let pipes = []; let frames = 0; let score = 0; let isGameOver = false;
+        let pipes = []; let frames = 0; let score = 0; let isGameOver = false; let gameStarted = false;
+        
+        const stars = Array.from({length: 60}, () => ({ x: Math.random()*400, y: Math.random()*500, s: Math.random()*1.5 }));
+
         function addXP(amt) { 
             let items = JSON.parse(localStorage.getItem('cano_items')) || [];
             let mult = items.includes('item3') ? 2 : 1;
             let xp = parseInt(localStorage.getItem('cano_xp')) || 0; 
             localStorage.setItem('cano_xp', xp + (amt * mult)); 
         }
+
+        function drawBackground() {
+            let grad = ctx.createLinearGradient(0, 0, 0, 500);
+            grad.addColorStop(0, "#000018"); grad.addColorStop(1, "#050505");
+            ctx.fillStyle = grad; ctx.fillRect(0,0,400,500);
+            ctx.fillStyle = "white";
+            stars.forEach(s => { ctx.beginPath(); ctx.arc(s.x, s.y, s.s, 0, Math.PI*2); ctx.fill(); });
+        }
+
         function draw() {
-            if(isGameOver) {
-                ctx.fillStyle = "rgba(0,0,0,0.85)"; ctx.fillRect(0,0,400,500);
-                ctx.fillStyle = "#ff4500"; ctx.font = "bold 30px sans-serif"; ctx.textAlign = "center";
-                ctx.fillText("GAME OVER", 200, 240);
-                ctx.fillStyle = "#fff"; ctx.font = "14px sans-serif"; ctx.fillText("TEKRAR DENEMEK İÇİN DOKUN", 200, 280);
+            drawBackground();
+            let items = JSON.parse(localStorage.getItem('cano_items')) || [];
+            ctx.fillStyle = items.includes('item1') ? "#FFD700" : "#fff";
+
+            if(!gameStarted || isGameOver) {
+                ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(0,0,400,500);
+                ctx.fillStyle = "#ff4500"; ctx.textAlign = "center";
+                ctx.fillText(isGameOver ? "GAME OVER" : "DOKUN VE BAŞLA", 200, 250);
+                if(!isGameOver) requestAnimationFrame(draw);
                 return;
             }
-            ctx.fillStyle = "#050505"; ctx.fillRect(0,0,400,500);
-            let items = JSON.parse(localStorage.getItem('cano_items')) || [];
-            ctx.fillStyle = items.includes('item5') ? "#00ffff" : (items.includes('item1') ? "#FFD700" : "#fff");
+
             bird.v += bird.g; bird.y += bird.v; ctx.fillRect(60, bird.y, 25, 25);
-            if(frames%90===0) pipes.push({x:400, h:Math.random()*250+50, gap:150});
+            if(frames%90===0) pipes.push({x:400, h:Math.random()*250+50});
             for(let i=pipes.length-1; i>=0; i--) {
                 pipes[i].x -= 3.5;
-                // PARLAYAN BORULAR (MOBİL FIX)
-                ctx.strokeStyle = "#ff4500"; ctx.lineWidth = 4;
-                ctx.strokeRect(pipes[i].x, 0, 50, pipes[i].h);
+                ctx.strokeStyle = "#ff4500"; ctx.strokeRect(pipes[i].x, 0, 50, pipes[i].h);
                 ctx.strokeRect(pipes[i].x, pipes[i].h+150, 50, 500);
-                ctx.fillStyle = "rgba(255,69,0,0.15)";
-                ctx.fillRect(pipes[i].x, 0, 50, pipes[i].h);
-                ctx.fillRect(pipes[i].x, pipes[i].h+150, 50, 500);
-                
                 if(60+25 > pipes[i].x && 60 < pipes[i].x+50 && (bird.y < pipes[i].h || bird.y+25 > pipes[i].h+150)) isGameOver = true;
-                if(pipes[i].x === 57.5 || (pipes[i].x < 60 && pipes[i].x > 56)) { 
-                   if(!pipes[i].passed) { score++; pipes[i].passed=true; document.getElementById("sc").innerText = score; addXP(10); }
-                }
+                if(pipes[i].x < 60 && !pipes[i].passed) { score++; pipes[i].passed=true; document.getElementById("sc").innerText = score; addXP(10); }
                 if(pipes[i].x < -50) pipes.splice(i,1);
             }
             if(bird.y > 500 || bird.y < 0) isGameOver = true;
             frames++; requestAnimationFrame(draw);
         }
-        const act = (e) => { 
-            if(isGameOver) { bird.y=250; bird.v=0; pipes=[]; score=0; document.getElementById("sc").innerText="0"; isGameOver=false; frames=0; draw(); } 
-            else { bird.v = bird.jump; } 
-            if(e.type === "touchstart") e.preventDefault();
-        };
-        canvas.addEventListener("touchstart", act); canvas.addEventListener("mousedown", act);
+
+        const act = () => { if(isGameOver) location.reload(); if(!gameStarted) gameStarted=true; bird.v = bird.jump; };
+        canvas.addEventListener("mousedown", act); canvas.addEventListener("touchstart", (e)=>{e.preventDefault(); act();});
         draw();
     </script>
 </body>
 </html>
 """
 
-# --- 4. DEV HORROR ---
-horror_html = """
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <style>
-        body { background: #000; color: #800; font-family: serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; padding: 20px; text-align:center; }
-        .game-box { max-width: 500px; border: 1px solid #300; padding: 30px; background: #050000; position: relative; }
-        .text { color: #aaa; margin: 25px 0; font-style: italic; min-height: 80px; font-size: 1.1rem; }
-        .choices { display: flex; flex-direction: column; gap: 10px; }
-        button { background: #1a0000; border: 1px solid #500; color: #888; padding: 15px; cursor: pointer; }
-        button:hover { background: #400; color: #fff; }
-        .exit { position: absolute; top: -50px; left: 0; color: #444; text-decoration: none; font-size: 0.8rem; border: 1px solid #200; padding: 5px; }
-    </style>
-</head>
-<body>
-    <div class="game-box">
-        <a href="/" class="exit">← PORTALA KAÇ</a>
-        <h2 id="t">KARANLIK YOL</h2>
-        <p class="text" id="s">Yol ikiye ayrılıyor. Bir tarafta terk edilmiş bir akıl hastanesi, diğer tarafta ise sisli bir mezarlık var.</p>
-        <div class="choices" id="c">
-            <button onclick="handle(1, 0)">Akıl Hastanesine Gir</button>
-            <button onclick="handle(2, 0)">Mezarlığa Sap</button>
-        </div>
-    </div>
-    <script>
-        function addXP(amt) { let xp = parseInt(localStorage.getItem('cano_xp')) || 0; localStorage.setItem('cano_xp', xp + amt); }
-        const data = {
-            1: { t: "HASTANE", s: "Koridorda tekerlekli bir sandalye kendiliğinden hareket ediyor.", c: [{t:"Takip Et", n:3}, {t:"Kaç", n:4}] },
-            2: { t: "MEZARLIK", s: "Toprak altından bir el bileğini kavradı!", c: [{t:"Savaş", n:5}, {t:"Teslim Ol", n:6}] },
-            3: { t: "AMELİYATHANE", s: "Doktor seni bekliyordu... Ameliyat başlıyor.", c: [{t:"ÖLÜM (+50 XP)", n:"exit", xp:50}] },
-            4: { t: "KİLER", s: "Burada gizli bir tünel buldun. Kasabaya çıkıyor!", c: [{t:"KURTULUŞ (+200 XP)", n:"exit", xp:200}] },
-            5: { t: "KAHRAMAN", s: "Zombiyi alt ettin ve mezarlıktan bir anahtar çaldın.", c: [{t:"Mahzene Gir", n:7}] },
-            6: { t: "SON", s: "Toprağın altına çekildin. Artık buraya aitsin.", c: [{t:"ÖLÜM (+30 XP)", n:"exit", xp:30}] },
-            7: { t: "GİZLİ ODA", s: "Burada 'Hayalet Modu' sahiplerine özel bir portal var.", c: [{t:"Normal Çıkış (+100 XP)", n:"exit", xp:100}, {t:"Hayalet Portal (+500 XP)", n:"ghost", xp:500}] }
-        };
-        function handle(n, xp) {
-            if(xp > 0) addXP(xp);
-            if(n === "exit") { window.location.href = "/"; return; }
-            if(n === "ghost") {
-                let items = JSON.parse(localStorage.getItem('cano_items')) || [];
-                if(items.includes('item4')) { addXP(500); alert("HAYALET PORTALDAN GEÇTİN!"); window.location.href = "/"; }
-                else { alert("Bu son için Mağazadan HAYALET MOD almalısın!"); }
-                return;
-            }
-            const s = data[n];
-            document.getElementById("t").innerText = s.t;
-            document.getElementById("s").innerText = s.s;
-            let h = "";
-            s.c.forEach(x => h += `<button onclick="handle('${x.n}', ${x.xp||0})">${x.t}</button>`);
-            document.getElementById("c").innerHTML = h;
-        }
-    </script>
-</body>
-</html>
-"""
-
-# --- 5. STRATEJI ---
+# --- 4. STRATEJI (GRADYANLI GEZEGENLER) ---
 strateji_html = """
 <!DOCTYPE html>
 <html lang="tr">
@@ -243,58 +186,97 @@ strateji_html = """
     <style>
         * { touch-action: manipulation; }
         body { background: #050505; color: #fff; margin: 0; overflow: hidden; font-family: sans-serif; }
-        .back { position: fixed; bottom: 20px; left: 20px; color: #444; text-decoration: none; font-size: 0.7rem; }
-        .lvl { position: fixed; top: 15px; width: 100%; text-align: center; color: #ff4500; font-weight: bold; }
     </style>
 </head>
 <body>
-    <div class="lvl" id="ld">LEVEL 1</div>
+    <div style="position:fixed; top:15px; width:100%; text-align:center; color:#ff4500; font-weight:bold;">STRATEJİ</div>
     <canvas id="sc"></canvas>
-    <a href="/" class="back">← PORTALA DÖN</a>
+    <a href="/" style="position:fixed; bottom:20px; left:20px; color:#444; text-decoration:none;">← GERİ</a>
     <script>
         const canvas = document.getElementById("sc"); const ctx = canvas.getContext("2d");
         canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-        let level = 1; let planets = []; let fleets = []; let selected = null;
-        function addXP(amt) { let xp = parseInt(localStorage.getItem('cano_xp')) || 0; localStorage.setItem('cano_xp', xp + amt); }
+        let planets = []; let fleets = []; let selected = null;
+
         class Planet {
             constructor(x,y,s,o,c) { this.x=x; this.y=y; this.s=s; this.owner=o; this.count=c; this.t=0; }
             draw() {
+                // Atmosfer
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.s + 6, 0, Math.PI*2);
+                ctx.fillStyle = this.owner===1 ? "rgba(0,212,255,0.08)" : (this.owner===2 ? "rgba(255,69,0,0.08)" : "rgba(255,255,255,0.03)");
+                ctx.fill();
+
+                // Gövde
+                let g = ctx.createRadialGradient(this.x-10, this.y-10, 2, this.x, this.y, this.s);
+                if(this.owner===1) { g.addColorStop(0,"#55eaff"); g.addColorStop(1,"#0055aa"); }
+                else if(this.owner===2) { g.addColorStop(0,"#ffaa88"); g.addColorStop(1,"#882200"); }
+                else { g.addColorStop(0,"#666"); g.addColorStop(1,"#222"); }
+                
                 ctx.beginPath(); ctx.arc(this.x,this.y,this.s,0,Math.PI*2);
-                let items = JSON.parse(localStorage.getItem('cano_items')) || [];
-                ctx.fillStyle = this.owner===1 ? (items.includes('item2') ? "#00ffff" : "#00d4ff") : (this.owner===2 ? "#ff4500" : "#222");
-                ctx.fill(); if(selected === this) { ctx.strokeStyle="#fff"; ctx.lineWidth=2; ctx.stroke(); }
+                ctx.fillStyle=g; ctx.fill();
+                if(selected===this) { ctx.strokeStyle="#fff"; ctx.lineWidth=3; ctx.stroke(); }
                 ctx.fillStyle="#fff"; ctx.textAlign="center"; ctx.fillText(Math.floor(this.count), this.x, this.y+5);
             }
-            update() { if(this.owner!==0) { this.t++; if(this.t>60) {this.count+=1; this.t=0;} } }
+            update() { if(this.owner!==0) { this.t++; if(this.t>60) {this.count++; this.t=0;} } }
         }
+
         function init() {
-            planets = []; fleets = []; document.getElementById("ld").innerText = "LEVEL " + level;
-            planets.push(new Planet(80, canvas.height/2, 35, 1, 20));
-            let ec = level > 5 ? 2 : 1;
-            for(let i=0; i<ec; i++) planets.push(new Planet(canvas.width-80, (canvas.height/(ec+1))*(i+1), 35, 2, 15+level*5));
-            for(let i=0; i<4; i++) planets.push(new Planet(Math.random()*(canvas.width-160)+80, Math.random()*(canvas.height-160)+80, 25, 0, 10));
+            planets.push(new Planet(100, canvas.height/2, 40, 1, 20));
+            planets.push(new Planet(canvas.width-100, canvas.height/2, 40, 2, 20));
+            for(let i=0; i<4; i++) planets.push(new Planet(Math.random()*(canvas.width-200)+100, Math.random()*(canvas.height-200)+100, 25, 0, 10));
         }
-        function handle(x,y) {
-            let p = planets.find(p => Math.sqrt((p.x-x)**2+(p.y-y)**2) < p.s);
-            if(p) { if(p.owner===1) selected=p; else if(selected) { fleets.push({x:selected.x, y:selected.y, target:p, owner:1, amount:Math.floor(selected.count/2)}); selected.count/=2; selected=null; } } else selected=null;
-        }
-        canvas.addEventListener("touchstart", (e) => { handle(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); });
-        canvas.addEventListener("mousedown", (e) => handle(e.clientX, e.clientY));
+
+        canvas.addEventListener("mousedown", (e) => {
+            let p = planets.find(p => Math.sqrt((p.x-e.clientX)**2+(p.y-e.clientY)**2) < p.s);
+            if(p) { if(p.owner===1) selected=p; else if(selected) { fleets.push({x:selected.x, y:selected.y, target:p, owner:1, amount:Math.floor(selected.count/2)}); selected.count/=2; selected=null; } }
+        });
+
         function loop() {
             ctx.fillStyle="#050505"; ctx.fillRect(0,0,canvas.width,canvas.height);
             fleets.forEach((f,i) => {
                 let dx=f.target.x-f.x, dy=f.target.y-f.y, dist=Math.sqrt(dx*dx+dy*dy);
                 if(dist<5) {
                     if(f.target.owner===f.owner) f.target.count+=f.amount;
-                    else { f.target.count-=f.amount; if(f.target.count<0) {f.target.owner=f.owner; f.target.count=Math.abs(f.target.count); addXP(50);} }
+                    else { f.target.count-=f.amount; if(f.target.count<0) {f.target.owner=f.owner; f.target.count=Math.abs(f.target.count);} }
                     fleets.splice(i,1);
                 } else { f.x+=dx/dist*4; f.y+=dy/dist*4; ctx.fillStyle="#00d4ff"; ctx.fillRect(f.x,f.y,3,3); }
             });
             planets.forEach(p => { p.update(); p.draw(); });
-            if(!planets.some(p => p.owner === 2)) { level++; addXP(200); init(); }
             requestAnimationFrame(loop);
         }
         init(); loop();
+    </script>
+</body>
+</html>
+"""
+
+# --- 5. HORROR (DEĞİŞMEDİ) ---
+horror_html = """
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        body { background: #000; color: #800; font-family: serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align:center; }
+        .game-box { max-width: 400px; border: 1px solid #300; padding: 30px; background: #050000; }
+        button { background: #1a0000; border: 1px solid #500; color: #888; padding: 15px; cursor: pointer; width: 100%; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="game-box">
+        <h2 id="t">KARANLIK YOL</h2>
+        <p id="s">Yol ikiye ayrılıyor...</p>
+        <div id="c">
+            <button onclick="handle(1)">Hastaneye Gir</button>
+            <button onclick="handle(2)">Mezarlığa Sap</button>
+        </div>
+        <a href="/" style="color:#444; display:block; margin-top:20px;">← KAÇ</a>
+    </div>
+    <script>
+        function handle(n) {
+            if(n===1) { document.getElementById("s").innerText="İçerisi çok soğuk..."; }
+            if(n===2) { document.getElementById("s").innerText="Toprak canlanıyor!"; }
+            document.getElementById("c").innerHTML = '<button onclick="location.reload()">TEKRAR DENE</button>';
+        }
     </script>
 </body>
 </html>
