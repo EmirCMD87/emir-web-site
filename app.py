@@ -36,7 +36,7 @@ ana_sayfa_html = """
         <div class="grid">
             <a href="/neon-arcade" class="card"><h2>NEON ARCADE</h2><p>Gece Manzaralı & Hız</p></a>
             <a href="/strateji" class="card"><h2>STRATEJI</h2><p>Gezegen Fethetme</p></a>
-            <a href="/horror" class="card"><h2>HORROR</h2><p>Kabusun Başlangıcı</p></a>
+            <a href="/horror" class="card"><h2>HORROR</h2><p>Seçim Bazlı Kabus</p></a>
             <a href="/store" class="card store-card"><h2>MAĞAZA</h2><p style="color:#00d4ff">Market & Skinler</p></a>
         </div>
         <footer>© 2026 PREMIUM GAMING</footer>
@@ -104,7 +104,7 @@ store_html = """
 </html>
 """
 
-# --- 3. NEON ARCADE (YILDIZLI GECE GÖKYÜZÜ) ---
+# --- 3. NEON ARCADE ---
 arcade_html = """
 <!DOCTYPE html>
 <html lang="tr">
@@ -149,8 +149,8 @@ arcade_html = """
 
             if(!gameStarted || isGameOver) {
                 ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(0,0,400,500);
-                ctx.fillStyle = "#ff4500"; ctx.textAlign = "center";
-                ctx.fillText(isGameOver ? "GAME OVER" : "DOKUN VE BAŞLA", 200, 250);
+                ctx.fillStyle = "#ff4500"; ctx.font = "20px sans-serif"; ctx.textAlign = "center";
+                ctx.fillText(isGameOver ? "GAME OVER (DOKUN)" : "DOKUN VE BAŞLA", 200, 250);
                 if(!isGameOver) requestAnimationFrame(draw);
                 return;
             }
@@ -169,7 +169,7 @@ arcade_html = """
             frames++; requestAnimationFrame(draw);
         }
 
-        const act = () => { if(isGameOver) location.reload(); if(!gameStarted) gameStarted=true; bird.v = bird.jump; };
+        const act = () => { if(isGameOver) { location.reload(); } else if(!gameStarted) { gameStarted=true; } bird.v = bird.jump; };
         canvas.addEventListener("mousedown", act); canvas.addEventListener("touchstart", (e)=>{e.preventDefault(); act();});
         draw();
     </script>
@@ -177,7 +177,7 @@ arcade_html = """
 </html>
 """
 
-# --- 4. STRATEJI (GRADYANLI GEZEGENLER) ---
+# --- 4. STRATEJI (LEVEL SİSTEMLİ) ---
 strateji_html = """
 <!DOCTYPE html>
 <html lang="tr">
@@ -189,28 +189,24 @@ strateji_html = """
     </style>
 </head>
 <body>
-    <div style="position:fixed; top:15px; width:100%; text-align:center; color:#ff4500; font-weight:bold;">STRATEJİ</div>
+    <div style="position:fixed; top:15px; width:100%; text-align:center; color:#ff4500; font-weight:bold; z-index:10;" id="ld">LEVEL 1</div>
     <canvas id="sc"></canvas>
-    <a href="/" style="position:fixed; bottom:20px; left:20px; color:#444; text-decoration:none;">← GERİ</a>
+    <a href="/" style="position:fixed; bottom:20px; left:20px; color:#444; text-decoration:none; z-index:10;">← GERİ</a>
     <script>
         const canvas = document.getElementById("sc"); const ctx = canvas.getContext("2d");
         canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-        let planets = []; let fleets = []; let selected = null;
+        let planets = []; let fleets = []; let selected = null; let level = 1;
 
         class Planet {
             constructor(x,y,s,o,c) { this.x=x; this.y=y; this.s=s; this.owner=o; this.count=c; this.t=0; }
             draw() {
-                // Atmosfer
                 ctx.beginPath(); ctx.arc(this.x, this.y, this.s + 6, 0, Math.PI*2);
-                ctx.fillStyle = this.owner===1 ? "rgba(0,212,255,0.08)" : (this.owner===2 ? "rgba(255,69,0,0.08)" : "rgba(255,255,255,0.03)");
+                ctx.fillStyle = this.owner===1 ? "rgba(0,212,255,0.1)" : (this.owner===2 ? "rgba(255,69,0,0.1)" : "rgba(255,255,255,0.03)");
                 ctx.fill();
-
-                // Gövde
                 let g = ctx.createRadialGradient(this.x-10, this.y-10, 2, this.x, this.y, this.s);
                 if(this.owner===1) { g.addColorStop(0,"#55eaff"); g.addColorStop(1,"#0055aa"); }
                 else if(this.owner===2) { g.addColorStop(0,"#ffaa88"); g.addColorStop(1,"#882200"); }
                 else { g.addColorStop(0,"#666"); g.addColorStop(1,"#222"); }
-                
                 ctx.beginPath(); ctx.arc(this.x,this.y,this.s,0,Math.PI*2);
                 ctx.fillStyle=g; ctx.fill();
                 if(selected===this) { ctx.strokeStyle="#fff"; ctx.lineWidth=3; ctx.stroke(); }
@@ -219,10 +215,15 @@ strateji_html = """
             update() { if(this.owner!==0) { this.t++; if(this.t>60) {this.count++; this.t=0;} } }
         }
 
+        function addXP(amt) { let xp = parseInt(localStorage.getItem('cano_xp')) || 0; localStorage.setItem('cano_xp', xp + amt); }
+
         function init() {
-            planets.push(new Planet(100, canvas.height/2, 40, 1, 20));
-            planets.push(new Planet(canvas.width-100, canvas.height/2, 40, 2, 20));
-            for(let i=0; i<4; i++) planets.push(new Planet(Math.random()*(canvas.width-200)+100, Math.random()*(canvas.height-200)+100, 25, 0, 10));
+            planets = []; fleets = [];
+            document.getElementById("ld").innerText = "LEVEL " + level;
+            planets.push(new Planet(80, canvas.height/2, 40, 1, 20)); // Oyuncu
+            let ec = level > 3 ? 2 : 1; 
+            for(let i=0; i<ec; i++) planets.push(new Planet(canvas.width-80, (canvas.height/(ec+1))*(i+1), 40, 2, 15+(level*5)));
+            for(let i=0; i<3; i++) planets.push(new Planet(Math.random()*(canvas.width-200)+100, Math.random()*(canvas.height-200)+100, 25, 0, 10));
         }
 
         canvas.addEventListener("mousedown", (e) => {
@@ -236,11 +237,12 @@ strateji_html = """
                 let dx=f.target.x-f.x, dy=f.target.y-f.y, dist=Math.sqrt(dx*dx+dy*dy);
                 if(dist<5) {
                     if(f.target.owner===f.owner) f.target.count+=f.amount;
-                    else { f.target.count-=f.amount; if(f.target.count<0) {f.target.owner=f.owner; f.target.count=Math.abs(f.target.count);} }
+                    else { f.target.count-=f.amount; if(f.target.count<0) {f.target.owner=f.owner; f.target.count=Math.abs(f.target.count); addXP(20);} }
                     fleets.splice(i,1);
                 } else { f.x+=dx/dist*4; f.y+=dy/dist*4; ctx.fillStyle="#00d4ff"; ctx.fillRect(f.x,f.y,3,3); }
             });
             planets.forEach(p => { p.update(); p.draw(); });
+            if(!planets.some(p => p.owner === 2)) { level++; addXP(100); alert("SEVİYE TAMAMLANDI!"); init(); }
             requestAnimationFrame(loop);
         }
         init(); loop();
@@ -249,33 +251,47 @@ strateji_html = """
 </html>
 """
 
-# --- 5. HORROR (DEĞİŞMEDİ) ---
+# --- 5. HORROR (HİKAYELİ) ---
 horror_html = """
 <!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        body { background: #000; color: #800; font-family: serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align:center; }
+        body { background: #000; color: #800; font-family: serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; padding:20px; text-align:center; }
         .game-box { max-width: 400px; border: 1px solid #300; padding: 30px; background: #050000; }
+        .text { color: #aaa; margin: 20px 0; font-style: italic; min-height:60px; }
         button { background: #1a0000; border: 1px solid #500; color: #888; padding: 15px; cursor: pointer; width: 100%; margin-top: 10px; }
+        button:hover { background:#300; color:#fff; }
     </style>
 </head>
 <body>
     <div class="game-box">
         <h2 id="t">KARANLIK YOL</h2>
-        <p id="s">Yol ikiye ayrılıyor...</p>
+        <p class="text" id="s">Yol ikiye ayrılıyor. Bir tarafta terk edilmiş bir akıl hastanesi, diğer tarafta ise sisli bir mezarlık var.</p>
         <div id="c">
             <button onclick="handle(1)">Hastaneye Gir</button>
             <button onclick="handle(2)">Mezarlığa Sap</button>
         </div>
-        <a href="/" style="color:#444; display:block; margin-top:20px;">← KAÇ</a>
+        <a href="/" style="color:#444; display:block; margin-top:20px; text-decoration:none;">← PORTALA KAÇ</a>
     </div>
     <script>
-        function handle(n) {
-            if(n===1) { document.getElementById("s").innerText="İçerisi çok soğuk..."; }
-            if(n===2) { document.getElementById("s").innerText="Toprak canlanıyor!"; }
-            document.getElementById("c").innerHTML = '<button onclick="location.reload()">TEKRAR DENE</button>';
+        const data = {
+            1: { t: "HASTANE", s: "Koridorda boş bir tekerlekli sandalye sana doğru hızla geliyor!", c: [{t:"Sağa Kaç", n:3}, {t:"Üstünden Atla", n:3}] },
+            2: { t: "MEZARLIK", s: "Topraktan bir el çıktı ve bileğini yakaladı!", c: [{t:"Kurtulmaya Çalış", n:4}, {t:"Yardım Çığlığı At", n:4}] },
+            3: { t: "SON", s: "Karanlık seni yuttu. Buradan çıkış yok.", c: [{t:"ÖLÜM (+20 XP)", n:"exit", xp:20}] },
+            4: { t: "KURTULUŞ", s: "Bir şekilde dışarı fırlamayı başardın!", c: [{t:"KASABAYA DÖN (+100 XP)", n:"exit", xp:100}] }
+        };
+        function addXP(amt) { let xp = parseInt(localStorage.getItem('cano_xp')) || 0; localStorage.setItem('cano_xp', xp + amt); }
+        function handle(n, xp) {
+            if(xp) addXP(xp);
+            if(n === "exit") { window.location.href = "/"; return; }
+            const s = data[n];
+            document.getElementById("t").innerText = s.t;
+            document.getElementById("s").innerText = s.s;
+            let html = "";
+            s.c.forEach(x => html += `<button onclick="handle('${x.n}', ${x.xp||0})">${x.t}</button>`);
+            document.getElementById("c").innerHTML = html;
         }
     </script>
 </body>
