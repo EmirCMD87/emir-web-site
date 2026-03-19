@@ -121,28 +121,31 @@ window.onload = updateXPDisplay;
 
 # ============ PARÇACIK JS ============
 particles_js = """
-const canvas = document.getElementById('particles');
-const ctx = canvas.getContext('2d');
-canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
-const pts = Array.from({length: 60}, () => ({
-    x: Math.random()*canvas.width, y: Math.random()*canvas.height,
-    vx: (Math.random()-0.5)*0.5, vy: (Math.random()-0.5)*0.5,
-    r: Math.random()*2+0.5,
-    c: ['#ff4500','#00d4ff','#bf00ff'][Math.floor(Math.random()*3)]
-}));
-function drawPts() {
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    pts.forEach(p => {
-        p.x += p.vx; p.y += p.vy;
-        if(p.x<0||p.x>canvas.width) p.vx*=-1;
-        if(p.y<0||p.y>canvas.height) p.vy*=-1;
-        ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
-        ctx.fillStyle = p.c; ctx.fill();
-    });
-    requestAnimationFrame(drawPts);
-}
-drawPts();
+(function() {
+    const pc = document.getElementById('particles');
+    if(!pc) return;
+    const pcx = pc.getContext('2d');
+    pc.width = window.innerWidth; pc.height = window.innerHeight;
+    window.addEventListener('resize', () => { pc.width = window.innerWidth; pc.height = window.innerHeight; });
+    const pts = Array.from({length: 60}, () => ({
+        x: Math.random()*pc.width, y: Math.random()*pc.height,
+        vx: (Math.random()-0.5)*0.5, vy: (Math.random()-0.5)*0.5,
+        r: Math.random()*2+0.5,
+        c: ['#ff4500','#00d4ff','#bf00ff'][Math.floor(Math.random()*3)]
+    }));
+    function drawPts() {
+        pcx.clearRect(0,0,pc.width,pc.height);
+        pts.forEach(p => {
+            p.x += p.vx; p.y += p.vy;
+            if(p.x<0||p.x>pc.width) p.vx*=-1;
+            if(p.y<0||p.y>pc.height) p.vy*=-1;
+            pcx.beginPath(); pcx.arc(p.x,p.y,p.r,0,Math.PI*2);
+            pcx.fillStyle = p.c; pcx.fill();
+        });
+        requestAnimationFrame(drawPts);
+    }
+    drawPts();
+})();
 """
 
 # ============ 1. ANA SAYFA ============
@@ -560,10 +563,35 @@ arcade_html = f"""<!DOCTYPE html>
 
     <script>
         {base_js}
-        {particles_js}
 
-        const canvas = document.getElementById('gameCanvas');
-        const ctx2 = canvas.getContext('2d');
+        // Particles (ayrı scope — gameCanvas ile çakışmasın)
+        (function() {{
+            const pc = document.getElementById('particles');
+            const pcx = pc.getContext('2d');
+            pc.width = window.innerWidth; pc.height = window.innerHeight;
+            window.addEventListener('resize', () => {{ pc.width = window.innerWidth; pc.height = window.innerHeight; }});
+            const pts = Array.from({{length: 60}}, () => ({{
+                x: Math.random()*pc.width, y: Math.random()*pc.height,
+                vx: (Math.random()-0.5)*0.5, vy: (Math.random()-0.5)*0.5,
+                r: Math.random()*2+0.5,
+                c: ['#ff4500','#00d4ff','#bf00ff'][Math.floor(Math.random()*3)]
+            }}));
+            function drawPts() {{
+                pcx.clearRect(0,0,pc.width,pc.height);
+                pts.forEach(p => {{
+                    p.x += p.vx; p.y += p.vy;
+                    if(p.x<0||p.x>pc.width) p.vx*=-1;
+                    if(p.y<0||p.y>pc.height) p.vy*=-1;
+                    pcx.beginPath(); pcx.arc(p.x,p.y,p.r,0,Math.PI*2);
+                    pcx.fillStyle = p.c; pcx.fill();
+                }});
+                requestAnimationFrame(drawPts);
+            }}
+            drawPts();
+        }})();
+
+        const gameCanvas = document.getElementById('gameCanvas');
+        const ctx2 = gameCanvas.getContext('2d');
         let gameRunning = false, score = 0, lives = 3, wave = 1;
         let player = {{ x: 200, y: 320, w: 32, h: 32, speed: 5 }};
         let bullets = [], enemies = [], particles2 = [];
@@ -602,7 +630,7 @@ arcade_html = f"""<!DOCTYPE html>
 
             // Hareket
             if((keys['ArrowLeft']||keys['left']) && player.x > 16) player.x -= player.speed;
-            if((keys['ArrowRight']||keys['right']) && player.x < canvas.width-16) player.x += player.speed;
+            if((keys['ArrowRight']||keys['right']) && player.x < gameCanvas.width-16) player.x += player.speed;
 
             // Ateş
             let now = Date.now();
@@ -646,7 +674,7 @@ arcade_html = f"""<!DOCTYPE html>
 
             // Düşman ekrana ulaşırsa can azalt
             enemies = enemies.filter(e => {{
-                if(e.y > canvas.height + 10) {{
+                if(e.y > gameCanvas.height + 10) {{
                     lives--;
                     if(lives <= 0) {{ gameOver(); }}
                     return false;
@@ -666,13 +694,13 @@ arcade_html = f"""<!DOCTYPE html>
             document.getElementById('waveVal').innerText = wave;
 
             // Çiz
-            ctx2.clearRect(0, 0, canvas.width, canvas.height);
+            ctx2.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
 
             // Grid arka plan
             ctx2.strokeStyle = 'rgba(255,69,0,0.05)';
             ctx2.lineWidth = 1;
-            for(let i=0;i<canvas.width;i+=40) {{ ctx2.beginPath(); ctx2.moveTo(i,0); ctx2.lineTo(i,canvas.height); ctx2.stroke(); }}
-            for(let i=0;i<canvas.height;i+=40) {{ ctx2.beginPath(); ctx2.moveTo(0,i); ctx2.lineTo(canvas.width,i); ctx2.stroke(); }}
+            for(let i=0;i<gameCanvas.width;i+=40) {{ ctx2.beginPath(); ctx2.moveTo(i,0); ctx2.lineTo(i,gameCanvas.height); ctx2.stroke(); }}
+            for(let i=0;i<gameCanvas.height;i+=40) {{ ctx2.beginPath(); ctx2.moveTo(0,i); ctx2.lineTo(gameCanvas.width,i); ctx2.stroke(); }}
 
             // Oyuncu
             ctx2.save();
