@@ -3,692 +3,1185 @@ import os
 
 app = Flask(__name__)
 
-# ============ ORTAK CSS ============
+# ============ ORTAK CSS (Neon Teması) ============
 base_css = """
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&display=swap');
-:root { --neon-orange: #ff4500; --neon-blue: #00d4ff; --neon-purple: #bf00ff; --dark-bg: #050505; }
+:root { --neon-orange: #ff4500; --neon-blue: #00d4ff; --neon-purple: #bf00ff; --neon-green: #00ff88; --dark-bg: #050505; }
 * { margin: 0; padding: 0; box-sizing: border-box; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 body { background: var(--dark-bg); color: #fff; font-family: 'Rajdhani', sans-serif; overflow-x: hidden; min-height: 100vh; }
+
+/* Parçacık arka plan */
 #particles { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: -1; }
-.xp-container { position: fixed; top: 20px; right: 20px; background: rgba(255,69,0,0.15); border: 1px solid var(--neon-orange); padding: 12px 24px; border-radius: 50px; z-index: 1000; backdrop-filter: blur(10px); box-shadow: 0 0 20px rgba(255,69,0,0.3); font-family: 'Orbitron', sans-serif; }
-.xp-val { color: var(--neon-orange); font-weight: 900; font-size: 1.2rem; }
-.btn { background: linear-gradient(135deg, var(--neon-orange), #ff6b35); color: #fff; border: none; padding: 12px 24px; font-family: 'Orbitron', sans-serif; font-weight: 700; cursor: pointer; border-radius: 8px; transition: all 0.3s; text-transform: uppercase; letter-spacing: 1px; }
-.btn:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(255,69,0,0.4); }
-.btn:disabled { background: #333; cursor: not-allowed; transform: none; box-shadow: none; opacity: 0.6; }
-.back-btn { position: fixed; bottom: 30px; left: 30px; color: #444; text-decoration: none; font-family: 'Orbitron', sans-serif; transition: all 0.3s; z-index: 100; font-size: 0.9rem; }
-.back-btn:hover { color: var(--neon-orange); text-shadow: 0 0 10px rgba(255,69,0,0.5); }
+
+/* XP Göstergesi */
+.xp-container {
+    position: fixed; top: 20px; right: 20px;
+    background: rgba(255,69,0,0.15);
+    border: 1px solid var(--neon-orange);
+    padding: 10px 20px; border-radius: 50px;
+    z-index: 1000; backdrop-filter: blur(10px);
+    display: flex; align-items: center; gap: 8px;
+}
+.xp-val { color: var(--neon-orange); font-weight: 900; font-size: 1.1rem; font-family: 'Orbitron'; }
+.xp-label { color: #aaa; font-size: 0.8rem; }
+
+/* Seviye göstergesi */
+.level-badge {
+    position: fixed; top: 20px; left: 20px;
+    background: rgba(0,212,255,0.15);
+    border: 1px solid var(--neon-blue);
+    padding: 10px 20px; border-radius: 50px;
+    z-index: 1000; backdrop-filter: blur(10px);
+    font-family: 'Orbitron'; font-size: 0.85rem; color: var(--neon-blue);
+}
+
+/* Genel buton */
+.btn {
+    background: linear-gradient(135deg, var(--neon-orange), #ff6b35);
+    color: #fff; border: none; padding: 12px 28px;
+    font-family: 'Orbitron'; font-size: 0.85rem;
+    cursor: pointer; border-radius: 8px;
+    transition: all 0.3s; letter-spacing: 1px;
+}
+.btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(255,69,0,0.5); }
+.btn:active { transform: scale(0.97); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+.btn-blue {
+    background: linear-gradient(135deg, var(--neon-blue), #0099cc);
+}
+.btn-blue:hover { box-shadow: 0 8px 25px rgba(0,212,255,0.5); }
+
+.btn-purple {
+    background: linear-gradient(135deg, var(--neon-purple), #8800cc);
+}
+.btn-purple:hover { box-shadow: 0 8px 25px rgba(191,0,255,0.5); }
+
+/* Geri butonu */
+.back-btn {
+    position: fixed; bottom: 30px; left: 30px;
+    color: #666; text-decoration: none;
+    font-family: 'Orbitron'; font-size: 0.8rem;
+    z-index: 100; transition: color 0.3s;
+    padding: 10px 20px; border: 1px solid #333; border-radius: 50px;
+}
+.back-btn:hover { color: var(--neon-orange); border-color: var(--neon-orange); }
+
+/* XP kazanma animasyonu */
+@keyframes xpPop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.3); color: #fff; }
+    100% { transform: scale(1); }
+}
+.xp-anim { animation: xpPop 0.4s ease; }
+
+/* Bildirim toast */
+.toast {
+    position: fixed; bottom: 80px; right: 20px;
+    background: rgba(0,255,136,0.15);
+    border: 1px solid var(--neon-green);
+    color: var(--neon-green);
+    padding: 12px 20px; border-radius: 10px;
+    font-family: 'Orbitron'; font-size: 0.75rem;
+    z-index: 9999; opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+}
+.toast.show { opacity: 1; }
 """
 
-# ============ ANA SAYFA (GELİŞMİŞ) ============
-ana_sayfa_html = """
-<!DOCTYPE html>
+# ============ ORTAK JS ============
+base_js = """
+function getXP() { return parseInt(localStorage.getItem('cano_xp')) || 0; }
+function setXP(v) { localStorage.setItem('cano_xp', v); updateXPDisplay(); }
+function addXP(amount, label) {
+    let xp = getXP() + amount;
+    setXP(xp);
+    showToast("+" + amount + " XP — " + (label || ""));
+    let el = document.getElementById('xpVal');
+    if(el) { el.classList.remove('xp-anim'); void el.offsetWidth; el.classList.add('xp-anim'); }
+}
+function updateXPDisplay() {
+    let xp = getXP();
+    let el = document.getElementById('xpVal');
+    if(el) el.innerText = xp.toLocaleString();
+    let lvlEl = document.getElementById('levelBadge');
+    if(lvlEl) lvlEl.innerText = "SEV " + Math.floor(xp / 500 + 1);
+}
+function showToast(msg) {
+    let t = document.getElementById('toast');
+    if(!t) return;
+    t.innerText = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+}
+function getItems() { return JSON.parse(localStorage.getItem('cano_items')) || []; }
+window.onload = updateXPDisplay;
+"""
+
+# ============ PARÇACIK JS ============
+particles_js = """
+const canvas = document.getElementById('particles');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
+const pts = Array.from({length: 60}, () => ({
+    x: Math.random()*canvas.width, y: Math.random()*canvas.height,
+    vx: (Math.random()-0.5)*0.5, vy: (Math.random()-0.5)*0.5,
+    r: Math.random()*2+0.5,
+    c: ['#ff4500','#00d4ff','#bf00ff'][Math.floor(Math.random()*3)]
+}));
+function drawPts() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    pts.forEach(p => {
+        p.x += p.vx; p.y += p.vy;
+        if(p.x<0||p.x>canvas.width) p.vx*=-1;
+        if(p.y<0||p.y>canvas.height) p.vy*=-1;
+        ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+        ctx.fillStyle = p.c; ctx.fill();
+    });
+    requestAnimationFrame(drawPts);
+}
+drawPts();
+"""
+
+# ============ 1. ANA SAYFA ============
+ana_sayfa_html = f"""<!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CANO STUDIO | NEON PORTAL</title>
-    <style>""" + base_css + """
-        .hero { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 80px 20px; position: relative; }
-        h1 { font-family: 'Orbitron', sans-serif; font-size: clamp(2rem, 8vw, 5rem); letter-spacing: 15px; margin-bottom: 20px; color: #fff; text-shadow: 0 0 30px rgba(255,69,0,0.5); animation: glow 2s ease-in-out infinite alternate; }
-        @keyframes glow { from { text-shadow: 0 0 30px rgba(255,69,0,0.5); } to { text-shadow: 0 0 50px rgba(255,69,0,0.8), 0 0 60px rgba(255,69,0,0.6); } }
-        .subtitle { color: #666; font-size: 1.1rem; letter-spacing: 5px; margin-bottom: 60px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; width: 100%; max-width: 1200px; padding: 0 20px; }
-        .card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 40px 30px; border-radius: 12px; cursor: pointer; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); text-decoration: none; position: relative; overflow: hidden; }
-        .card::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent); transition: left 0.5s; }
-        .card:hover::before { left: 100%; }
-        .card:hover { border-color: var(--neon-orange); transform: translateY(-10px) scale(1.02); box-shadow: 0 20px 40px rgba(255,69,0,0.3); background: rgba(255,69,0,0.08); }
-        .card h2 { font-family: 'Orbitron', sans-serif; font-size: 1rem; letter-spacing: 4px; margin-bottom: 10px; color: #fff; }
-        .card p { color: #888; font-size: 0.9rem; }
-        .store-card { border-color: var(--neon-blue) !important; }
-        .store-card:hover { border-color: var(--neon-blue) !important; box-shadow: 0 20px 40px rgba(0,212,255,0.3); background: rgba(0,212,255,0.08); }
-        .badge { position: absolute; top: 10px; right: 10px; background: var(--neon-orange); color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-family: 'Orbitron', sans-serif; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CANO STUDIO | PORTAL</title>
+    <style>{base_css}
+    .hero {{
+        min-height: 100vh; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; text-align: center;
+        padding: 20px;
+    }}
+    .logo {{
+        font-family: 'Orbitron'; font-size: clamp(2rem, 6vw, 4rem);
+        font-weight: 900; letter-spacing: 4px;
+        background: linear-gradient(90deg, var(--neon-orange), var(--neon-blue));
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        margin-bottom: 10px;
+    }}
+    .tagline {{ color: #666; font-size: 0.9rem; letter-spacing: 3px; margin-bottom: 60px; }}
+    .grid {{
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 20px; width: 90%; max-width: 1000px;
+    }}
+    .card {{
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
+        padding: 30px 20px; border-radius: 16px;
+        text-decoration: none; color: #fff;
+        transition: all 0.3s; cursor: pointer;
+        position: relative; overflow: hidden;
+    }}
+    .card::before {{
+        content: ''; position: absolute; inset: 0;
+        background: radial-gradient(circle at 50% 0%, rgba(255,69,0,0.1), transparent 70%);
+        opacity: 0; transition: opacity 0.3s;
+    }}
+    .card:hover {{ border-color: var(--neon-orange); transform: translateY(-6px); background: rgba(255,69,0,0.08); }}
+    .card:hover::before {{ opacity: 1; }}
+    .card-icon {{ font-size: 2.5rem; margin-bottom: 12px; display: block; }}
+    .card h2 {{ font-family: 'Orbitron'; font-size: 1rem; margin-bottom: 6px; letter-spacing: 2px; }}
+    .card p {{ color: #888; font-size: 0.85rem; }}
+    .card.blue {{ border-color: rgba(0,212,255,0.3); }}
+    .card.blue:hover {{ border-color: var(--neon-blue); background: rgba(0,212,255,0.08); }}
+    .stats-bar {{
+        display: flex; gap: 30px; margin-bottom: 40px;
+        background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+        padding: 16px 30px; border-radius: 12px;
+    }}
+    .stat {{ text-align: center; }}
+    .stat-val {{ font-family: 'Orbitron'; font-size: 1.2rem; color: var(--neon-orange); }}
+    .stat-lbl {{ font-size: 0.7rem; color: #666; letter-spacing: 2px; }}
     </style>
 </head>
 <body>
     <canvas id="particles"></canvas>
-    <div class="xp-container"><span class="xp-val" id="totalXP">0</span> <small style="color:#ff4500">XP</small></div>
+    <div class="xp-container">
+        <span class="xp-val" id="xpVal">0</span>
+        <span class="xp-label">XP</span>
+    </div>
+    <div class="level-badge" id="levelBadge">SEV 1</div>
+    <div id="toast" class="toast"></div>
+
     <section class="hero">
-        <h1>CANO STUDIO</h1>
-        <p class="subtitle">NEON GAMING UNIVERSE</p>
+        <div class="logo">CANO STUDIO</div>
+        <div class="tagline">OYUN · STRATEJI · KORKU · MARKET</div>
+
+        <div class="stats-bar">
+            <div class="stat"><div class="stat-val" id="statXP">0</div><div class="stat-lbl">TOPLAM XP</div></div>
+            <div class="stat"><div class="stat-val" id="statLvl">1</div><div class="stat-lbl">SEVİYE</div></div>
+            <div class="stat"><div class="stat-val" id="statItems">0</div><div class="stat-lbl">EŞYA</div></div>
+        </div>
+
         <div class="grid">
-            <a href="/neon-arcade" class="card"><h2>🎮 NEON ARCADE</h2><p>Gece manzaralı hız oyunu</p></a>
-            <a href="/strateji" class="card"><h2>🌍 GALAKTIK STRATEJI</h2><p>Gezegen fethetme simülasyonu</p></a>
-            <a href="/horror" class="card"><h2>👻 DARK HORROR</h2><p>30 farklı son, karanlık yolculuk</p></a>
-            <a href="/store" class="card store-card"><span class="badge">NEW</span><h2>🛒 NEON MARKET</h2><p style="color:#00d4ff">Skinler ve güçlendirmeler</p></a>
+            <a href="/neon-arcade" class="card">
+                <span class="card-icon">🎮</span>
+                <h2>ARCADE</h2>
+                <p>Hız ve Refleks</p>
+            </a>
+            <a href="/strateji" class="card">
+                <span class="card-icon">🌍</span>
+                <h2>STRATEJİ</h2>
+                <p>Gezegen Yönetimi</p>
+            </a>
+            <a href="/horror" class="card">
+                <span class="card-icon">👻</span>
+                <h2>HORROR</h2>
+                <p>Korku Hikayesi</p>
+            </a>
+            <a href="/store" class="card blue">
+                <span class="card-icon">🛒</span>
+                <h2>MARKET</h2>
+                <p>XP Harca</p>
+            </a>
         </div>
     </section>
+
     <script>
-        document.getElementById('totalXP').innerText = localStorage.getItem('cano_xp') || 0;
-        const canvas = document.getElementById('particles'), ctx = canvas.getContext('2d');
-        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-        const particles = Array.from({length: 60}, () => ({x: Math.random()*canvas.width, y: Math.random()*canvas.height, size: Math.random()*2, speedX: (Math.random()-0.5)*0.5, speedY: (Math.random()-0.5)*0.5, opacity: Math.random()}));
-        function animate() { ctx.clearRect(0,0,canvas.width,canvas.height); particles.forEach(p => { p.x+=p.speedX; p.y+=p.speedY; if(p.x<0)p.x=canvas.width; if(p.x>canvas.width)p.x=0; if(p.y<0)p.y=canvas.height; if(p.y>canvas.height)p.y=0; ctx.fillStyle=`rgba(255,69,0,${p.opacity})`; ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill(); }); requestAnimationFrame(animate); }
-        animate(); window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
+        {base_js}
+        {particles_js}
+        window.onload = function() {{
+            updateXPDisplay();
+            document.getElementById('statXP').innerText = getXP().toLocaleString();
+            document.getElementById('statLvl').innerText = Math.floor(getXP() / 500 + 1);
+            document.getElementById('statItems').innerText = getItems().length;
+        }};
     </script>
 </body>
-</html>
-"""
+</html>"""
 
-# ============ MAĞAZA (GELİŞMİŞ) ============
-store_html = """
-<!DOCTYPE html>
+# ============ 2. STRATEJİ OYUNU ============
+strateji_html = f"""<!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEON MARKET | Cano Studio</title>
-    <style>""" + base_css + """
-        .store-container { min-height: 100vh; padding: 100px 20px 40px; max-width: 1200px; margin: 0 auto; }
-        .store-header { text-align: center; margin-bottom: 50px; }
-        .store-header h1 { font-family: 'Orbitron', sans-serif; font-size: 2.5rem; letter-spacing: 10px; margin-bottom: 20px; }
-        .balance-display { background: linear-gradient(135deg, rgba(0,212,255,0.1), rgba(191,0,255,0.1)); border: 2px solid var(--neon-blue); padding: 20px 40px; border-radius: 50px; display: inline-block; font-size: 1.5rem; font-family: 'Orbitron', sans-serif; }
-        .balance-display span { color: var(--neon-blue); font-weight: 900; }
-        .store-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; }
-        .item { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 30px; transition: all 0.3s; position: relative; overflow: hidden; text-align: center; }
-        .item:hover { transform: translateY(-5px); border-color: var(--neon-orange); box-shadow: 0 15px 35px rgba(255,69,0,0.2); }
-        .item.owned { border-color: #00ff00; background: rgba(0,255,0,0.05); }
-        .item-icon { font-size: 3rem; margin-bottom: 15px; filter: drop-shadow(0 0 10px rgba(255,255,255,0.3)); }
-        .item h3 { font-family: 'Orbitron', sans-serif; font-size: 1.1rem; margin-bottom: 10px; }
-        .item p { color: #666; font-size: 0.85rem; margin-bottom: 15px; min-height: 40px; }
-        .price { color: var(--neon-orange); font-size: 1.4rem; font-weight: 900; font-family: 'Orbitron', sans-serif; margin-bottom: 15px; }
-        .item.owned .price { color: #00ff00; }
-        .notification { position: fixed; top: 100px; right: -400px; background: linear-gradient(135deg, var(--neon-orange), #ff6b35); padding: 20px 30px; border-radius: 12px; font-family: 'Orbitron', sans-serif; transition: right 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55); z-index: 2000; box-shadow: 0 10px 30px rgba(255,69,0,0.4); }
-        .notification.show { right: 20px; }
-        .notification.error { background: linear-gradient(135deg, #ff0040, #ff0040); }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>STRATEJİ | Cano Studio</title>
+    <style>{base_css}
+    .game-wrap {{
+        min-height: 100vh; display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        text-align: center; padding: 80px 20px;
+    }}
+    h1 {{ font-family: 'Orbitron'; font-size: clamp(1.2rem, 4vw, 2rem); margin-bottom: 8px; color: var(--neon-blue); }}
+    .subtitle {{ color: #555; font-size: 0.85rem; letter-spacing: 2px; margin-bottom: 30px; }}
+
+    .planet-wrap {{ position: relative; width: 180px; height: 180px; margin: 0 auto 30px; }}
+    .planet {{
+        width: 180px; height: 180px; border-radius: 50%;
+        background: radial-gradient(circle at 35% 35%, #00eeff, #003a6e);
+        box-shadow: 0 0 60px rgba(0,212,255,0.6), 0 0 120px rgba(0,212,255,0.2);
+        animation: spin 12s linear infinite;
+        cursor: pointer; transition: transform 0.2s;
+    }}
+    .planet:hover {{ transform: scale(1.05); }}
+    .planet:active {{ transform: scale(0.95); }}
+    .planet-ring {{
+        position: absolute; top: 50%; left: 50%;
+        width: 240px; height: 60px;
+        border: 2px solid rgba(0,212,255,0.3);
+        border-radius: 50%; transform: translate(-50%,-50%) rotateX(75deg);
+        pointer-events: none;
+    }}
+    @keyframes spin {{ from {{ transform: rotate(0deg); }} to {{ transform: rotate(360deg); }} }}
+
+    .resources {{
+        display: grid; grid-template-columns: repeat(3, 1fr);
+        gap: 15px; width: 100%; max-width: 500px; margin-bottom: 30px;
+    }}
+    .res-card {{
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
+        padding: 15px 10px; border-radius: 12px;
+    }}
+    .res-icon {{ font-size: 1.5rem; }}
+    .res-name {{ font-size: 0.7rem; color: #666; letter-spacing: 1px; margin-top: 4px; }}
+    .res-val {{ font-family: 'Orbitron'; font-size: 1.1rem; color: #fff; margin-top: 4px; }}
+
+    .actions {{ display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-bottom: 20px; }}
+
+    .progress-bar {{
+        width: 100%; max-width: 400px;
+        background: #111; border-radius: 50px; height: 8px;
+        margin-bottom: 20px; overflow: hidden;
+    }}
+    .progress-fill {{
+        height: 100%; border-radius: 50px;
+        background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple));
+        transition: width 0.5s; width: 0%;
+    }}
+    .level-info {{ color: #666; font-size: 0.8rem; margin-bottom: 30px; }}
+
+    .upgrade-box {{
+        background: rgba(191,0,255,0.08);
+        border: 1px solid rgba(191,0,255,0.3);
+        border-radius: 12px; padding: 20px;
+        width: 100%; max-width: 500px; margin-bottom: 20px;
+    }}
+    .upgrade-box h3 {{ font-family: 'Orbitron'; color: var(--neon-purple); font-size: 0.85rem; margin-bottom: 12px; }}
+    .upgrade-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }}
+    .upg-item {{ background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; text-align: left; }}
+    .upg-name {{ font-size: 0.8rem; color: #aaa; }}
+    .upg-cost {{ font-size: 0.75rem; color: var(--neon-purple); }}
     </style>
 </head>
 <body>
-    <div class="xp-container"><span class="xp-val" id="currentXP">0</span> <small style="color:#ff4500">XP</small></div>
-    <div class="notification" id="notif">SATIN ALINDI!</div>
-    <div class="store-container">
-        <div class="store-header">
-            <h1>NEON MARKET</h1>
-            <div class="balance-display">BAKİYE: <span id="balance">0</span> XP</div>
+    <canvas id="particles"></canvas>
+    <div class="xp-container"><span class="xp-val" id="xpVal">0</span><span class="xp-label">XP</span></div>
+    <div class="level-badge" id="levelBadge">SEV 1</div>
+    <div id="toast" class="toast"></div>
+
+    <div class="game-wrap">
+        <h1>GALAKTİK YÖNETİM</h1>
+        <div class="subtitle">GEZEGENİNİ YÖNET · KAYNAK TOPLA · EVRENİ FETHET</div>
+
+        <div class="planet-wrap">
+            <div class="planet" id="planet" onclick="mine()" title="Tıkla — Maden Çıkar"></div>
+            <div class="planet-ring"></div>
         </div>
-        <div class="store-grid" id="grid"></div>
-    </div>
-    <a href="/" class="back-btn">← GERİ DÖN</a>
-    <script>
-        let xp = parseInt(localStorage.getItem('cano_xp')) || 0;
-        let owned = JSON.parse(localStorage.getItem('cano_items')) || [];
-        const items = [
-            {id: 'item1', name: 'ALTIN KUŞ', icon: '🐦', price: 500, desc: 'Neon Arcade için altın renkli kuş skin.'},
-            {id: 'item2', name: 'MAVİ GEZEGEN', icon: '🌍', price: 1000, desc: 'Strateji oyunu için mavi tema.'},
-            {id: 'item3', name: 'HIZ MODU', icon: '⚡', price: 2000, desc: 'Arcade XP kazancını 2x yapar.'},
-            {id: 'item4', name: 'HAYALET MODU', icon: '👻', price: 5000, desc: 'Horror oyununda gizli sonları açar.'},
-            {id: 'item5', name: 'NEON PARILTI', icon: '✨', price: 8000, desc: 'Tüm oyunlarda particle efektleri.'},
-            {id: 'item6', name: 'ZAMAN YOLCUSU', icon: '⏰', price: 10000, desc: 'Arcade\'de zaman yavaşlar.'}
-        ];
-        function updateDisplay() { document.getElementById('currentXP').innerText = xp; document.getElementById('balance').innerText = xp; }
-        function showNotif(text, isError) { const n = document.getElementById('notif'); n.innerText = text; n.className = 'notification' + (isError ? ' error' : ''); n.classList.add('show'); setTimeout(() => n.classList.remove('show'), 2000); }
-        function render() {
-            updateDisplay();
-            document.getElementById('grid').innerHTML = items.map(item => `
-                <div class="item ${owned.includes(item.id) ? 'owned' : ''}">
-                    <div class="item-icon">${item.icon}</div>
-                    <h3>${item.name}</h3>
-                    <p>${item.desc}</p>
-                    <div class="price">${item.price} XP</div>
-                    <button class="btn" onclick="buy('${item.id}', ${item.price})" ${owned.includes(item.id) ? 'disabled' : ''}>
-                        ${owned.includes(item.id) ? '✓ SAHİPSİN' : 'SATIN AL'}
-                    </button>
+
+        <div class="progress-bar"><div class="progress-fill" id="progBar"></div></div>
+        <div class="level-info" id="lvlInfo">Gezegen Seviyesi: 1 · Sonraki seviye için 100 maden gerekli</div>
+
+        <div class="resources">
+            <div class="res-card"><div class="res-icon">⛏️</div><div class="res-name">MADEN</div><div class="res-val" id="rMaden">0</div></div>
+            <div class="res-card"><div class="res-icon">⚡</div><div class="res-name">ENERJİ</div><div class="res-val" id="rEnerji">0</div></div>
+            <div class="res-card"><div class="res-icon">💎</div><div class="res-name">KRİSTAL</div><div class="res-val" id="rKristal">0</div></div>
+        </div>
+
+        <div class="actions">
+            <button class="btn" onclick="mine()">⛏️ MADEN (+10 XP)</button>
+            <button class="btn btn-blue" onclick="generateEnergy()">⚡ ENERJİ (+5 XP)</button>
+            <button class="btn btn-purple" id="crystalBtn" onclick="makeCrystal()" disabled>💎 KRİSTAL (50 Maden)</button>
+        </div>
+
+        <div class="upgrade-box">
+            <h3>🔬 GELİŞTİRMELER</h3>
+            <div class="upgrade-grid">
+                <div class="upg-item">
+                    <div class="upg-name">Maden Kazması x<span id="upMaden">1</span></div>
+                    <div class="upg-cost">Maliyet: <span id="upMadenCost">100</span> XP</div>
+                    <button class="btn" style="margin-top:8px;padding:6px 12px;font-size:0.7rem;" onclick="upgrade('maden')">YÜKSELT</button>
                 </div>
-            `).join('');
-        }
-        function buy(id, price) {
-            if(xp >= price && !owned.includes(id)) {
-                xp -= price; owned.push(id);
-                localStorage.setItem('cano_xp', xp);
-                localStorage.setItem('cano_items', JSON.stringify(owned));
-                render(); showNotif('SATIN ALINDI!', false);
-            } else if(xp < price) { showNotif('YETERSİZ XP!', true); }
-        }
-        render();
-    </script>
-</body>
-</html>
-"""
-
-# ============ NEON ARCADE (GELİŞMİŞ) ============
-arcade_html = """
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NEON ARCADE | Cano Studio</title>
-    <style>""" + base_css + """
-        body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; background: radial-gradient(ellipse at center, #0a0a1a 0%, #000 100%); }
-        .game-ui { position: fixed; top: 20px; width: 100%; text-align: center; z-index: 10; }
-        .score-display { font-family: 'Orbitron', sans-serif; font-size: 3rem; color: #fff; text-shadow: 0 0 20px rgba(255,69,0,0.8); }
-        .high-score { color: #666; font-size: 0.9rem; margin-top: 5px; }
-        canvas { border: 3px solid rgba(255,69,0,0.3); border-radius: 8px; box-shadow: 0 0 40px rgba(255,69,0,0.2); max-width: 95vw; background: #000; }
-        .controls { position: fixed; bottom: 80px; text-align: center; color: #444; font-size: 0.8rem; }
-        .game-over { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
-        .game-over h2 { font-family: 'Orbitron', sans-serif; font-size: 2.5rem; color: var(--neon-orange); margin-bottom: 20px; text-shadow: 0 0 30px rgba(255,69,0,0.8); }
-        .game-over p { color: #888; margin-bottom: 30px; font-size: 1.2rem; }
-        .final-score { color: #fff; font-family: 'Orbitron', sans-serif; font-size: 2rem; margin-bottom: 30px; }
-    </style>
-</head>
-<body>
-    <div class="game-ui">
-        <div class="score-display" id="sc">0</div>
-        <div class="high-score">HIGH SCORE: <span id="hs">0</span></div>
-    </div>
-    <canvas id="gc" width="400" height="600"></canvas>
-    <div class="controls">SPACE / TIKLA / YUKARI OK</div>
-    <div class="game-over" id="go">
-        <h2>GAME OVER</h2>
-        <p>Neon şehir seni yuttu...</p>
-        <div class="final-score">SKOR: <span id="fs">0</span></div>
-        <button class="btn" onclick="resetGame()">TEKRAR DENE</button>
-    </div>
-    <a href="/" class="back-btn">← ÇIKIŞ</a>
-    <script>
-        const canvas = document.getElementById("gc"), ctx = canvas.getContext("2d");
-        let bird = {y: 300, v: 0, g: 0.6, jump: -10, rot: 0};
-        let pipes = [], particles = [], stars = [];
-        let frames = 0, score = 0, highScore = parseInt(localStorage.getItem('arcade_hs')) || 0;
-        let isGameOver = false, gameStarted = false;
-        let items = JSON.parse(localStorage.getItem('cano_items')) || [];
-        let hasTimeSlow = items.includes('item6'), hasGoldSkin = items.includes('item1');
-        
-        document.getElementById('hs').innerText = highScore;
-        
-        // Stars background
-        for(let i=0; i<100; i++) stars.push({x: Math.random()*400, y: Math.random()*600, s: Math.random()*1.5, speed: Math.random()*0.5+0.1});
-        
-        function addXP(amt) {
-            let mult = items.includes('item3') ? 2 : 1;
-            let xp = parseInt(localStorage.getItem('cano_xp')) || 0;
-            localStorage.setItem('cano_xp', xp + (amt * mult));
-        }
-        
-        function createParticles(x, y, color) {
-            for(let i=0; i<5; i++) {
-                particles.push({x: x, y: y, vx: (Math.random()-0.5)*4, vy: (Math.random()-0.5)*4, life: 30, color: color});
-            }
-        }
-        
-        function draw() {
-            // Background
-            let grad = ctx.createLinearGradient(0, 0, 0, 600);
-            grad.addColorStop(0, "#0a0a2e"); grad.addColorStop(0.5, "#1a0a2e"); grad.addColorStop(1, "#000");
-            ctx.fillStyle = grad; ctx.fillRect(0,0,400,600);
-            
-            // Stars
-            ctx.fillStyle = "white";
-            stars.forEach(s => { s.x -= s.speed; if(s.x<0) s.x=400; ctx.beginPath(); ctx.arc(s.x, s.y, s.s, 0, Math.PI*2); ctx.fill(); });
-            
-            if(!gameStarted) {
-                ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(0,0,400,600);
-                ctx.fillStyle = "#ff4500"; ctx.font = "bold 24px Orbitron"; ctx.textAlign = "center";
-                ctx.fillText("NEON ARCADE", 200, 250);
-                ctx.font = "16px Rajdhani"; ctx.fillStyle = "#888";
-                ctx.fillText("BAŞLAMAK İÇİN TIKLA", 200, 300);
-                requestAnimationFrame(draw);
-                return;
-            }
-            
-            if(isGameOver) return;
-            
-            // Bird physics
-            bird.v += bird.g; bird.y += bird.v; bird.rot = Math.min(Math.max(bird.v * 0.1, -0.5), 0.5);
-            if(bird.y > 580 || bird.y < 0) gameOver();
-            
-            // Draw bird
-            ctx.save(); ctx.translate(60, bird.y); ctx.rotate(bird.rot);
-            ctx.fillStyle = hasGoldSkin ? "#FFD700" : "#fff";
-            ctx.shadowBlur = 20; ctx.shadowColor = hasGoldSkin ? "#FFD700" : "#fff";
-            ctx.fillRect(-15, -15, 30, 30);
-            ctx.fillStyle = "#ff4500"; ctx.fillRect(5, -5, 10, 10);
-            ctx.restore(); ctx.shadowBlur = 0;
-            
-            // Pipes
-            let speed = hasTimeSlow ? 2.5 : 4;
-            if(frames % (hasTimeSlow ? 120 : 90) === 0) {
-                let h = Math.random()*250+80;
-                pipes.push({x: 400, h: h, passed: false});
-            }
-            
-            for(let i=pipes.length-1; i>=0; i--) {
-                let p = pipes[i]; p.x -= speed;
-                
-                // Gradient pipes
-                let pg = ctx.createLinearGradient(p.x, 0, p.x+60, 0);
-                pg.addColorStop(0, "#ff4500"); pg.addColorStop(0.5, "#ff6b35"); pg.addColorStop(1, "#ff4500");
-                ctx.fillStyle = pg; ctx.shadowBlur = 20; ctx.shadowColor = "#ff4500";
-                ctx.fillRect(p.x, 0, 60, p.h); ctx.fillRect(p.x, p.h+140, 60, 600);
-                ctx.shadowBlur = 0;
-                
-                // Collision
-                if(60+20 > p.x && 40 < p.x+60 && (bird.y-15 < p.h || bird.y+15 > p.h+140)) {
-                    createParticles(60, bird.y, "#ff4500"); gameOver();
-                }
-                
-                // Score
-                if(p.x < 40 && !p.passed) { 
-                    p.passed = true; score++; document.getElementById("sc").innerText = score;
-                    addXP(10); createParticles(p.x, p.h+70, "#00ff00");
-                }
-                
-                if(p.x < -60) pipes.splice(i,1);
-            }
-            
-            // Particles
-            for(let i=particles.length-1; i>=0; i--) {
-                let p = particles[i]; p.x += p.vx; p.y += p.vy; p.life--;
-                ctx.fillStyle = p.color; ctx.globalAlpha = p.life/30;
-                ctx.fillRect(p.x, p.y, 3, 3); ctx.globalAlpha = 1;
-                if(p.life <= 0) particles.splice(i,1);
-            }
-            
-            frames++; requestAnimationFrame(draw);
-        }
-        
-        function gameOver() {
-            isGameOver = true;
-            if(score > highScore) { localStorage.setItem('arcade_hs', score); highScore = score; }
-            document.getElementById('fs').innerText = score;
-            document.getElementById('go').style.display = 'flex';
-        }
-        
-        function resetGame() {
-            bird = {y: 300, v: 0, g: 0.6, jump: -10, rot: 0};
-            pipes = []; particles = []; frames = 0; score = 0;
-            isGameOver = false; gameStarted = true;
-            document.getElementById('sc').innerText = '0';
-            document.getElementById('go').style.display = 'none';
-            draw();
-        }
-        
-        function jump() {
-            if(isGameOver) { resetGame(); return; }
-            if(!gameStarted) gameStarted = true;
-            bird.v = bird.jump; createParticles(60, bird.y, "#fff");
-        }
-        
-        canvas.addEventListener("mousedown", jump);
-        canvas.addEventListener("touchstart", (e)=>{e.preventDefault(); jump();});
-        document.addEventListener("keydown", (e)=>{ if(e.code==="Space"||e.code==="ArrowUp") jump(); });
-        
-        draw();
-    </script>
-</body>
-</html>
-"""
-
-# ============ STRATEJI (GELİŞMİŞ) ============
-strateji_html = """
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GALAKTIK STRATEJI | Cano Studio</title>
-    <style>""" + base_css + """
-        body { overflow: hidden; background: radial-gradient(ellipse at center, #0a0a1a 0%, #000 100%); }
-        .ui-layer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
-        .level-display { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); font-family: 'Orbitron', sans-serif; font-size: 1.5rem; color: var(--neon-orange); text-shadow: 0 0 20px rgba(255,69,0,0.8); }
-        .planet-count { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); color: #666; font-size: 0.9rem; }
-        .tutorial { position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%); color: #444; text-align: center; font-size: 0.85rem; opacity: 0.8; }
-        canvas { display: block; }
-    </style>
-</head>
-<body>
-    <div class="ui-layer">
-        <div class="level-display">SEVIYE <span id="ld">1</span></div>
-        <div class="planet-count">GEZEGENLER: <span id="pc">1</span> / <span id="tc">3</span></div>
-        <div class="tutorial">GEZEGENE TIKLA → HEDEF SEÇ → FİLO GÖNDER</div>
-    </div>
-    <canvas id="sc"></canvas>
-    <a href="/" class="back-btn">← GERİ</a>
-    <script>
-        const canvas = document.getElementById("sc"), ctx = canvas.getContext("2d");
-        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-        
-        let planets = [], fleets = [], particles = [], stars = [];
-        let selected = null, level = 1, gameWon = false;
-        let items = JSON.parse(localStorage.getItem('cano_items')) || [];
-        let hasBlueTheme = items.includes('item2');
-        
-        // Stars
-        for(let i=0; i<150; i++) stars.push({x: Math.random()*canvas.width, y: Math.random()*canvas.height, size: Math.random()*1.5, blink: Math.random()*0.1});
-        
-        class Planet {
-            constructor(x, y, size, owner, count) {
-                this.x = x; this.y = y; this.size = size; this.owner = owner; this.count = count;
-                this.max = size * 0.8; this.growth = 0; this.pulse = 0;
-            }
-            draw() {
-                this.pulse += 0.05;
-                let glow = Math.sin(this.pulse) * 10 + 20;
-                
-                // Glow
-                let g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size + glow);
-                if(this.owner === 1) { g.addColorStop(0, hasBlueTheme ? "rgba(0,212,255,0.8)" : "rgba(0,212,255,0.5)"); g.addColorStop(1, "transparent"); }
-                else if(this.owner === 2) { g.addColorStop(0, "rgba(255,69,0,0.5)"); g.addColorStop(1, "transparent"); }
-                else { g.addColorStop(0, "rgba(255,255,255,0.1)"); g.addColorStop(1, "transparent"); }
-                ctx.fillStyle = g; ctx.beginPath(); ctx.arc(this.x, this.y, this.size + glow, 0, Math.PI*2); ctx.fill();
-                
-                // Planet body
-                let pg = ctx.createRadialGradient(this.x - this.size*0.3, this.y - this.size*0.3, 0, this.x, this.y, this.size);
-                if(this.owner === 1) { pg.addColorStop(0, hasBlueTheme ? "#55eaff" : "#00d4ff"); pg.addColorStop(1, hasBlueTheme ? "#0055aa" : "#003355"); }
-                else if(this.owner === 2) { pg.addColorStop(0, "#ff6b35"); pg.addColorStop(1, "#882200"); }
-                else { pg.addColorStop(0, "#666"); pg.addColorStop(1, "#222"); }
-                ctx.fillStyle = pg; ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI*2); ctx.fill();
-                
-                // Ring for selected
-                if(selected === this) {
-                    ctx.strokeStyle = "#fff"; ctx.lineWidth = 3; ctx.setLineDash([5, 5]);
-                    ctx.beginPath(); ctx.arc(this.x, this.y, this.size + 10, 0, Math.PI*2); ctx.stroke(); ctx.setLineDash([]);
-                }
-                
-                // Count
-                ctx.fillStyle = "#fff"; ctx.font = "bold 16px Orbitron"; ctx.textAlign = "center";
-                ctx.fillText(Math.floor(this.count), this.x, this.y + 5);
-            }
-            update() {
-                if(this.owner !== 0) {
-                    this.growth++;
-                    if(this.growth > 60) { this.count = Math.min(this.count + 1, this.max); this.growth = 0; }
-                }
-            }
-        }
-        
-        function addXP(amt) {
-            let xp = parseInt(localStorage.getItem('cano_xp')) || 0;
-            localStorage.setItem('cano_xp', xp + amt);
-        }
-        
-        function init() {
-            planets = []; fleets = []; gameWon = false;
-            document.getElementById("ld").innerText = level;
-            let playerPlanet = new Planet(100, canvas.height/2, 45, 1, 20);
-            planets.push(playerPlanet);
-            
-            let enemyCount = level > 3 ? 2 : 1;
-            for(let i=0; i<enemyCount; i++) {
-                planets.push(new Planet(canvas.width-100 - i*150, (canvas.height/(enemyCount+1))*(i+1), 40, 2, 15 + level*5));
-            }
-            
-            let neutralCount = 2 + Math.floor(level/2);
-            for(let i=0; i<neutralCount; i++) {
-                let x = 200 + Math.random()*(canvas.width-400);
-                let y = 100 + Math.random()*(canvas.height-200);
-                if(!planets.some(p => Math.hypot(p.x-x, p.y-y) < 100)) {
-                    planets.push(new Planet(x, y, 30, 0, 10));
-                }
-            }
-            updateCounts();
-        }
-        
-        function updateCounts() {
-            let player = planets.filter(p => p.owner === 1).length;
-            let total = planets.length;
-            document.getElementById('pc').innerText = player;
-            document.getElementById('tc').innerText = total;
-        }
-        
-        canvas.addEventListener("mousedown", (e) => {
-            let p = planets.find(p => Math.hypot(p.x - e.clientX, p.y - e.clientY) < p.size);
-            if(!p) { selected = null; return; }
-            if(p.owner === 1) { selected = p; }
-            else if(selected && selected.owner === 1) {
-                let amount = Math.floor(selected.count / 2);
-                if(amount > 0) {
-                    selected.count -= amount;
-                    fleets.push({x: selected.x, y: selected.y, target: p, owner: 1, amount: amount, progress: 0});
-                    selected = null;
-                }
-            }
-        });
-        
-        function loop() {
-            ctx.fillStyle = "#050505"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // Stars
-            stars.forEach(s => { ctx.fillStyle = `rgba(255,255,255,${0.3 + Math.sin(Date.now()*0.001*s.blink)*0.3})`; ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI*2); ctx.fill(); });
-            
-            // Connection lines
-            if(selected) {
-                planets.forEach(p => {
-                    if(p !== selected && p.owner !== 1) {
-                        ctx.strokeStyle = "rgba(0,212,255,0.2)"; ctx.lineWidth = 1;
-                        ctx.beginPath(); ctx.moveTo(selected.x, selected.y); ctx.lineTo(p.x, p.y); ctx.stroke();
-                    }
-                });
-            }
-            
-            // Fleets
-            for(let i=fleets.length-1; i>=0; i--) {
-                let f = fleets[i];
-                let dx = f.target.x - f.x, dy = f.target.y - f.y, dist = Math.hypot(dx, dy);
-                f.x += (dx/dist) * 5; f.y += (dy/dist) * 5;
-                
-                // Trail
-                ctx.fillStyle = f.owner === 1 ? "#00d4ff" : "#ff4500";
-                ctx.beginPath(); ctx.arc(f.x, f.y, 3, 0, Math.PI*2); ctx.fill();
-                
-                if(dist < 5) {
-                    if(f.target.owner === f.owner) { f.target.count += f.amount; }
-                    else {
-                        f.target.count -= f.amount;
-                        if(f.target.count < 0) {
-                            f.target.owner = f.owner;
-                            f.target.count = Math.abs(f.target.count);
-                            addXP(50); createExplosion(f.target.x, f.target.y, "#00d4ff");
-                        }
-                    }
-                    fleets.splice(i, 1); updateCounts();
-                }
-            }
-            
-            // AI
-            if(frames % 120 === 0) {
-                let enemyPlanets = planets.filter(p => p.owner === 2);
-                let myPlanets = planets.filter(p => p.owner === 1);
-                let neutralPlanets = planets.filter(p => p.owner === 0);
-                
-                enemyPlanets.forEach(ep => {
-                    if(ep.count > 15) {
-                        let targets = [...myPlanets, ...neutralPlanets].filter(p => p.count < ep.count);
-                        if(targets.length > 0) {
-                            let target = targets[Math.floor(Math.random()*targets.length)];
-                            let amount = Math.floor(ep.count / 2);
-                            ep.count -= amount;
-                            fleets.push({x: ep.x, y: ep.y, target: target, owner: 2, amount: amount, progress: 0});
-                        }
-                    }
-                });
-            }
-            
-            planets.forEach(p => { p.update(); p.draw(); });
-            
-            // Win check
-            if(!gameWon && !planets.some(p => p.owner === 2)) {
-                gameWon = true; level++; addXP(100 + level*50);
-                setTimeout(() => { alert("SEVIYE TAMAMLANDI! +" + (100 + level*50) + " XP"); init(); }, 500);
-            }
-            
-            // Lose check
-            if(!planets.some(p => p.owner === 1)) {
-                setTimeout(() => { if(confirm("KAYBETTIN! Tekrar dene?")) { level = 1; init(); } }, 100);
-            }
-            
-            frames++; requestAnimationFrame(loop);
-        }
-        
-        let frames = 0;
-        function createExplosion(x, y, color) {
-            for(let i=0; i<20; i++) {
-                particles.push({x: x, y: y, vx: (Math.random()-0.5)*8, vy: (Math.random()-0.5)*8, life: 40, color: color});
-            }
-        }
-        
-        window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; init(); });
-        init(); loop();
-    </script>
-</body>
-</html>
-"""
-
-# ============ HORROR (GELİŞMİŞ) ============
-horror_html = """
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DARK HORROR | Cano Studio</title>
-    <style>""" + base_css + """
-        body { background: #000; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; font-family: 'Courier New', monospace; }
-        .game-container { max-width: 600px; width: 100%; border: 2px solid #300; border-radius: 8px; padding: 40px; background: linear-gradient(180deg, #0a0000 0%, #000 100%); position: relative; overflow: hidden; }
-        .game-container::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,0,0,0.03) 2px, rgba(255,0,0,0.03) 4px); pointer-events: none; }
-        .glitch-text { font-family: 'Orbitron', sans-serif; font-size: 1.8rem; color: #800; text-align: center; margin-bottom: 30px; text-shadow: 2px 2px 4px rgba(255,0,0,0.5); animation: glitch 3s infinite; position: relative; }
-        @keyframes glitch { 0%, 100% { transform: translate(0); } 20% { transform: translate(-2px, 2px); } 40% { transform: translate(-2px, -2px); } 60% { transform: translate(2px, 2px); } 80% { transform: translate(2px, -2px); } }
-        .story-text { color: #aaa; line-height: 1.8; margin-bottom: 30px; font-size: 1rem; min-height: 100px; border-left: 3px solid #300; padding-left: 20px; }
-        .choices { display: flex; flex-direction: column; gap: 12px; }
-        .choice-btn { background: transparent; border: 1px solid #500; color: #888; padding: 18px; cursor: pointer; font-family: 'Courier New', monospace; font-size: 0.95rem; transition: all 0.3s; text-align: left; position: relative; overflow: hidden; }
-        .choice-btn::before { content: '>'; position: absolute; left: -20px; transition: left 0.3s; color: #f00; }
-        .choice-btn:hover { border-color: #f00; color: #fff; background: rgba(255,0,0,0.1); padding-left: 30px; }
-        .choice-btn:hover::before { left: 10px; }
-        .ending { text-align: center; padding: 40px; }
-        .ending h2 { font-family: 'Orbitron', sans-serif; color: #f00; font-size: 2rem; margin-bottom: 20px; text-shadow: 0 0 20px rgba(255,0,0,0.8); }
-        .ending p { color: #666; margin-bottom: 30px; }
-        .xp-gain { color: #ff4500; font-family: 'Orbitron', sans-serif; font-size: 1.5rem; margin-bottom: 20px; }
-        .progress-bar { width: 100%; height: 4px; background: #111; margin-bottom: 30px; border-radius: 2px; overflow: hidden; }
-        .progress-fill { height: 100%; background: linear-gradient(90deg, #300, #f00); width: 0%; transition: width 0.5s; }
-    </style>
-</head>
-<body>
-    <div class="game-container">
-        <div class="progress-bar"><div class="progress-fill" id="prog"></div></div>
-        <h1 class="glitch-text" id="title">KARANLIK YOL</h1>
-        <p class="story-text" id="story">Yol ikiye ayrılıyor. Bir tarafta terk edilmiş bir akıl hastanesi, diğer tarafta ise sisli bir mezarlık var. Rüzgar çığlık gibi çıkıyor...</p>
-        <div class="choices" id="choices">
-            <button class="choice-btn" onclick="choose(1)">Hastaneye gir - Paslanmış kapı gıcırdıyor</button>
-            <button class="choice-btn" onclick="choose(2)">Mezarlığa sap - Toprak nemli kokuyor</button>
+                <div class="upg-item">
+                    <div class="upg-name">Enerji Jeneratörü x<span id="upEnerji">1</span></div>
+                    <div class="upg-cost">Maliyet: <span id="upEnerjiCost">150</span> XP</div>
+                    <button class="btn btn-blue" style="margin-top:8px;padding:6px 12px;font-size:0.7rem;" onclick="upgrade('enerji')">YÜKSELT</button>
+                </div>
+            </div>
         </div>
     </div>
-    <a href="/" class="back-btn">← KAÇ</a>
-    
+
+    <a href="/" class="back-btn">← GERİ</a>
+
     <script>
-        let items = JSON.parse(localStorage.getItem('cano_items')) || [];
-        let hasGhostMode = items.includes('item4');
-        
-        function addXP(amt) {
-            let xp = parseInt(localStorage.getItem('cano_xp')) || 0;
-            localStorage.setItem('cano_xp', xp + amt);
-        }
-        
-        const story = {
-            1: { title: "HASTANE", text: "İçeride tekerlekli bir sandalye kendiliğinden hareket ediyor. Zeminde kan lekeleri var.", choices: [{text: "Sandalyeyi takip et", next: 31}, {text: "Aceleyle kaç", next: 4}] },
-            2: { title: "MEZARLIK", text: "Topraktan bir el çıktı! Mezar taşlarında ismin yazıyor...", choices: [{text: "Elin üzerine bas", next: 32}, {text: "Teslim ol", next: 33}] },
-            4: { title: "ORMAN", text: "Ormana girdin ama ağaçlar seni takip ediyor. Gözler her yerde.", choices: [{text: "Sadece yürü", next: 5}, {text: "Koşmaya çalış", next: 34}] },
-            5: { title: "KAPKARANLIK", text: "Işık tamamen kayboldu. Sadece nefes alışını duyuyorsun.", choices: [{text: "Yürümeye devam et", next: 6}, {text: "Geri dön", next: 35}] },
-            6: { title: "KULÜBE", text: "Eski bir kulübe. İçeriden fısıltılar geliyor.", choices: [{text: "Kapıyı aç", next: 7}, {text: "Pencereden bak", next: 36}] },
-            7: { title: "KİTAPLIK", text: "Adının yazdığı bir kitap var. Son sayfa boş.", choices: [{text: "Kitabı oku", next: 8}, {text: "Kitabı yak", next: 37}] },
-            8: { title: "AYNA", text: "Yansıman sana gülümsedi. Ama sen gülümsemedin.", choices: [{text: "Aynaya dokun", next: 9}, {text: "Aynayı kır", next: 38}] },
-            9: { title: "BOŞLUK", text: "Aynanın içine çekildin. Yerçekimi yok.", choices: [{text: "Yüzeye doğru yüz", next: 10}, {text: "Derinlere dal", next: 39}] },
-            10: { title: "SAAT KULESI", text: "Dev bir saat kulesi. Akrepler geriye dönüyor.", choices: [{text: "Kuleye tırman", next: 11}, {text: "Saati durdur", next: 40}] },
-            11: { title: "ÇAN", text: "Çan çalıyor, kulakların kanıyor! Zaman daralıyor.", choices: [{text: "Kuleden atla", next: 12}, {text: "Kulaklarını kapat", next: 41}] },
-            12: { title: "GÖL", text: "Siyah bir gölün kenarındasın. Yüzeyde yıldızlar yansıyor.", choices: [{text: "Göle gir", next: 13}, {text: "Ormana kaç", next: 42}] },
-            13: { title: "SUALTI ŞEHRİ", text: "Suyun altında bir şehir var. Binalar tersten inşa edilmiş.", choices: [{text: "Şehre dal", next: 14}, {text: "Yüzeye çık", next: 43}] },
-            14: { title: "MUHAFIZ", text: "Dev bir bekçi duruyor. Gözleri kapalı ama seni görüyor.", choices: [{text: "Saldır", next: 15}, {text: "Konuş", next: 44}] },
-            15: { title: "TAHT", text: "Taht seni bekliyor. Oturursan hükümran olursun ama hapis de...", choices: [{text: "Tahta otur", next: 45}, {text: "Reddet ve kaç", next: 16}] },
-            16: { title: "IŞIK", text: "Her şey dağılıyor. Beyaz bir ışık seni çağırıyor.", choices: [{text: "Işığa yürü", next: 46}, {text: "Karanlıkta kal", next: 17}] },
-            17: { title: "LABİRENT", text: "Sonsuz koridordasın. Duvarlarda kendi yüzün var.", choices: [{text: "Sola dön", next: 18}, {text: "Sağa dön", next: 47}] },
-            18: { title: "KASAP", text: "Önünde bir kasap duruyor. Bıçağında senin adın yazıyor.", choices: [{text: "Yanından geç", next: 19}, {text: "Bıçağı al", next: 48}] },
-            19: { title: "KAPI", text: "30 kilitli bir kapı. Her kilidin üzerinde bir anın var.", choices: [{text: "Kilitleri kır", next: 20}, {text: "Anahtarları bul", next: 49}] },
-            20: { title: "BOŞLUK", text: "Kapı açıldı, arkası boşluk. Ama aşağıda bir şey var.", choices: [{text: "Atla", next: 50}, {text: "Geri çekil", next: 21}] },
-            21: { title: "HAYALETLER", text: "Eski dostlarını gördün. Onlar öldü, sen yaşıyorsun.", choices: [{text: "Onlarla kal", next: 51}, {text: "Koş", next: 22}] },
-            22: { title: "MAĞARA", text: "Bir mağaraya sığındın. Duvarlarda mağara resimleri... gelecekten.", choices: [{text: "Ateş yak", next: 52}, {text: "Derinlere in", next: 23}] },
-            23: { title: "FOSILLER", text: "Fosiller canlanıyor. Dinozorlar konuşuyor.", choices: [{text: "Dinle", next: 53}, {text: "Kaç", next: 24}] },
-            24: { title: "TREN", text: "Bir tren bekliyor. Makinist sensin.", choices: [{text: "Trene bin", next: 54}, {text: "Yürümeye devam et", next: 25}] },
-            25: { title: "HIZ", text: "Tren kendi gidiyor. Raylar olmayan yerlere.", choices: [{text: "Freni çek", next: 55}, {text: "Hızlan", next: 26}] },
-            26: { title: "DAĞ", text: "Karların içindesin. Ayak izlerin geriye gitmiyor.", choices: [{text: "Zirveye tırman", next: 56}, {text: "Mağaraya gir", next: 27}] },
-            27: { title: "KARTAL", text: "Dev kartal seni kaptı. Gökyüzünde özgürsün.", choices: [{text: "Kurtulmaya çalış", next: 57}, {text: "Uçmaya devam et", next: 28}] },
-            28: { title: "SARAY", text: "Bulutların üzerinde bir saray. Her şey beyaz.", choices: [{text: "Saraya in", next: 58}, {text: "Düşmeye bırak kendini", next: 29}] },
-            29: { title: "DALGA", text: "Dev dalga geliyor. Tsunami değil, zamanın kendisi.", choices: [{text: "Yüz", next: 59}, {text: "Dalganın altına gir", next: 30}] },
-            30: { title: "SON KAPI", text: "İki kapı var. Soldaki cennet gibi, sağdaki cehennem gibi ama...", choices: [{text: "Sol kapı", next: 60}, {text: "Sağ kapı", next: 60}] },
-            
-            // SONLAR (30 farklı son)
-            31: { title: "SON: AMELIYAT", text: "Ameliyat masasındasın. Başarısız olundu. Yeniden doğuyorsun...", ending: true, xp: 20 },
-            32: { title: "SON: ZAFER", text: "Mezardan çıktın. Artık ölümsüzsün. Ama yalnızsın...", ending: true, xp: 150 },
-            33: { title: "SON: BEKÇI", text: "Mezarlığın bekçisi oldun. Sonsuza dek...", ending: true, xp: 30 },
-            34: { title: "SON: AV", text: "Ağaçlar seni yakaladı. Onların besini oldun...", ending: true, xp: 10 },
-            35: { title: "SON: DÖNGÜ", text: "Başa döndün. Bu kaçıncı tur?", ending: true, xp: 5 },
-            36: { title: "SON: DONDURMA", text: "Kulübede dondun. Buzdan bir heykel oldun...", ending: true, xp: 15 },
-            37: { title: "SON: PATLAMA", text: "Kitap alev aldı. Her şey yanıyor...", ending: true, xp: 40 },
-            38: { title: "SON: LANET", text: "Ayna kırıldı. Yedi yıl şanssızlık...", ending: true, xp: 20 },
-            39: { title: "SON: HEYKEL", text: "Derinlerde taşlaştın. Denizaltı şehriinin yeni sakinisin...", ending: true, xp: 35 },
-            40: { title: "SON: EZILME", text: "Saat kulesi çöktü. Zamansız öldün...", ending: true, xp: 10 },
-            41: { title: "SON: SESSIZLIK", text: "Kulakların kanadı. Sonsuz sessizlik...", ending: true, xp: 50 },
-            42: { title: "SON: SUSUZLUK", text: "Ormanda kayboldun. Susuzluktan...", ending: true, xp: 15 },
-            43: { title: "SON: BALIK", text: "Deniz canavarı seni yedi. Sindirim süreci başladı...", ending: true, xp: 25 },
-            44: { title: "SON: ZINDAN", text: "Bekçi seni hapse attı. Sonsuz karanlık...", ending: true, xp: 45 },
-            45: { title: "SON: ZEHIR", text: "Taht zehirliymiş. Krallık hayal oldu...", ending: true, xp: 100 },
-            46: { title: "SON: UYANIŞ", text: "Rüyaymış! Ama gerçek daha korkunç...", ending: true, xp: 200 },
-            47: { title: "SON: DUVARLAR", text: "Labirentte hapsoldun. Duvarlar daralıyor...", ending: true, xp: 15 },
-            48: { title: "SON: YEMEK", text: "Kasap seni doğradı. Akşam yemeği oldun...", ending: true, xp: 30 },
-            49: { title: "SON: YAŞLILIK", text: "Anahtarları ararken yaşlandın. Ömrün yetmedi...", ending: true, xp: 60 },
-            50: { title: "SON: BOŞLUK", text: "Boşluğa düştün. Düşüyorsun hala...", ending: true, xp: 80 },
-            51: { title: "SON: RUH", text: "Hayaletlerle kaldın. Artık onlardan birisin...", ending: true, xp: 120 },
-            52: { title: "SON: ATEŞ", text: "Ateş söndü. Soğuktan dondun...", ending: true, xp: 25 },
-            53: { title: "SON: KUTSAL", text: "Dinozorlar sana bilgelik verdiler. Göğe yükseldin...", ending: true, xp: 180 },
-            54: { title: "SON: KAZA", text: "Tren raydan çıktı. Son durak...", ending: true, xp: 40 },
-            55: { title: "SON: YANLIŞ DURAK", text: "Yanlış yerde indin. Burası hiçbir yer...", ending: true, xp: 70 },
-            56: { title: "SON: AYI", text: "Ayı seni parçaladı. Doğanın kuralları...", ending: true, xp: 10 },
-            57: { title: "SON: KASABA", text: "Kartal seni bir kasabaya bıraktı. Hayatına devam ediyorsun...", ending: true, xp: 300 },
-            58: { title: "SON: ÜTOPYA", text: "Bulut sarayında huzur buldun. Sonsuz barış...", ending: true, xp: 250 },
-            59: { title: "SON: BOĞULMA", text: "Dalga seni yuttu. Denizin derinliklerindeyim...", ending: true, xp: 5 },
-            60: { title: "SON: KIYAMET", text: "İki kapı da aynı yere çıktı. Kıyamet seninle başladı...", ending: true, xp: 500 }
-        };
-        
-        let currentNode = 1;
-        let path = [];
-        
-        function updateProgress() {
-            let progress = (path.length / 10) * 100;
-            document.getElementById('prog').style.width = progress + '%';
-        }
-        
-        function choose(id) {
-            path.push(id);
-            let node = story[id];
-            
-            if(node.ending) {
-                addXP(node.xp);
-                document.querySelector('.game-container').innerHTML = `
-                    <div class="ending">
-                        <h2>${node.title}</h2>
-                        <p>${node.text}</p>
-                        <div class="xp-gain">+${node.xp} XP KAZANDIN</div>
-                        <button class="btn" onclick="location.href='/'">PORTALA DÖN</button>
-                    </div>
-                `;
-                return;
-            }
-            
-            document.getElementById('title').innerText = node.title;
-            document.getElementById('story').innerText = node.text;
-            document.getElementById('choices').innerHTML = node.choices.map(c => 
-                `<button class="choice-btn" onclick="choose(${c.next})">${c.text}</button>`
-            ).join('');
-            
-            updateProgress();
-        }
+        {base_js}
+        {particles_js}
+
+        let state = JSON.parse(localStorage.getItem('cano_strateji')) || {{
+            maden: 0, enerji: 0, kristal: 0,
+            gezegenLvl: 1, gezegenXP: 0,
+            upgMaden: 1, upgEnerji: 1,
+            upgMadenCost: 100, upgEnerjiCost: 150
+        }};
+
+        function saveState() {{ localStorage.setItem('cano_strateji', JSON.stringify(state)); }}
+
+        function render() {{
+            document.getElementById('rMaden').innerText = state.maden;
+            document.getElementById('rEnerji').innerText = state.enerji;
+            document.getElementById('rKristal').innerText = state.kristal;
+            document.getElementById('crystalBtn').disabled = state.maden < 50;
+            document.getElementById('upMaden').innerText = state.upgMaden;
+            document.getElementById('upEnerji').innerText = state.upgEnerji;
+            document.getElementById('upMadenCost').innerText = state.upgMadenCost;
+            document.getElementById('upEnerjiCost').innerText = state.upgEnerjiCost;
+            let needed = state.gezegenLvl * 100;
+            let pct = Math.min(100, (state.gezegenXP / needed) * 100);
+            document.getElementById('progBar').style.width = pct + '%';
+            document.getElementById('lvlInfo').innerText =
+                'Gezegen Seviyesi: ' + state.gezegenLvl + ' · Sonraki seviye için ' + (needed - state.gezegenXP) + ' maden gerekli';
+            updateXPDisplay();
+        }}
+
+        function mine() {{
+            let gain = 10 * state.upgMaden;
+            state.maden += state.upgMaden;
+            state.gezegenXP += state.upgMaden;
+            let needed = state.gezegenLvl * 100;
+            if(state.gezegenXP >= needed) {{
+                state.gezegenXP = 0; state.gezegenLvl++;
+                showToast("🪐 GEZEGEN SEVİYE " + state.gezegenLvl + "!");
+            }}
+            addXP(gain, "Maden");
+            saveState(); render();
+        }}
+
+        function generateEnergy() {{
+            let gain = 5 * state.upgEnerji;
+            state.enerji += state.upgEnerji;
+            addXP(gain, "Enerji");
+            saveState(); render();
+        }}
+
+        function makeCrystal() {{
+            if(state.maden < 50) return;
+            state.maden -= 50; state.kristal++;
+            addXP(30, "Kristal");
+            saveState(); render();
+        }}
+
+        function upgrade(type) {{
+            let xp = getXP();
+            if(type === 'maden') {{
+                if(xp < state.upgMadenCost) {{ showToast("XP Yetersiz!"); return; }}
+                setXP(xp - state.upgMadenCost);
+                state.upgMaden++;
+                state.upgMadenCost = Math.floor(state.upgMadenCost * 1.8);
+            }} else {{
+                if(xp < state.upgEnerjiCost) {{ showToast("XP Yetersiz!"); return; }}
+                setXP(xp - state.upgEnerjiCost);
+                state.upgEnerji++;
+                state.upgEnerjiCost = Math.floor(state.upgEnerjiCost * 1.8);
+            }}
+            showToast("✅ Yükseltme Tamamlandı!");
+            saveState(); render();
+        }}
+
+        window.onload = render;
     </script>
 </body>
-</html>
-"""
+</html>"""
 
+# ============ 3. ARCADE OYUNU ============
+arcade_html = f"""<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ARCADE | Cano Studio</title>
+    <style>{base_css}
+    .arcade-wrap {{
+        min-height: 100vh; display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        padding: 80px 20px; text-align: center;
+    }}
+    h1 {{ font-family: 'Orbitron'; color: var(--neon-orange); font-size: clamp(1.2rem, 4vw, 2rem); margin-bottom: 6px; }}
+    .subtitle {{ color: #555; font-size: 0.8rem; letter-spacing: 3px; margin-bottom: 30px; }}
+
+    #gameCanvas {{
+        border: 2px solid var(--neon-orange);
+        border-radius: 12px;
+        box-shadow: 0 0 40px rgba(255,69,0,0.4);
+        background: #0a0a0a;
+        max-width: 100%;
+        touch-action: none;
+    }}
+
+    .hud {{
+        display: flex; gap: 30px; margin-bottom: 16px;
+        font-family: 'Orbitron'; font-size: 0.85rem;
+    }}
+    .hud-item span {{ color: var(--neon-orange); font-size: 1.2rem; }}
+
+    .controls {{
+        display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; justify-content: center;
+    }}
+    .d-pad {{
+        display: grid; grid-template-columns: 1fr 1fr 1fr;
+        gap: 6px; margin-top: 16px;
+    }}
+    .d-btn {{
+        background: rgba(255,69,0,0.2); border: 1px solid var(--neon-orange);
+        color: #fff; padding: 14px 18px; border-radius: 8px;
+        font-size: 1.2rem; cursor: pointer; user-select: none;
+        transition: background 0.1s;
+    }}
+    .d-btn:active {{ background: rgba(255,69,0,0.5); }}
+    .d-empty {{ background: transparent; border: none; pointer-events: none; }}
+
+    #overlay {{
+        position: absolute; inset: 0;
+        background: rgba(0,0,0,0.85);
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        border-radius: 10px;
+        font-family: 'Orbitron';
+    }}
+    #overlay h2 {{ font-size: 1.5rem; color: var(--neon-orange); margin-bottom: 10px; }}
+    #overlay p {{ color: #aaa; margin-bottom: 20px; font-size: 0.85rem; }}
+    .canvas-wrap {{ position: relative; display: inline-block; }}
+    </style>
+</head>
+<body>
+    <canvas id="particles"></canvas>
+    <div class="xp-container"><span class="xp-val" id="xpVal">0</span><span class="xp-label">XP</span></div>
+    <div class="level-badge" id="levelBadge">SEV 1</div>
+    <div id="toast" class="toast"></div>
+
+    <div class="arcade-wrap">
+        <h1>NEON ARCADE</h1>
+        <div class="subtitle">REFLEKS OYUNU · OKÇU</div>
+
+        <div class="hud">
+            <div class="hud-item">SKOR: <span id="scoreVal">0</span></div>
+            <div class="hud-item">CAN: <span id="livesVal">❤️❤️❤️</span></div>
+            <div class="hud-item">DALGA: <span id="waveVal">1</span></div>
+        </div>
+
+        <div class="canvas-wrap">
+            <canvas id="gameCanvas" width="420" height="360"></canvas>
+            <div id="overlay">
+                <h2>NEON ARCHER</h2>
+                <p>Düşmanları vur, XP kazan!</p>
+                <p style="font-size:0.75rem;color:#555;">← → hareket | SPACE ateş | Mobilde: d-pad</p>
+                <button class="btn" onclick="startGame()">BAŞLAT</button>
+            </div>
+        </div>
+
+        <div class="d-pad">
+            <div class="d-empty"></div>
+            <button class="d-btn" onpointerdown="keys.up=true" onpointerup="keys.up=false">▲</button>
+            <div class="d-empty"></div>
+            <button class="d-btn" onpointerdown="keys.left=true" onpointerup="keys.left=false">◀</button>
+            <button class="d-btn" onpointerdown="keys.fire=true" onpointerup="keys.fire=false">🔥</button>
+            <button class="d-btn" onpointerdown="keys.right=true" onpointerup="keys.right=false">▶</button>
+        </div>
+    </div>
+
+    <a href="/" class="back-btn">← GERİ</a>
+
+    <script>
+        {base_js}
+        {particles_js}
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx2 = canvas.getContext('2d');
+        let gameRunning = false, score = 0, lives = 3, wave = 1;
+        let player = {{ x: 200, y: 320, w: 32, h: 32, speed: 5 }};
+        let bullets = [], enemies = [], particles2 = [];
+        let keys = {{}};
+        let lastBulletTime = 0, lastEnemySpawn = 0;
+        let frameCount = 0;
+
+        document.addEventListener('keydown', e => {{
+            keys[e.code] = true;
+            if(e.code === 'Space') e.preventDefault();
+        }});
+        document.addEventListener('keyup', e => {{ keys[e.code] = false; }});
+
+        function startGame() {{
+            document.getElementById('overlay').style.display = 'none';
+            score = 0; lives = 3; wave = 1; bullets = []; enemies = []; particles2 = [];
+            player.x = 200; gameRunning = true;
+            gameLoop();
+        }}
+
+        function spawnEnemy() {{
+            let types = ['basic','fast','tank'];
+            let t = types[Math.floor(Math.random() * Math.min(wave, 3))];
+            enemies.push({{
+                x: Math.random() * 380 + 20,
+                y: -20, w: 28, h: 28,
+                hp: t==='tank'?3:1,
+                speed: t==='fast'?3.5:(1.2 + wave*0.15),
+                type: t, color: t==='tank'?'#ff0066':t==='fast'?'#00ff88':'#00d4ff'
+            }});
+        }}
+
+        function gameLoop() {{
+            if(!gameRunning) return;
+            frameCount++;
+
+            // Hareket
+            if((keys['ArrowLeft']||keys['left']) && player.x > 16) player.x -= player.speed;
+            if((keys['ArrowRight']||keys['right']) && player.x < canvas.width-16) player.x += player.speed;
+
+            // Ateş
+            let now = Date.now();
+            if((keys['Space']||keys['fire']) && now - lastBulletTime > 220) {{
+                bullets.push({{ x: player.x, y: player.y - 16, speed: 9, w: 4, h: 12 }});
+                lastBulletTime = now;
+            }}
+
+            // Düşman spawn
+            let spawnInterval = Math.max(600, 1400 - wave * 100);
+            if(now - lastEnemySpawn > spawnInterval) {{
+                spawnEnemy(); lastEnemySpawn = now;
+                if(Math.random() < 0.3) spawnEnemy(); // çift spawn şansı
+            }}
+
+            // Güncelle
+            bullets = bullets.filter(b => {{ b.y -= b.speed; return b.y > -20; }});
+
+            enemies.forEach(e => {{ e.y += e.speed; }});
+
+            // Çarpışma — kurşun × düşman
+            bullets = bullets.filter(b => {{
+                let hit = false;
+                enemies = enemies.map(e => {{
+                    if(!hit && b.x > e.x-14 && b.x < e.x+14 && b.y > e.y-14 && b.y < e.y+14) {{
+                        e.hp--; hit = true;
+                        if(e.hp <= 0) {{
+                            e.dead = true;
+                            score += e.type==='tank'?30:e.type==='fast'?15:10;
+                            addXP(e.type==='tank'?30:e.type==='fast'?15:10, "Düşman");
+                            for(let i=0;i<8;i++) particles2.push({{
+                                x:e.x,y:e.y,vx:(Math.random()-0.5)*4,vy:(Math.random()-0.5)*4,
+                                life:25,color:e.color
+                            }});
+                        }}
+                    }}
+                    return e;
+                }}).filter(e=>!e.dead);
+                return !hit;
+            }});
+
+            // Düşman ekrana ulaşırsa can azalt
+            enemies = enemies.filter(e => {{
+                if(e.y > canvas.height + 10) {{
+                    lives--;
+                    if(lives <= 0) {{ gameOver(); }}
+                    return false;
+                }}
+                return true;
+            }});
+
+            // Dalga ilerlemesi
+            if(score > wave * 150) {{ wave++; showToast("🌊 DALGA " + wave + "!"); }}
+
+            // Parçacıklar
+            particles2 = particles2.filter(p => {{ p.x+=p.vx; p.y+=p.vy; p.life--; return p.life>0; }});
+
+            // HUD güncelle
+            document.getElementById('scoreVal').innerText = score;
+            document.getElementById('livesVal').innerText = '❤️'.repeat(Math.max(0,lives));
+            document.getElementById('waveVal').innerText = wave;
+
+            // Çiz
+            ctx2.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Grid arka plan
+            ctx2.strokeStyle = 'rgba(255,69,0,0.05)';
+            ctx2.lineWidth = 1;
+            for(let i=0;i<canvas.width;i+=40) {{ ctx2.beginPath(); ctx2.moveTo(i,0); ctx2.lineTo(i,canvas.height); ctx2.stroke(); }}
+            for(let i=0;i<canvas.height;i+=40) {{ ctx2.beginPath(); ctx2.moveTo(0,i); ctx2.lineTo(canvas.width,i); ctx2.stroke(); }}
+
+            // Oyuncu
+            ctx2.save();
+            ctx2.translate(player.x, player.y);
+            ctx2.fillStyle = '#ff4500';
+            ctx2.shadowColor = '#ff4500'; ctx2.shadowBlur = 15;
+            ctx2.beginPath(); ctx2.moveTo(0,-16); ctx2.lineTo(12,12); ctx2.lineTo(0,6); ctx2.lineTo(-12,12); ctx2.closePath(); ctx2.fill();
+            ctx2.restore();
+
+            // Kurşunlar
+            bullets.forEach(b => {{
+                ctx2.fillStyle = '#ffdd00';
+                ctx2.shadowColor = '#ffdd00'; ctx2.shadowBlur = 8;
+                ctx2.fillRect(b.x-2, b.y, b.w, b.h);
+            }});
+
+            // Düşmanlar
+            enemies.forEach(e => {{
+                ctx2.save();
+                ctx2.translate(e.x, e.y);
+                ctx2.fillStyle = e.color;
+                ctx2.shadowColor = e.color; ctx2.shadowBlur = 12;
+                if(e.type==='tank') {{
+                    ctx2.fillRect(-14,-14,28,28);
+                }} else if(e.type==='fast') {{
+                    ctx2.beginPath(); ctx2.moveTo(0,14); ctx2.lineTo(12,-14); ctx2.lineTo(-12,-14); ctx2.closePath(); ctx2.fill();
+                }} else {{
+                    ctx2.beginPath(); ctx2.arc(0,0,14,0,Math.PI*2); ctx2.fill();
+                }}
+                // HP bar (tank için)
+                if(e.type==='tank' && e.hp>0) {{
+                    ctx2.fillStyle = '#333'; ctx2.fillRect(-14,16,28,4);
+                    ctx2.fillStyle = '#ff0066'; ctx2.fillRect(-14,16,28*(e.hp/3),4);
+                }}
+                ctx2.restore();
+            }});
+
+            // Parçacıklar
+            particles2.forEach(p => {{
+                ctx2.globalAlpha = p.life/25;
+                ctx2.fillStyle = p.color;
+                ctx2.beginPath(); ctx2.arc(p.x,p.y,3,0,Math.PI*2); ctx2.fill();
+            }});
+            ctx2.globalAlpha = 1;
+
+            requestAnimationFrame(gameLoop);
+        }}
+
+        function gameOver() {{
+            gameRunning = false;
+            let ov = document.getElementById('overlay');
+            ov.style.display = 'flex';
+            ov.innerHTML = '<h2>GAME OVER</h2><p>Skor: '+score+' · Dalga: '+wave+'</p><button class="btn" onclick="startGame()">TEKRAR OYNA</button>';
+        }}
+
+        window.onload = updateXPDisplay;
+    </script>
+</body>
+</html>"""
+
+# ============ 4. HORROR ============
+horror_html = f"""<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>HORROR | Cano Studio</title>
+    <style>{base_css}
+    body {{ background: #000; }}
+    .horror-wrap {{
+        min-height: 100vh; display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        padding: 80px 20px; text-align: center;
+    }}
+    h1 {{ font-family: 'Orbitron'; color: #cc0000; font-size: clamp(1.2rem, 4vw, 2rem);
+          margin-bottom: 6px; text-shadow: 0 0 20px #cc0000; }}
+    .subtitle {{ color: #400; font-size: 0.8rem; letter-spacing: 3px; margin-bottom: 30px; }}
+
+    .story-box {{
+        background: rgba(100,0,0,0.12);
+        border: 1px solid rgba(200,0,0,0.3);
+        border-radius: 16px; padding: 30px;
+        width: 100%; max-width: 560px;
+        margin-bottom: 24px; text-align: left;
+        min-height: 200px;
+        position: relative; overflow: hidden;
+    }}
+    .story-box::before {{
+        content: ''; position: absolute;
+        top: 0; left: 0; right: 0; height: 2px;
+        background: linear-gradient(90deg, transparent, #cc0000, transparent);
+        animation: scanline 3s linear infinite;
+    }}
+    @keyframes scanline {{ from {{ top: 0; }} to {{ top: 100%; }} }}
+
+    .story-text {{
+        color: #ccc; font-size: 1rem; line-height: 1.8;
+        font-family: 'Rajdhani'; min-height: 80px;
+    }}
+
+    .choices {{ display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 560px; }}
+    .choice-btn {{
+        background: rgba(100,0,0,0.2);
+        border: 1px solid rgba(200,0,0,0.3);
+        color: #ccc; padding: 14px 20px;
+        border-radius: 8px; cursor: pointer;
+        font-family: 'Rajdhani'; font-size: 0.95rem;
+        text-align: left; transition: all 0.2s;
+    }}
+    .choice-btn:hover {{ background: rgba(200,0,0,0.2); border-color: #cc0000; color: #fff; }}
+
+    .stats-row {{
+        display: flex; gap: 20px; margin-bottom: 20px;
+        font-family: 'Orbitron'; font-size: 0.75rem;
+    }}
+    .h-stat {{ background: rgba(100,0,0,0.2); border: 1px solid rgba(200,0,0,0.3); padding: 8px 16px; border-radius: 8px; }}
+    .h-stat span {{ color: #cc0000; }}
+
+    .end-screen {{
+        display: none; padding: 30px; text-align: center;
+    }}
+    .end-screen h2 {{ font-family: 'Orbitron'; color: #cc0000; font-size: 1.5rem; margin-bottom: 10px; }}
+    .end-screen p {{ color: #888; margin-bottom: 20px; }}
+
+    #scareFlash {{
+        position: fixed; inset: 0; background: red;
+        opacity: 0; pointer-events: none; z-index: 9999;
+        transition: opacity 0.05s;
+    }}
+    </style>
+</head>
+<body>
+    <div id="scareFlash"></div>
+    <canvas id="particles"></canvas>
+    <div class="xp-container"><span class="xp-val" id="xpVal">0</span><span class="xp-label">XP</span></div>
+    <div class="level-badge" id="levelBadge">SEV 1</div>
+    <div id="toast" class="toast"></div>
+
+    <div class="horror-wrap">
+        <h1>👻 KARANLIK EV</h1>
+        <div class="subtitle">İNTERAKTİF KORKU HİKAYESİ</div>
+
+        <div class="stats-row">
+            <div class="h-stat">CAN: <span id="hpVal">❤️❤️❤️</span></div>
+            <div class="h-stat">KOR KOR: <span id="fearVal">0</span>/100</div>
+            <div class="h-stat">BÖLÜM: <span id="chapVal">1</span>/5</div>
+        </div>
+
+        <div class="story-box">
+            <div class="story-text" id="storyText">Yükleniyor...</div>
+        </div>
+
+        <div class="choices" id="choicesBox"></div>
+
+        <div class="end-screen" id="endScreen">
+            <h2 id="endTitle"></h2>
+            <p id="endDesc"></p>
+            <button class="btn btn-purple" onclick="restartGame()">TEKRAR OYNA</button>
+        </div>
+    </div>
+
+    <a href="/" class="back-btn">← GERİ</a>
+
+    <script>
+        {base_js}
+        {particles_js}
+
+        let hp = 3, fear = 0, chapter = 1;
+
+        const story = [
+            {{
+                text: "Gece yarısı eski bir eve giriyorsun. Kapı ağır bir sesle kapanıyor arkandan. Uzakta bir bebek ağlaması duyuyorsun... Elinde kırık bir fener var. Ne yaparsın?",
+                choices: [
+                    {{ text: "🔦 Sesi takip et", next: 1, xp: 10, fearUp: 15 }},
+                    {{ text: "🚪 Kapıyı açmayı dene", next: 2, xp: 5, fearUp: 5 }},
+                    {{ text: "📱 Telefona bak", next: 3, xp: 8, fearUp: 8, damage: 0 }},
+                ]
+            }},
+            {{
+                text: "Sesi takip ediyorsun. Merdivenden çıkıyorsun, her adımda tahta gıcırdıyor. En üst odanın kapısı hafifçe açık... İçeriden soğuk bir rüzgar geliyor. Bebek sesi durdu.",
+                choices: [
+                    {{ text: "😱 Kapıyı itiyor — içeri giriyorsun", next: 4, xp: 20, fearUp: 20 }},
+                    {{ text: "👂 Kulak kabartıyorsun", next: 5, xp: 10, fearUp: 10 }},
+                    {{ text: "🏃 Kaçıyorsun aşağı", next: 6, xp: 5, fearUp: 5, damage: 0 }},
+                ]
+            }},
+            {{
+                text: "Kapıyı it— ve efsane bir BOOM! sesiyle yüzüne kapanıyor. Görünmez bir güç itmiş seni. Düşüyorsun. Korku seviyeni artıyor...",
+                choices: [
+                    {{ text: "💪 Tekrar kalkıyorsun", next: 1, xp: 15, fearUp: 15, damage: 1 }},
+                    {{ text: "😰 Yerde bekliyorsun", next: 7, xp: 5, fearUp: 25, damage: 0 }},
+                ]
+            }},
+            {{
+                text: "Telefonuna bakıyorsun — şarj %2. Ekranda garip bir mesaj var: 'EVİ TERK ET'. Mesajı kim gönderdi?! Göndereni ararsın, 'hatlar dışında' uyarısı geliyor...",
+                choices: [
+                    {{ text: "📞 Tekrar arıyorsun", next: 8, xp: 10, fearUp: 10 }},
+                    {{ text: "🔦 Feneri yakıyorsun", next: 1, xp: 8, fearUp: 5 }},
+                ]
+            }},
+            {{
+                text: "Odaya giriyorsun. Ortada küçük bir karyola var. Yavaşça yaklaşıyorsun... Karyola BOŞ. Ama sıcak! Birisi az önce buradaydı. Perdenin arkası hareket etti...",
+                choices: [
+                    {{ text: "🔪 Perdeyi çekiyorsun", next: 9, xp: 25, fearUp: 30 }},
+                    {{ text: "💨 Dışarı fırlıyorsun", next: 6, xp: 10, fearUp: 10, damage: 0 }},
+                ]
+            }},
+            {{
+                text: "Kulak kabarttın. Bir hışırtı duyuyorsun. Ardından derin bir nefes. Ve bir fısıltı: 'Neden geldin...' Donup kalıyorsun. Sesin kaynağı tam arkanda!",
+                choices: [
+                    {{ text: "😱 Dönüyorsun yavaşça", next: 10, xp: 30, fearUp: 35 }},
+                    {{ text: "🏃 Sprint atıyorsun", next: 6, xp: 10, fearUp: 15, damage: 1 }},
+                ]
+            }},
+            {{
+                text: "Koşarak aşağı iniyorsun, kapıya ulaşıyorsun ama... kapı kilitli! Anahtarı yok. Bir pencere var sol tarafta. Dışarısı kasvetli, soğuk bir gece. Ay ışığı içeri vuruyor.",
+                choices: [
+                    {{ text: "🪟 Pencereden çıkıyorsun", next: 11, xp: 20, fearUp: 5, damage: 0 }},
+                    {{ text: "🔑 Anahtar arıyorsun", next: 1, xp: 15, fearUp: 20 }},
+                ]
+            }},
+            {{
+                text: "Yerde bekliyorsun. Sessizlik var. Sonra... bir şey senin yanına oturdu. Onu göremiyorsun. Ama ağırlığını hissediyorsun. Soğuk bir el koluna dokunuyor...",
+                choices: [
+                    {{ text: "😱 Bağırıyorsun", next: 12, xp: 5, fearUp: 40, damage: 1 }},
+                    {{ text: "🧊 Hareketsiz kalıyorsun", next: 13, xp: 20, fearUp: 15 }},
+                ]
+            }},
+            {{
+                text: "Hat bağlandı! Ses geliyor ama insan sesi değil... Gürültü, parazit, ve uzaktan bir çığlık. Telefon kapanıyor ve ekran tamamen karardı. Artık karanlıkta yalnızsın.",
+                choices: [
+                    {{ text: "🔦 Feneri yakıyorsun", next: 1, xp: 10, fearUp: 10 }},
+                    {{ text: "🚶 Sese doğru yürüyorsun", next: 4, xp: 20, fearUp: 20 }},
+                ]
+            }},
+            {{
+                text: "Perdeyi çekiyorsun ve — HİÇ BİR ŞEY YOK. Sadece soğuk bir duvar. Nefes alıyorsun. Sonra tam arkandan duyuyorsun: karyola gıcırdadı. Yavaşça dönüyorsun...",
+                choices: [
+                    {{ text: "💀 Yüzleşiyorsun", next: 14, xp: 40, fearUp: 40 }},
+                    {{ text: "😰 Gözlerini kapıyorsun", next: 7, xp: 5, fearUp: 20 }},
+                ]
+            }},
+            {{
+                text: "Dönüyorsun... Beyaz geceliği olan küçük bir kız duruyor. Sana bakıyor. Gözleri yok. Sadece karanlık. Ağzını açıyor ve konuşuyor: 'Neden bizi terk ettin?'",
+                choices: [
+                    {{ text: "🗣️ Cevap veriyorsun", next: 15, xp: 35, fearUp: 50 }},
+                    {{ text: "🏃 Kaçıyorsun", next: 6, xp: 10, fearUp: 30, damage: 1 }},
+                ]
+            }},
+            {{
+                text: "Pencereden atlıyorsun! Dışarısı özgürlük! Soğuk hava yüzüne çarpıyor. Arkana bakıyorsun — evin üst penceresinde biri seni izliyor. Koşmaya devam ediyorsun ve hayatta kalıyorsun!",
+                choices: [], win: true
+            }},
+            {{
+                text: "Bağırdın ve ses duvarları sarıyor. O soğuk el sıkıştı. Korku zirvede...",
+                choices: [
+                    {{ text: "😤 Direniniyorsun", next: 13, xp: 10, fearUp: 5, damage: 0 }},
+                    {{ text: "💀 Vazgeçiyorsun", next: -1, xp: 0, fearUp: 0, damage: 2 }},
+                ]
+            }},
+            {{
+                text: "Sakin kalıyorsun. El yavaşça çekiliyor. Sessizlik geri dönüyor. Bir fısıltı: 'Güçlüsün...' ve kaybolup gidiyor. Etraf aydınlanıyor, kapı açılıyor. Çıkış yolunu buldun!",
+                choices: [], win: true
+            }},
+            {{
+                text: "Kız ve sen karşı karşıya geliyorsunuz. Yüzleşmek ona iyi geldi... 'Teşekkürler.' diyor ve kaybolup gidiyor. Ev aydınlanıyor. Huzur buluyor, sen de çıkış yolunu buluyorsun!",
+                choices: [], win: true, xpBonus: 100
+            }},
+            {{
+                text: "'Ben... bilmiyorum' diyorsun. Kız sana uzun uzun bakıyor. Sonra gülümsüyor — gözleri beliriyor. 'Artık biliyorsun.' diyor. Bir ışık parlıyor ve ev yıkılıyor. Sağ çıkıyorsun!",
+                choices: [], win: true, xpBonus: 150
+            }},
+        ];
+
+        function loadChapter(idx) {{
+            if(idx === -1 || hp <= 0 || fear >= 100) {{ gameEnd(false); return; }}
+            let s = story[idx];
+            if(!s) {{ gameEnd(false); return; }}
+
+            chapter++;
+            document.getElementById('chapVal').innerText = Math.min(chapter, 5);
+
+            // Korku efekti
+            if(s.fearUp && s.fearUp > 20) scareFlash();
+
+            document.getElementById('storyText').innerText = s.text;
+            document.getElementById('hpVal').innerText = '❤️'.repeat(Math.max(0,hp));
+            document.getElementById('fearVal').innerText = fear;
+
+            let box = document.getElementById('choicesBox');
+            box.innerHTML = '';
+
+            if(s.win) {{ gameEnd(true, s.xpBonus || 0); return; }}
+
+            s.choices.forEach(c => {{
+                let btn = document.createElement('button');
+                btn.className = 'choice-btn';
+                btn.innerText = c.text;
+                btn.onclick = () => {{
+                    if(c.damage) {{ hp -= c.damage; }}
+                    if(c.fearUp) {{ fear = Math.min(100, fear + c.fearUp); }}
+                    if(c.xp) {{ addXP(c.xp, "Korku"); }}
+                    loadChapter(c.next);
+                }};
+                box.appendChild(btn);
+            }});
+        }}
+
+        function scareFlash() {{
+            let el = document.getElementById('scareFlash');
+            el.style.opacity = '0.4';
+            setTimeout(() => el.style.opacity = '0', 150);
+        }}
+
+        function gameEnd(win, bonusXP=0) {{
+            document.getElementById('storyText').innerText = '';
+            document.getElementById('choicesBox').innerHTML = '';
+            let es = document.getElementById('endScreen');
+            es.style.display = 'block';
+            if(win) {{
+                document.getElementById('endTitle').innerText = '🏆 HAYATTA KALDIN!';
+                document.getElementById('endDesc').innerText = 'Tebrikler! Evi geçtin. Korku puanın: ' + fear;
+                if(bonusXP) addXP(bonusXP, "Ev Bitti!");
+                addXP(50, "Hayatta Kaldın");
+            }} else {{
+                document.getElementById('endTitle').innerText = '💀 KARANLIĞA YUTULDUN';
+                document.getElementById('endDesc').innerText = fear >= 100 ? 'Korku seni yendi!' : 'Canın bitti!';
+            }}
+        }}
+
+        function restartGame() {{
+            hp = 3; fear = 0; chapter = 1;
+            document.getElementById('endScreen').style.display = 'none';
+            loadChapter(0);
+        }}
+
+        window.onload = function() {{
+            updateXPDisplay();
+            loadChapter(0);
+        }};
+    </script>
+</body>
+</html>"""
+
+# ============ 5. MARKET ============
+store_html = f"""<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MARKET | Cano Studio</title>
+    <style>{base_css}
+    .store-wrap {{
+        min-height: 100vh; padding: 100px 20px 80px;
+        max-width: 1000px; margin: 0 auto;
+    }}
+    h1 {{ font-family: 'Orbitron'; text-align: center; font-size: clamp(1.2rem, 4vw, 2rem);
+          background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple));
+          -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+          margin-bottom: 6px; }}
+    .subtitle {{ color: #555; text-align: center; font-size: 0.8rem; letter-spacing: 3px; margin-bottom: 30px; }}
+    .balance-box {{
+        background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.3);
+        border-radius: 12px; padding: 16px 24px; text-align: center; margin-bottom: 30px;
+        font-family: 'Orbitron';
+    }}
+    .balance-box .big {{ font-size: 2rem; color: var(--neon-blue); }}
+    .balance-box .lbl {{ color: #555; font-size: 0.75rem; letter-spacing: 2px; }}
+
+    .category-tabs {{ display: flex; gap: 10px; justify-content: center; margin-bottom: 24px; flex-wrap: wrap; }}
+    .tab {{
+        background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+        color: #666; padding: 8px 20px; border-radius: 50px; cursor: pointer;
+        font-family: 'Orbitron'; font-size: 0.75rem; transition: all 0.2s;
+    }}
+    .tab.active {{ border-color: var(--neon-blue); color: var(--neon-blue); background: rgba(0,212,255,0.08); }}
+
+    .store-grid {{
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+    }}
+    .item {{
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
+        padding: 24px 16px; border-radius: 14px; text-align: center;
+        transition: all 0.3s; position: relative; overflow: hidden;
+    }}
+    .item:hover {{ transform: translateY(-4px); border-color: var(--neon-blue); }}
+    .item.owned {{ border-color: var(--neon-green); opacity: 0.7; }}
+    .item-icon {{ font-size: 2.5rem; display: block; margin-bottom: 10px; }}
+    .item-name {{ font-family: 'Orbitron'; font-size: 0.85rem; margin-bottom: 6px; }}
+    .item-desc {{ color: #666; font-size: 0.75rem; margin-bottom: 14px; }}
+    .item-price {{ color: var(--neon-orange); font-family: 'Orbitron'; font-size: 0.9rem; margin-bottom: 12px; }}
+    .owned-badge {{
+        position: absolute; top: 10px; right: 10px;
+        background: var(--neon-green); color: #000;
+        font-size: 0.6rem; font-family: 'Orbitron';
+        padding: 3px 8px; border-radius: 50px;
+    }}
+    </style>
+</head>
+<body>
+    <canvas id="particles"></canvas>
+    <div class="xp-container"><span class="xp-val" id="xpVal">0</span><span class="xp-label">XP</span></div>
+    <div class="level-badge" id="levelBadge">SEV 1</div>
+    <div id="toast" class="toast"></div>
+
+    <div class="store-wrap">
+        <h1>MARKET</h1>
+        <div class="subtitle">XP İLE EŞYA SATIN AL</div>
+
+        <div class="balance-box">
+            <div class="big" id="balanceVal">0</div>
+            <div class="lbl">MEVCUT XP BAKİYESİ</div>
+        </div>
+
+        <div class="category-tabs">
+            <div class="tab active" onclick="filterItems('all', this)">TÜMÜ</div>
+            <div class="tab" onclick="filterItems('skin', this)">SKİNLER</div>
+            <div class="tab" onclick="filterItems('boost', this)">BOOST</div>
+            <div class="tab" onclick="filterItems('special', this)">ÖZEL</div>
+        </div>
+
+        <div class="store-grid" id="storeGrid"></div>
+    </div>
+
+    <a href="/" class="back-btn">← GERİ</a>
+
+    <script>
+        {base_js}
+
+        const ITEMS = [
+            {{ id: 'gold_skin', name: 'Altın Skin', icon: '✨', cat: 'skin', price: 500, desc: 'Oyuncuna altın parlaklığı katar' }},
+            {{ id: 'neon_skin', name: 'Neon Skin', icon: '💡', cat: 'skin', price: 750, desc: 'Neon renk paleti' }},
+            {{ id: 'dark_skin', name: 'Karanlık Skin', icon: '🌑', cat: 'skin', price: 1000, desc: 'Gecenin derinliklerinden' }},
+            {{ id: 'speed_boost', name: 'Hız Botu', icon: '⚡', cat: 'boost', price: 1000, desc: 'Arcade\'de +%20 hız' }},
+            {{ id: 'xp_boost', name: 'XP x2', icon: '🔥', cat: 'boost', price: 800, desc: '24 saat boyunca çift XP' }},
+            {{ id: 'mine_boost', name: 'Maden Boost', icon: '⛏️', cat: 'boost', price: 600, desc: 'Strateji\'de +5 maden/tıklama' }},
+            {{ id: 'ghost_badge', name: 'Hayalet Rozeti', icon: '👻', cat: 'special', price: 1500, desc: 'Horror tamamlayanların rozeti' }},
+            {{ id: 'crown', name: 'Kral Tacı', icon: '👑', cat: 'special', price: 3000, desc: 'En prestijli ödül' }},
+            {{ id: 'crystal_key', name: 'Kristal Anahtar', icon: '💎', cat: 'special', price: 2000, desc: 'Gizli alanları açar' }},
+        ];
+
+        let currentFilter = 'all';
+
+        function filterItems(cat, tab) {{
+            currentFilter = cat;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            renderStore();
+        }}
+
+        function renderStore() {{
+            let xp = getXP();
+            let owned = getItems();
+            document.getElementById('balanceVal').innerText = xp.toLocaleString();
+            let grid = document.getElementById('storeGrid');
+            grid.innerHTML = '';
+            ITEMS.filter(i => currentFilter === 'all' || i.cat === currentFilter).forEach(item => {{
+                let isOwned = owned.includes(item.id);
+                let canBuy = xp >= item.price && !isOwned;
+                let div = document.createElement('div');
+                div.className = 'item' + (isOwned ? ' owned' : '');
+                div.innerHTML = `
+                    ${{isOwned ? '<div class="owned-badge">SAHİBİSİN</div>' : ''}}
+                    <span class="item-icon">${{item.icon}}</span>
+                    <div class="item-name">${{item.name}}</div>
+                    <div class="item-desc">${{item.desc}}</div>
+                    <div class="item-price">${{item.price.toLocaleString()}} XP</div>
+                    <button class="btn btn-blue" ${{!canBuy ? 'disabled' : ''}} onclick="buyItem('${{item.id}}', ${{item.price}})">
+                        ${{isOwned ? '✓ SATIN ALINDI' : 'SATIN AL'}}
+                    </button>
+                `;
+                grid.appendChild(div);
+            }});
+        }}
+
+        function buyItem(id, price) {{
+            let xp = getXP();
+            let owned = getItems();
+            if(xp < price || owned.includes(id)) {{ showToast("XP Yetersiz veya Zaten Sahipsin!"); return; }}
+            setXP(xp - price);
+            owned.push(id);
+            localStorage.setItem('cano_items', JSON.stringify(owned));
+            showToast("✅ Satın Alındı!");
+            renderStore();
+        }}
+
+        window.onload = function() {{ updateXPDisplay(); renderStore(); }};
+    </script>
+</body>
+</html>"""
+
+# ============ FLASK ROTALAR ============
 @app.route('/')
 def home(): return ana_sayfa_html
-@app.route('/store')
-def store(): return store_html
-@app.route('/neon-arcade')
-def arcade(): return arcade_html
+
 @app.route('/strateji')
 def strateji(): return strateji_html
+
+@app.route('/neon-arcade')
+def arcade(): return arcade_html
+
 @app.route('/horror')
 def horror(): return horror_html
 
+@app.route('/store')
+def store(): return store_html
+
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port, debug=False)
