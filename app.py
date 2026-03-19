@@ -1046,92 +1046,55 @@ horror_html = f"""<!DOCTYPE html>
 </html>"""
 
 # ============ 5. MARKET ============
-store_html = f"""<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MARKET | Cano Studio</title>
-    <style>{base_css}
-    .store-wrap {{
+store_css = """
+    .store-wrap {
         min-height: 100vh; padding: 100px 20px 80px;
         max-width: 1000px; margin: 0 auto;
-    }}
-    h1 {{ font-family: 'Orbitron'; text-align: center; font-size: clamp(1.2rem, 4vw, 2rem);
+    }
+    h1 { font-family: 'Orbitron'; text-align: center; font-size: clamp(1.2rem, 4vw, 2rem);
           background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple));
           -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-          margin-bottom: 6px; }}
-    .subtitle {{ color: #555; text-align: center; font-size: 0.8rem; letter-spacing: 3px; margin-bottom: 30px; }}
-    .balance-box {{
+          margin-bottom: 6px; }
+    .subtitle { color: #555; text-align: center; font-size: 0.8rem; letter-spacing: 3px; margin-bottom: 30px; }
+    .balance-box {
         background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.3);
         border-radius: 12px; padding: 16px 24px; text-align: center; margin-bottom: 30px;
         font-family: 'Orbitron';
-    }}
-    .balance-box .big {{ font-size: 2rem; color: var(--neon-blue); }}
-    .balance-box .lbl {{ color: #555; font-size: 0.75rem; letter-spacing: 2px; }}
-
-    .category-tabs {{ display: flex; gap: 10px; justify-content: center; margin-bottom: 24px; flex-wrap: wrap; }}
-    .tab {{
+    }
+    .balance-box .big { font-size: 2rem; color: var(--neon-blue); }
+    .balance-box .lbl { color: #555; font-size: 0.75rem; letter-spacing: 2px; }
+    .category-tabs { display: flex; gap: 10px; justify-content: center; margin-bottom: 24px; flex-wrap: wrap; }
+    .tab {
         background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
         color: #666; padding: 8px 20px; border-radius: 50px; cursor: pointer;
         font-family: 'Orbitron'; font-size: 0.75rem; transition: all 0.2s;
-    }}
-    .tab.active {{ border-color: var(--neon-blue); color: var(--neon-blue); background: rgba(0,212,255,0.08); }}
-
-    .store-grid {{
+    }
+    .tab.active { border-color: var(--neon-blue); color: var(--neon-blue); background: rgba(0,212,255,0.08); }
+    .store-grid {
         display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 16px;
-    }}
-    .item {{
+    }
+    .item {
         background: rgba(255,255,255,0.04);
         border: 1px solid rgba(255,255,255,0.08);
         padding: 24px 16px; border-radius: 14px; text-align: center;
         transition: all 0.3s; position: relative; overflow: hidden;
-    }}
-    .item:hover {{ transform: translateY(-4px); border-color: var(--neon-blue); }}
-    .item.owned {{ border-color: var(--neon-green); opacity: 0.7; }}
-    .item-icon {{ font-size: 2.5rem; display: block; margin-bottom: 10px; }}
-    .item-name {{ font-family: 'Orbitron'; font-size: 0.85rem; margin-bottom: 6px; }}
-    .item-desc {{ color: #666; font-size: 0.75rem; margin-bottom: 14px; }}
-    .item-price {{ color: var(--neon-orange); font-family: 'Orbitron'; font-size: 0.9rem; margin-bottom: 12px; }}
-    .owned-badge {{
+    }
+    .item:hover { transform: translateY(-4px); border-color: var(--neon-blue); }
+    .item.owned { border-color: var(--neon-green); opacity: 0.7; }
+    .item-icon { font-size: 2.5rem; display: block; margin-bottom: 10px; }
+    .item-name { font-family: 'Orbitron'; font-size: 0.85rem; margin-bottom: 6px; }
+    .item-desc { color: #666; font-size: 0.75rem; margin-bottom: 14px; }
+    .item-price { color: var(--neon-orange); font-family: 'Orbitron'; font-size: 0.9rem; margin-bottom: 12px; }
+    .owned-badge {
         position: absolute; top: 10px; right: 10px;
         background: var(--neon-green); color: #000;
         font-size: 0.6rem; font-family: 'Orbitron';
         padding: 3px 8px; border-radius: 50px;
-    }}
-    </style>
-</head>
-<body>
-    <canvas id="particles"></canvas>
-    <div class="xp-container"><span class="xp-val" id="xpVal">0</span><span class="xp-label">XP</span></div>
-    <div class="level-badge" id="levelBadge">SEV 1</div>
-    <div id="toast" class="toast"></div>
+    }
+"""
 
-    <div class="store-wrap">
-        <h1>MARKET</h1>
-        <div class="subtitle">XP İLE EŞYA SATIN AL</div>
-
-        <div class="balance-box">
-            <div class="big" id="balanceVal">0</div>
-            <div class="lbl">MEVCUT XP BAKİYESİ</div>
-        </div>
-
-        <div class="category-tabs">
-            <div class="tab active" onclick="filterItems('all', this)">TÜMÜ</div>
-            <div class="tab" onclick="filterItems('skin', this)">SKİNLER</div>
-            <div class="tab" onclick="filterItems('boost', this)">BOOST</div>
-            <div class="tab" onclick="filterItems('special', this)">ÖZEL</div>
-        </div>
-
-        <div class="store-grid" id="storeGrid"></div>
-    </div>
-
-    <a href="/" class="back-btn">← GERİ</a>
-
-    <script>
-        {base_js}
-
+store_js = """
         const ITEMS = [
             { id: 'gold_skin', name: 'Altin Skin', icon: '&#10024;', cat: 'skin', price: 500, desc: 'Oyuncuna altin parlaklik katar' },
             { id: 'neon_skin', name: 'Neon Skin', icon: '&#128161;', cat: 'skin', price: 750, desc: 'Neon renk paleti' },
@@ -1144,7 +1107,7 @@ store_html = f"""<!DOCTYPE html>
             { id: 'crystal_key', name: 'Kristal Anahtar', icon: '&#128142;', cat: 'special', price: 2000, desc: 'Gizli alanlari acar' },
         ];
 
-        let currentFilter = 'all';
+        var currentFilter = 'all';
 
         function filterItems(cat, tab) {
             currentFilter = cat;
@@ -1154,24 +1117,24 @@ store_html = f"""<!DOCTYPE html>
         }
 
         function renderStore() {
-            let xp = getXP();
-            let owned = getItems();
+            var xp = getXP();
+            var owned = getItems();
             document.getElementById('balanceVal').innerText = xp.toLocaleString();
-            let grid = document.getElementById('storeGrid');
+            var grid = document.getElementById('storeGrid');
             grid.innerHTML = '';
             ITEMS.filter(function(i) { return currentFilter === 'all' || i.cat === currentFilter; }).forEach(function(item) {
-                let isOwned = owned.includes(item.id);
-                let canBuy = xp >= item.price && !isOwned;
-                let div = document.createElement('div');
+                var isOwned = owned.includes(item.id);
+                var canBuy = xp >= item.price && !isOwned;
+                var div = document.createElement('div');
                 div.className = 'item' + (isOwned ? ' owned' : '');
-                let html = '';
-                if(isOwned) html += '<div class="owned-badge">SAHİBİSİN</div>';
+                var html = '';
+                if(isOwned) html += '<div class="owned-badge">SAHIPSIN</div>';
                 html += '<span class="item-icon">' + item.icon + '</span>';
                 html += '<div class="item-name">' + item.name + '</div>';
                 html += '<div class="item-desc">' + item.desc + '</div>';
                 html += '<div class="item-price">' + item.price.toLocaleString() + ' XP</div>';
                 html += '<button class="btn btn-blue" ' + (!canBuy ? 'disabled' : '') + ' onclick="buyItem(\'' + item.id + '\',' + item.price + ')">';
-                html += isOwned ? '&#10003; SATIN ALINDI' : 'SATIN AL';
+                html += isOwned ? 'SATIN ALINDI' : 'SATIN AL';
                 html += '</button>';
                 div.innerHTML = html;
                 grid.appendChild(div);
@@ -1179,20 +1142,51 @@ store_html = f"""<!DOCTYPE html>
         }
 
         function buyItem(id, price) {
-            let xp = getXP();
-            let owned = getItems();
-            if(xp < price || owned.includes(id)) { showToast("XP Yetersiz veya Zaten Sahipsin!"); return; }
+            var xp = getXP();
+            var owned = getItems();
+            if(xp < price || owned.includes(id)) { showToast('XP Yetersiz!'); return; }
             setXP(xp - price);
             owned.push(id);
             localStorage.setItem('cano_items', JSON.stringify(owned));
-            showToast("Satin Alindi!");
+            showToast('Satin Alindi!');
             renderStore();
         }
 
         window.onload = function() { updateXPDisplay(); renderStore(); };
-    </script>
-</body>
-</html>"""
+"""
+
+store_html = (
+    '<!DOCTYPE html>\n<html lang="tr">\n<head>\n'
+    '    <meta charset="UTF-8">\n'
+    '    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">\n'
+    '    <title>MARKET | Cano Studio</title>\n'
+    '    <style>' + base_css + store_css + '</style>\n'
+    '</head>\n<body>\n'
+    '    <canvas id="particles"></canvas>\n'
+    '    <div class="xp-container"><span class="xp-val" id="xpVal">0</span><span class="xp-label">XP</span></div>\n'
+    '    <div class="level-badge" id="levelBadge">SEV 1</div>\n'
+    '    <div id="toast" class="toast"></div>\n'
+    '    <div class="store-wrap">\n'
+    '        <h1>MARKET</h1>\n'
+    '        <div class="subtitle">XP ILE ESYA SATIN AL</div>\n'
+    '        <div class="balance-box">\n'
+    '            <div class="big" id="balanceVal">0</div>\n'
+    '            <div class="lbl">MEVCUT XP BAKIYESI</div>\n'
+    '        </div>\n'
+    '        <div class="category-tabs">\n'
+    '            <div class="tab active" onclick="filterItems(\'all\', this)">TUMU</div>\n'
+    '            <div class="tab" onclick="filterItems(\'skin\', this)">SKINLER</div>\n'
+    '            <div class="tab" onclick="filterItems(\'boost\', this)">BOOST</div>\n'
+    '            <div class="tab" onclick="filterItems(\'special\', this)">OZEL</div>\n'
+    '        </div>\n'
+    '        <div class="store-grid" id="storeGrid"></div>\n'
+    '    </div>\n'
+    '    <a href="/" class="back-btn">&larr; GERI</a>\n'
+    '    <script>\n'
+    + base_js + particles_js + store_js +
+    '    </script>\n'
+    '</body>\n</html>'
+)
 
 # ============ FLASK ROTALAR ============
 @app.route('/')
