@@ -1095,7 +1095,26 @@ store_css = """
 """
 
 store_js = """
-        const ITEMS = [
+        function getXP() { return parseInt(localStorage.getItem('cano_xp')) || 0; }
+        function setXP(v) { localStorage.setItem('cano_xp', v); updateXPDisplay(); }
+        function updateXPDisplay() {
+            var xp = getXP();
+            var el = document.getElementById('xpVal');
+            if(el) el.innerText = xp.toLocaleString();
+            var lvl = document.getElementById('levelBadge');
+            if(lvl) lvl.innerText = 'SEV ' + Math.floor(xp / 500 + 1);
+            var bal = document.getElementById('balanceVal');
+            if(bal) bal.innerText = xp.toLocaleString();
+        }
+        function showToast(msg) {
+            var t = document.getElementById('toast');
+            if(!t) return;
+            t.innerText = msg; t.style.opacity = '1';
+            setTimeout(function() { t.style.opacity = '0'; }, 2500);
+        }
+        function getItems() { return JSON.parse(localStorage.getItem('cano_items')) || []; }
+
+        var ITEMS = [
             { id: 'gold_skin', name: 'Altin Skin', icon: '&#10024;', cat: 'skin', price: 500, desc: 'Oyuncuna altin parlaklik katar' },
             { id: 'neon_skin', name: 'Neon Skin', icon: '&#128161;', cat: 'skin', price: 750, desc: 'Neon renk paleti' },
             { id: 'dark_skin', name: 'Karanlik Skin', icon: '&#127761;', cat: 'skin', price: 1000, desc: 'Gecenin derinliklerinden' },
@@ -1183,9 +1202,8 @@ store_html = (
     '    </div>\n'
     '    <a href="/" class="back-btn">&larr; GERI</a>\n'
     '    <script>\n'
-    + base_js + particles_js + store_js +
-    '    </script>\n'
-    '</body>\n</html>'
+    + store_js +
+    '    </script>\n</body>\n</html>'
 )
 
 # ============ FLASK ROTALAR ============
