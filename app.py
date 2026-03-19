@@ -1133,63 +1133,63 @@ store_html = f"""<!DOCTYPE html>
         {base_js}
 
         const ITEMS = [
-            {{ id: 'gold_skin', name: 'Altın Skin', icon: '✨', cat: 'skin', price: 500, desc: 'Oyuncuna altın parlaklığı katar' }},
-            {{ id: 'neon_skin', name: 'Neon Skin', icon: '💡', cat: 'skin', price: 750, desc: 'Neon renk paleti' }},
-            {{ id: 'dark_skin', name: 'Karanlık Skin', icon: '🌑', cat: 'skin', price: 1000, desc: 'Gecenin derinliklerinden' }},
-            {{ id: 'speed_boost', name: 'Hız Botu', icon: '⚡', cat: 'boost', price: 1000, desc: 'Arcade\'de +%20 hız' }},
-            {{ id: 'xp_boost', name: 'XP x2', icon: '🔥', cat: 'boost', price: 800, desc: '24 saat boyunca çift XP' }},
-            {{ id: 'mine_boost', name: 'Maden Boost', icon: '⛏️', cat: 'boost', price: 600, desc: 'Strateji\'de +5 maden/tıklama' }},
-            {{ id: 'ghost_badge', name: 'Hayalet Rozeti', icon: '👻', cat: 'special', price: 1500, desc: 'Horror tamamlayanların rozeti' }},
-            {{ id: 'crown', name: 'Kral Tacı', icon: '👑', cat: 'special', price: 3000, desc: 'En prestijli ödül' }},
-            {{ id: 'crystal_key', name: 'Kristal Anahtar', icon: '💎', cat: 'special', price: 2000, desc: 'Gizli alanları açar' }},
+            { id: 'gold_skin', name: 'Altin Skin', icon: '&#10024;', cat: 'skin', price: 500, desc: 'Oyuncuna altin parlaklik katar' },
+            { id: 'neon_skin', name: 'Neon Skin', icon: '&#128161;', cat: 'skin', price: 750, desc: 'Neon renk paleti' },
+            { id: 'dark_skin', name: 'Karanlik Skin', icon: '&#127761;', cat: 'skin', price: 1000, desc: 'Gecenin derinliklerinden' },
+            { id: 'speed_boost', name: 'Hiz Botu', icon: '&#9889;', cat: 'boost', price: 1000, desc: 'Arcade +20% hiz' },
+            { id: 'xp_boost', name: 'XP x2', icon: '&#128293;', cat: 'boost', price: 800, desc: '24 saat boyunca cift XP' },
+            { id: 'mine_boost', name: 'Maden Boost', icon: '&#9935;', cat: 'boost', price: 600, desc: 'Stratejide +5 maden/tiklama' },
+            { id: 'ghost_badge', name: 'Hayalet Rozeti', icon: '&#128123;', cat: 'special', price: 1500, desc: 'Horror tamamlayanlarin rozeti' },
+            { id: 'crown', name: 'Kral Taci', icon: '&#128081;', cat: 'special', price: 3000, desc: 'En prestijli odul' },
+            { id: 'crystal_key', name: 'Kristal Anahtar', icon: '&#128142;', cat: 'special', price: 2000, desc: 'Gizli alanlari acar' },
         ];
 
         let currentFilter = 'all';
 
-        function filterItems(cat, tab) {{
+        function filterItems(cat, tab) {
             currentFilter = cat;
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
             tab.classList.add('active');
             renderStore();
-        }}
+        }
 
-        function renderStore() {{
+        function renderStore() {
             let xp = getXP();
             let owned = getItems();
             document.getElementById('balanceVal').innerText = xp.toLocaleString();
             let grid = document.getElementById('storeGrid');
             grid.innerHTML = '';
-            ITEMS.filter(i => currentFilter === 'all' || i.cat === currentFilter).forEach(item => {{
+            ITEMS.filter(function(i) { return currentFilter === 'all' || i.cat === currentFilter; }).forEach(function(item) {
                 let isOwned = owned.includes(item.id);
                 let canBuy = xp >= item.price && !isOwned;
                 let div = document.createElement('div');
                 div.className = 'item' + (isOwned ? ' owned' : '');
-                div.innerHTML = `
-                    ${{isOwned ? '<div class="owned-badge">SAHİBİSİN</div>' : ''}}
-                    <span class="item-icon">${{item.icon}}</span>
-                    <div class="item-name">${{item.name}}</div>
-                    <div class="item-desc">${{item.desc}}</div>
-                    <div class="item-price">${{item.price.toLocaleString()}} XP</div>
-                    <button class="btn btn-blue" ${{!canBuy ? 'disabled' : ''}} onclick="buyItem('${{item.id}}', ${{item.price}})">
-                        ${{isOwned ? '✓ SATIN ALINDI' : 'SATIN AL'}}
-                    </button>
-                `;
+                let html = '';
+                if(isOwned) html += '<div class="owned-badge">SAHİBİSİN</div>';
+                html += '<span class="item-icon">' + item.icon + '</span>';
+                html += '<div class="item-name">' + item.name + '</div>';
+                html += '<div class="item-desc">' + item.desc + '</div>';
+                html += '<div class="item-price">' + item.price.toLocaleString() + ' XP</div>';
+                html += '<button class="btn btn-blue" ' + (!canBuy ? 'disabled' : '') + ' onclick="buyItem(\'' + item.id + '\',' + item.price + ')">';
+                html += isOwned ? '&#10003; SATIN ALINDI' : 'SATIN AL';
+                html += '</button>';
+                div.innerHTML = html;
                 grid.appendChild(div);
-            }});
-        }}
+            });
+        }
 
-        function buyItem(id, price) {{
+        function buyItem(id, price) {
             let xp = getXP();
             let owned = getItems();
-            if(xp < price || owned.includes(id)) {{ showToast("XP Yetersiz veya Zaten Sahipsin!"); return; }}
+            if(xp < price || owned.includes(id)) { showToast("XP Yetersiz veya Zaten Sahipsin!"); return; }
             setXP(xp - price);
             owned.push(id);
             localStorage.setItem('cano_items', JSON.stringify(owned));
-            showToast("✅ Satın Alındı!");
+            showToast("Satin Alindi!");
             renderStore();
-        }}
+        }
 
-        window.onload = function() {{ updateXPDisplay(); renderStore(); }};
+        window.onload = function() { updateXPDisplay(); renderStore(); };
     </script>
 </body>
 </html>"""
