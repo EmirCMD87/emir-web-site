@@ -547,13 +547,14 @@ arcade_html = f"""<!DOCTYPE html>
             <div class="hud-item">SKOR: <span id="scoreVal">0</span></div>
             <div class="hud-item">CAN: <span id="livesVal">❤️❤️❤️</span></div>
             <div class="hud-item">DALGA: <span id="waveVal">1</span></div>
+            <div class="hud-item" style="color:var(--neon-blue)">💰 <span id="coinVal">0</span></div>
         </div>
 
         <div class="canvas-wrap">
             <canvas id="gameCanvas" width="420" height="360"></canvas>
             <div id="overlay">
                 <h2>NEON ARCHER</h2>
-                <p>Düşmanları vur, XP kazan!</p>
+                <p>Düşmanları vur, XP & coin kazan!</p>
                 <p style="font-size:0.75rem;color:#555;">← → hareket | SPACE ateş | Mobilde: d-pad</p>
                 <button class="btn" onclick="startGame()">BAŞLAT</button>
             </div>
@@ -566,6 +567,33 @@ arcade_html = f"""<!DOCTYPE html>
             <button class="d-btn" onpointerdown="keys.left=true" onpointerup="keys.left=false">◀</button>
             <button class="d-btn" onpointerdown="keys.fire=true" onpointerup="keys.fire=false">🔥</button>
             <button class="d-btn" onpointerdown="keys.right=true" onpointerup="keys.right=false">▶</button>
+        </div>
+
+        <div style="margin-top:20px;width:100%;max-width:420px;">
+            <div style="font-family:'Orbitron';font-size:0.75rem;color:#555;letter-spacing:2px;margin-bottom:10px;text-align:center;">SİLAH MAĞAZASI</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+                <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px;text-align:center;">
+                    <div style="font-size:1.4rem;">⚡</div>
+                    <div style="font-family:'Orbitron';font-size:0.65rem;margin:4px 0;">ATEŞ HIZI</div>
+                    <div style="font-size:0.7rem;color:#555;" id="atkSpeedLbl">Seviye 1</div>
+                    <div style="font-size:0.7rem;color:var(--neon-blue);margin:4px 0;" id="atkSpeedCost">20 💰</div>
+                    <button class="btn btn-blue" style="padding:6px 10px;font-size:0.6rem;" onclick="buyUpgrade('atkSpeed')">AL</button>
+                </div>
+                <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px;text-align:center;">
+                    <div style="font-size:1.4rem;">💥</div>
+                    <div style="font-family:'Orbitron';font-size:0.65rem;margin:4px 0;">HASAR</div>
+                    <div style="font-size:0.7rem;color:#555;" id="dmgLbl">Seviye 1</div>
+                    <div style="font-size:0.7rem;color:var(--neon-blue);margin:4px 0;" id="dmgCost">30 💰</div>
+                    <button class="btn btn-blue" style="padding:6px 10px;font-size:0.6rem;" onclick="buyUpgrade('dmg')">AL</button>
+                </div>
+                <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px;text-align:center;">
+                    <div style="font-size:1.4rem;">❤️</div>
+                    <div style="font-family:'Orbitron';font-size:0.65rem;margin:4px 0;">CAN AL</div>
+                    <div style="font-size:0.7rem;color:#555;" id="lifeLbl">3 Can</div>
+                    <div style="font-size:0.7rem;color:var(--neon-blue);margin:4px 0;" id="lifeCost">50 💰</div>
+                    <button class="btn btn-blue" style="padding:6px 10px;font-size:0.6rem;" onclick="buyUpgrade('life')">AL</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -604,10 +632,54 @@ arcade_html = f"""<!DOCTYPE html>
         const ctx2 = gameCanvas.getContext('2d');
         let gameRunning = false, score = 0, lives = 3, wave = 1;
         let player = {{ x: 200, y: 320, w: 32, h: 32, speed: 5 }};
-        let bullets = [], enemies = [], particles2 = [];
+        let bullets = [], enemies = [], particles2 = [], drops = [];
         let keys = {{}};
         let lastBulletTime = 0, lastEnemySpawn = 0;
         let frameCount = 0;
+
+        // Güçlendirme sistemi
+        let upgrades = JSON.parse(localStorage.getItem('cano_arcade_upg')) || {{
+            coins: 0, atkSpeed: 1, dmg: 1, maxLives: 3,
+            atkSpeedCost: 20, dmgCost: 30, lifeCost: 50
+        }};
+
+        function saveUpgrades() {{
+            localStorage.setItem('cano_arcade_upg', JSON.stringify(upgrades));
+        }}
+
+        function renderShop() {{
+            document.getElementById('coinVal').innerText = upgrades.coins;
+            document.getElementById('atkSpeedLbl').innerText = 'Seviye ' + upgrades.atkSpeed;
+            document.getElementById('atkSpeedCost').innerText = upgrades.atkSpeedCost + ' 💰';
+            document.getElementById('dmgLbl').innerText = 'Seviye ' + upgrades.dmg;
+            document.getElementById('dmgCost').innerText = upgrades.dmgCost + ' 💰';
+            document.getElementById('lifeLbl').innerText = upgrades.maxLives + ' Can';
+            document.getElementById('lifeCost').innerText = upgrades.lifeCost + ' 💰';
+        }}
+
+        function buyUpgrade(type) {{
+            if(type === 'atkSpeed') {{
+                if(upgrades.coins < upgrades.atkSpeedCost) {{ showToast('Coin yetersiz!'); return; }}
+                upgrades.coins -= upgrades.atkSpeedCost;
+                upgrades.atkSpeed++;
+                upgrades.atkSpeedCost = Math.floor(upgrades.atkSpeedCost * 1.6);
+                showToast('⚡ Ateş hızı yükseltildi!');
+            }} else if(type === 'dmg') {{
+                if(upgrades.coins < upgrades.dmgCost) {{ showToast('Coin yetersiz!'); return; }}
+                upgrades.coins -= upgrades.dmgCost;
+                upgrades.dmg++;
+                upgrades.dmgCost = Math.floor(upgrades.dmgCost * 1.6);
+                showToast('💥 Hasar yükseltildi!');
+            }} else if(type === 'life') {{
+                if(upgrades.coins < upgrades.lifeCost) {{ showToast('Coin yetersiz!'); return; }}
+                upgrades.coins -= upgrades.lifeCost;
+                upgrades.maxLives++;
+                lives++;
+                upgrades.lifeCost = Math.floor(upgrades.lifeCost * 1.8);
+                showToast('❤️ Can eklendi!');
+            }}
+            saveUpgrades(); renderShop();
+        }}
 
         document.addEventListener('keydown', e => {{
             keys[e.code] = true;
@@ -617,8 +689,10 @@ arcade_html = f"""<!DOCTYPE html>
 
         function startGame() {{
             document.getElementById('overlay').style.display = 'none';
-            score = 0; lives = 3; wave = 1; bullets = []; enemies = []; particles2 = [];
+            score = 0; lives = upgrades.maxLives; wave = 1;
+            bullets = []; enemies = []; particles2 = []; drops = [];
             player.x = 200; gameRunning = true;
+            renderShop();
             gameLoop();
         }}
 
@@ -642,10 +716,15 @@ arcade_html = f"""<!DOCTYPE html>
             if((keys['ArrowLeft']||keys['left']) && player.x > 16) player.x -= player.speed;
             if((keys['ArrowRight']||keys['right']) && player.x < gameCanvas.width-16) player.x += player.speed;
 
-            // Ateş
+            // Ateş (hız upgrades'e göre)
             let now = Date.now();
-            if((keys['Space']||keys['fire']) && now - lastBulletTime > 220) {{
+            let fireRate = Math.max(80, 220 - (upgrades.atkSpeed - 1) * 30);
+            if((keys['Space']||keys['fire']) && now - lastBulletTime > fireRate) {{
                 bullets.push({{ x: player.x, y: player.y - 16, speed: 9, w: 4, h: 12 }});
+                if(upgrades.atkSpeed >= 3) {{
+                    bullets.push({{ x: player.x - 10, y: player.y - 10, speed: 9, w: 4, h: 12 }});
+                    bullets.push({{ x: player.x + 10, y: player.y - 10, speed: 9, w: 4, h: 12 }});
+                }}
                 lastBulletTime = now;
             }}
 
@@ -667,10 +746,18 @@ arcade_html = f"""<!DOCTYPE html>
                 enemies = enemies.map(e => {{
                     if(!hit && b.x > e.x-14 && b.x < e.x+14 && b.y > e.y-14 && b.y < e.y+14) {{
                         e.hp--; hit = true;
+                        e.hp -= upgrades.dmg;
                         if(e.hp <= 0) {{
                             e.dead = true;
-                            score += e.type==='tank'?30:e.type==='fast'?15:10;
-                            addXP(e.type==='tank'?30:e.type==='fast'?15:10, "Düşman");
+                            let pts = e.type==='tank'?30:e.type==='fast'?15:10;
+                            let coinDrop = e.type==='tank'?5:e.type==='fast'?3:1;
+                            score += pts;
+                            addXP(pts, "Düşman");
+                            // Coin drop
+                            drops.push({{ x:e.x, y:e.y, vy:1.5, coin:coinDrop, life:80 }});
+                            // Kill sayacı (görevler için)
+                            let kills = parseInt(localStorage.getItem('cano_kill')||0);
+                            localStorage.setItem('cano_kill', kills+1);
                             for(let i=0;i<8;i++) particles2.push({{
                                 x:e.x,y:e.y,vx:(Math.random()-0.5)*4,vy:(Math.random()-0.5)*4,
                                 life:25,color:e.color
@@ -694,6 +781,18 @@ arcade_html = f"""<!DOCTYPE html>
 
             // Dalga ilerlemesi
             if(score > wave * 150) {{ wave++; showToast("🌊 DALGA " + wave + "!"); }}
+
+            // Coin drop güncelle & topla
+            drops = drops.filter(d => {{
+                d.y += d.vy; d.life--;
+                if(Math.abs(d.x - player.x) < 20 && Math.abs(d.y - player.y) < 20) {{
+                    upgrades.coins += d.coin;
+                    saveUpgrades(); renderShop();
+                    showToast('+' + d.coin + ' 💰');
+                    return false;
+                }}
+                return d.life > 0 && d.y < gameCanvas.height + 20;
+            }});
 
             // Parçacıklar
             particles2 = particles2.filter(p => {{ p.x+=p.vx; p.y+=p.vy; p.life--; return p.life>0; }});
@@ -748,6 +847,19 @@ arcade_html = f"""<!DOCTYPE html>
                 ctx2.restore();
             }});
 
+            // Coin drop çiz
+            drops.forEach(d => {{
+                ctx2.globalAlpha = d.life/80;
+                ctx2.fillStyle = '#ffd700';
+                ctx2.shadowColor = '#ffd700'; ctx2.shadowBlur = 8;
+                ctx2.beginPath(); ctx2.arc(d.x, d.y, 6, 0, Math.PI*2); ctx2.fill();
+                ctx2.fillStyle = '#000';
+                ctx2.shadowBlur = 0;
+                ctx2.font = 'bold 7px Orbitron';
+                ctx2.textAlign = 'center';
+                ctx2.fillText(d.coin, d.x, d.y+3);
+            }});
+
             // Parçacıklar
             particles2.forEach(p => {{
                 ctx2.globalAlpha = p.life/25;
@@ -766,7 +878,7 @@ arcade_html = f"""<!DOCTYPE html>
             ov.innerHTML = '<h2>GAME OVER</h2><p>Skor: '+score+' · Dalga: '+wave+'</p><button class="btn" onclick="startGame()">TEKRAR OYNA</button>';
         }}
 
-        window.onload = updateXPDisplay;
+        window.onload = function() {{ updateXPDisplay(); renderShop(); }};
     </script>
 </body>
 </html>"""
