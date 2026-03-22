@@ -3,1652 +3,956 @@ import os
 
 app = Flask(__name__)
 
-# ============ ORTAK CSS (Neon Teması) ============
-base_css = """
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&display=swap');
-:root { --neon-orange: #ff4500; --neon-blue: #00d4ff; --neon-purple: #bf00ff; --neon-green: #00ff88; --dark-bg: #050505; }
-* { margin: 0; padding: 0; box-sizing: border-box; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-body { background: var(--dark-bg); color: #fff; font-family: 'Rajdhani', sans-serif; overflow-x: hidden; min-height: 100vh; }
-
-/* Parçacık arka plan */
-#particles { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: -1; }
-
-/* XP Göstergesi */
-.xp-container {
-    position: fixed; top: 20px; right: 20px;
-    background: rgba(255,69,0,0.15);
-    border: 1px solid var(--neon-orange);
-    padding: 10px 20px; border-radius: 50px;
-    z-index: 1000; backdrop-filter: blur(10px);
-    display: flex; align-items: center; gap: 8px;
-}
-.xp-val { color: var(--neon-orange); font-weight: 900; font-size: 1.1rem; font-family: 'Orbitron'; }
-.xp-label { color: #aaa; font-size: 0.8rem; }
-
-/* Seviye göstergesi */
-.level-badge {
-    position: fixed; top: 20px; left: 20px;
-    background: rgba(0,212,255,0.15);
-    border: 1px solid var(--neon-blue);
-    padding: 10px 20px; border-radius: 50px;
-    z-index: 1000; backdrop-filter: blur(10px);
-    font-family: 'Orbitron'; font-size: 0.85rem; color: var(--neon-blue);
-}
-
-/* Genel buton */
-.btn {
-    background: linear-gradient(135deg, var(--neon-orange), #ff6b35);
-    color: #fff; border: none; padding: 12px 28px;
-    font-family: 'Orbitron'; font-size: 0.85rem;
-    cursor: pointer; border-radius: 8px;
-    transition: all 0.3s; letter-spacing: 1px;
-}
-.btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(255,69,0,0.5); }
-.btn:active { transform: scale(0.97); }
-.btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-
-.btn-blue {
-    background: linear-gradient(135deg, var(--neon-blue), #0099cc);
-}
-.btn-blue:hover { box-shadow: 0 8px 25px rgba(0,212,255,0.5); }
-
-.btn-purple {
-    background: linear-gradient(135deg, var(--neon-purple), #8800cc);
-}
-.btn-purple:hover { box-shadow: 0 8px 25px rgba(191,0,255,0.5); }
-
-/* Geri butonu */
-.back-btn {
-    position: fixed; bottom: 30px; left: 30px;
-    color: #666; text-decoration: none;
-    font-family: 'Orbitron'; font-size: 0.8rem;
-    z-index: 100; transition: color 0.3s;
-    padding: 10px 20px; border: 1px solid #333; border-radius: 50px;
-}
-.back-btn:hover { color: var(--neon-orange); border-color: var(--neon-orange); }
-
-/* XP kazanma animasyonu */
-@keyframes xpPop {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.3); color: #fff; }
-    100% { transform: scale(1); }
-}
-.xp-anim { animation: xpPop 0.4s ease; }
-
-/* Bildirim toast */
-.toast {
-    position: fixed; bottom: 80px; right: 20px;
-    background: rgba(0,255,136,0.15);
-    border: 1px solid var(--neon-green);
-    color: var(--neon-green);
-    padding: 12px 20px; border-radius: 10px;
-    font-family: 'Orbitron'; font-size: 0.75rem;
-    z-index: 9999; opacity: 0;
-    transition: opacity 0.3s;
-    pointer-events: none;
-}
-.toast.show { opacity: 1; }
-"""
-
-# ============ ORTAK JS ============
-base_js = """
-function getXP() { return parseInt(localStorage.getItem('cano_xp')) || 0; }
-function setXP(v) { localStorage.setItem('cano_xp', v); updateXPDisplay(); }
-function addXP(amount, label) {
-    let xp = getXP() + amount;
-    setXP(xp);
-    showToast("+" + amount + " XP — " + (label || ""));
-    let el = document.getElementById('xpVal');
-    if(el) { el.classList.remove('xp-anim'); void el.offsetWidth; el.classList.add('xp-anim'); }
-}
-function updateXPDisplay() {
-    let xp = getXP();
-    let el = document.getElementById('xpVal');
-    if(el) el.innerText = xp.toLocaleString();
-    let lvlEl = document.getElementById('levelBadge');
-    if(lvlEl) lvlEl.innerText = "SEV " + Math.floor(xp / 500 + 1);
-}
-function showToast(msg) {
-    let t = document.getElementById('toast');
-    if(!t) return;
-    t.innerText = msg;
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2500);
-}
-function getItems() { return JSON.parse(localStorage.getItem('cano_items')) || []; }
-window.onload = updateXPDisplay;
-"""
-
-# ============ PARÇACIK JS ============
-particles_js = """
-(function() {
-    const pc = document.getElementById('particles');
-    if(!pc) return;
-    const pcx = pc.getContext('2d');
-    pc.width = window.innerWidth; pc.height = window.innerHeight;
-    window.addEventListener('resize', () => { pc.width = window.innerWidth; pc.height = window.innerHeight; });
-    const pts = Array.from({length: 60}, () => ({
-        x: Math.random()*pc.width, y: Math.random()*pc.height,
-        vx: (Math.random()-0.5)*0.5, vy: (Math.random()-0.5)*0.5,
-        r: Math.random()*2+0.5,
-        c: ['#ff4500','#00d4ff','#bf00ff'][Math.floor(Math.random()*3)]
-    }));
-    function drawPts() {
-        pcx.clearRect(0,0,pc.width,pc.height);
-        pts.forEach(p => {
-            p.x += p.vx; p.y += p.vy;
-            if(p.x<0||p.x>pc.width) p.vx*=-1;
-            if(p.y<0||p.y>pc.height) p.vy*=-1;
-            pcx.beginPath(); pcx.arc(p.x,p.y,p.r,0,Math.PI*2);
-            pcx.fillStyle = p.c; pcx.fill();
-        });
-        requestAnimationFrame(drawPts);
-    }
-    drawPts();
-})();
-"""
-
-# ============ 1. ANA SAYFA ============
-ana_sayfa_html = f"""<!DOCTYPE html>
+# ============ YARDIMCI FONKSİYON ============
+def page(title, extra_css, body_html, extra_js, color="var(--neon-orange)"):
+    """Tüm sayfalar bu fonksiyonla üretiliyor — tek CSS/JS kaynağı"""
+    return f"""<!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CANO STUDIO | PORTAL</title>
-    <style>{base_css}
-    .hero {{
-        min-height: 100vh; display: flex; flex-direction: column;
-        align-items: center; justify-content: center; text-align: center;
-        padding: 20px;
-    }}
-    .logo {{
-        font-family: 'Orbitron'; font-size: clamp(2rem, 6vw, 4rem);
-        font-weight: 900; letter-spacing: 4px;
-        background: linear-gradient(90deg, var(--neon-orange), var(--neon-blue));
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        margin-bottom: 10px;
-    }}
-    .tagline {{ color: #666; font-size: 0.9rem; letter-spacing: 3px; margin-bottom: 60px; }}
-    .grid {{
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 20px; width: 90%; max-width: 1000px;
-    }}
-    .card {{
-        background: rgba(255,255,255,0.04);
-        border: 1px solid rgba(255,255,255,0.08);
-        padding: 30px 20px; border-radius: 16px;
-        text-decoration: none; color: #fff;
-        transition: all 0.3s; cursor: pointer;
-        position: relative; overflow: hidden;
-    }}
-    .card::before {{
-        content: ''; position: absolute; inset: 0;
-        background: radial-gradient(circle at 50% 0%, rgba(255,69,0,0.1), transparent 70%);
-        opacity: 0; transition: opacity 0.3s;
-    }}
-    .card:hover {{ border-color: var(--neon-orange); transform: translateY(-6px); background: rgba(255,69,0,0.08); }}
-    .card:hover::before {{ opacity: 1; }}
-    .card-icon {{ font-size: 2.5rem; margin-bottom: 12px; display: block; }}
-    .card h2 {{ font-family: 'Orbitron'; font-size: 1rem; margin-bottom: 6px; letter-spacing: 2px; }}
-    .card p {{ color: #888; font-size: 0.85rem; }}
-    .card.blue {{ border-color: rgba(0,212,255,0.3); }}
-    .card.blue:hover {{ border-color: var(--neon-blue); background: rgba(0,212,255,0.08); }}
-    .stats-bar {{
-        display: flex; gap: 30px; margin-bottom: 40px;
-        background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
-        padding: 16px 30px; border-radius: 12px;
-    }}
-    .stat {{ text-align: center; }}
-    .stat-val {{ font-family: 'Orbitron'; font-size: 1.2rem; color: var(--neon-orange); }}
-    .stat-lbl {{ font-size: 0.7rem; color: #666; letter-spacing: 2px; }}
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>{title} | Cano Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+<style>
+:root {{
+  --neon-orange:#ff4500; --neon-blue:#00d4ff;
+  --neon-purple:#bf00ff; --neon-green:#00ff88;
+  --dark-bg:#050505;
+}}
+*{{margin:0;padding:0;box-sizing:border-box;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}}
+body{{background:var(--dark-bg);color:#fff;font-family:'Rajdhani',sans-serif;overflow-x:hidden;min-height:100vh;}}
+#particles{{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:-1;}}
+.xp-container{{position:fixed;top:20px;right:20px;background:rgba(255,69,0,0.15);border:1px solid var(--neon-orange);padding:10px 20px;border-radius:50px;z-index:1000;backdrop-filter:blur(10px);display:flex;align-items:center;gap:8px;}}
+.xp-val{{color:var(--neon-orange);font-weight:900;font-size:1.1rem;font-family:'Orbitron';}}
+.xp-label{{color:#aaa;font-size:0.8rem;}}
+.level-badge{{position:fixed;top:20px;left:20px;background:rgba(0,212,255,0.15);border:1px solid var(--neon-blue);padding:10px 20px;border-radius:50px;z-index:1000;backdrop-filter:blur(10px);font-family:'Orbitron';font-size:0.85rem;color:var(--neon-blue);}}
+.btn{{background:linear-gradient(135deg,var(--neon-orange),#ff6b35);color:#fff;border:none;padding:12px 28px;font-family:'Orbitron';font-size:0.85rem;cursor:pointer;border-radius:8px;transition:all 0.3s;letter-spacing:1px;}}
+.btn:hover{{transform:translateY(-2px);box-shadow:0 8px 25px rgba(255,69,0,0.5);}}
+.btn:active{{transform:scale(0.97);}}
+.btn:disabled{{opacity:0.4;cursor:not-allowed;transform:none;}}
+.btn-blue{{background:linear-gradient(135deg,var(--neon-blue),#0099cc);}}
+.btn-blue:hover{{box-shadow:0 8px 25px rgba(0,212,255,0.5);}}
+.btn-purple{{background:linear-gradient(135deg,var(--neon-purple),#8800cc);}}
+.back-btn{{position:fixed;bottom:30px;left:30px;color:#666;text-decoration:none;font-family:'Orbitron';font-size:0.8rem;z-index:100;transition:color 0.3s;padding:10px 20px;border:1px solid #333;border-radius:50px;}}
+.back-btn:hover{{color:var(--neon-orange);border-color:var(--neon-orange);}}
+.toast{{position:fixed;bottom:80px;right:20px;background:rgba(0,255,136,0.15);border:1px solid var(--neon-green);color:var(--neon-green);padding:12px 20px;border-radius:10px;font-family:'Orbitron';font-size:0.75rem;z-index:9999;opacity:0;transition:opacity 0.3s;pointer-events:none;}}
+.toast.show{{opacity:1;}}
+@keyframes xpPop{{0%{{transform:scale(1);}}50%{{transform:scale(1.3);}}100%{{transform:scale(1);}}}}
+.xp-anim{{animation:xpPop 0.4s ease;}}
+/* Muzik Player */
+#mp{{position:fixed;bottom:20px;right:20px;background:rgba(5,5,5,0.95);border:1px solid var(--neon-purple);border-radius:16px;padding:12px;z-index:2000;backdrop-filter:blur(20px);width:260px;box-shadow:0 0 30px rgba(191,0,255,0.3);transition:all 0.3s;}}
+#mp.mini{{width:46px;height:46px;padding:0;border-radius:50%;overflow:hidden;cursor:pointer;}}
+#mp.mini #mpContent{{display:none;}}
+#mp.mini #mpToggle{{width:46px;height:46px;border-radius:50%;}}
+#mpToggle{{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--neon-purple),#5500aa);border:none;color:#fff;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;}}
+#mpContent{{margin-top:8px;}}
+.mp-title{{font-family:'Orbitron';font-size:0.62rem;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}}
+.mp-artist{{font-size:0.58rem;color:#555;margin-bottom:8px;}}
+.mp-ctrl{{display:flex;align-items:center;gap:6px;margin-bottom:8px;}}
+.mp-btn{{background:none;border:1px solid rgba(255,255,255,0.1);color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:0.75rem;display:flex;align-items:center;justify-content:center;transition:all 0.2s;}}
+.mp-btn:hover{{border-color:var(--neon-purple);background:rgba(191,0,255,0.2);}}
+.mp-play{{width:34px;height:34px;background:linear-gradient(135deg,var(--neon-purple),#5500aa);border:none;}}
+.mp-prog{{height:4px;background:#222;border-radius:50px;cursor:pointer;margin-bottom:6px;}}
+.mp-fill{{height:100%;border-radius:50px;background:linear-gradient(90deg,var(--neon-purple),var(--neon-blue));pointer-events:none;}}
+.mp-vol{{display:flex;align-items:center;gap:4px;}}
+.mp-vol input{{flex:1;height:3px;accent-color:var(--neon-purple);cursor:pointer;}}
+.mp-vol span{{font-size:0.6rem;color:#444;}}
+.mp-pl-btn{{background:none;border:none;color:#444;font-size:0.58rem;font-family:'Orbitron';cursor:pointer;margin-top:6px;width:100%;text-align:center;}}
+.mp-pl-btn:hover{{color:var(--neon-purple);}}
+.mp-pl{{display:none;margin-top:6px;border-top:1px solid rgba(255,255,255,0.05);padding-top:6px;max-height:130px;overflow-y:auto;}}
+.mp-pl.open{{display:block;}}
+.mp-item{{padding:5px 6px;border-radius:6px;cursor:pointer;font-size:0.62rem;color:#666;display:flex;justify-content:space-between;align-items:center;}}
+.mp-item:hover{{background:rgba(191,0,255,0.1);color:#fff;}}
+.mp-item.active{{color:var(--neon-purple);}}
+.mp-tag{{font-size:0.52rem;background:rgba(191,0,255,0.2);padding:2px 5px;border-radius:50px;color:var(--neon-purple);}}
+{extra_css}
+</style>
 </head>
 <body>
-    <canvas id="particles"></canvas>
-    <div class="xp-container">
-        <span class="xp-val" id="xpVal">0</span>
-        <span class="xp-label">XP</span>
+<canvas id="particles"></canvas>
+<div class="xp-container"><span class="xp-val" id="xpVal">0</span><span class="xp-label">XP</span></div>
+<div class="level-badge" id="levelBadge">SEV 1</div>
+<div id="toast" class="toast"></div>
+
+{body_html}
+
+<!-- MUZIK PLAYER -->
+<div id="mp" class="mini">
+  <button id="mpToggle" onclick="mpToggle()">&#127925;</button>
+  <div id="mpContent">
+    <div class="mp-title" id="mpTitle">Yukleniyor...</div>
+    <div class="mp-artist" id="mpArtist">-</div>
+    <div class="mp-ctrl">
+      <button class="mp-btn" onclick="mpPrev()">&#9198;</button>
+      <button class="mp-btn mp-play" onclick="mpPlay()" id="mpPlayBtn">&#9654;</button>
+      <button class="mp-btn" onclick="mpNext()">&#9197;</button>
     </div>
-    <div class="level-badge" id="levelBadge">SEV 1</div>
-    <div id="toast" class="toast"></div>
+    <div class="mp-prog" id="mpProg" onclick="mpSeek(event)">
+      <div class="mp-fill" id="mpFill" style="width:0%"></div>
+    </div>
+    <div class="mp-vol">
+      <span>&#128264;</span>
+      <input type="range" min="0" max="100" value="50" oninput="mpVol(this.value)">
+      <span>&#128266;</span>
+    </div>
+    <button class="mp-pl-btn" onclick="mpTogglePl()">&#9660; PLAYLİST</button>
+    <div class="mp-pl" id="mpPl"></div>
+  </div>
+</div>
 
-    <section class="hero">
-        <div class="logo">CANO STUDIO</div>
-        <div class="tagline">OYUN · STRATEJI · KORKU · MARKET</div>
+<script>
+// ===== ORTAK JS =====
+function getXP(){{return parseInt(localStorage.getItem('cano_xp'))||0;}}
+function setXP(v){{localStorage.setItem('cano_xp',v);updateXPDisplay();}}
+function addXP(amt,lbl){{
+  var x=getXP()+amt; setXP(x);
+  showToast('+'+amt+' XP'+(lbl?' - '+lbl:''));
+  var el=document.getElementById('xpVal');
+  if(el){{el.classList.remove('xp-anim');void el.offsetWidth;el.classList.add('xp-anim');}}
+}}
+function updateXPDisplay(){{
+  var x=getXP();
+  var el=document.getElementById('xpVal');
+  if(el) el.innerText=x.toLocaleString();
+  var lv=document.getElementById('levelBadge');
+  if(lv) lv.innerText='SEV '+Math.floor(x/500+1);
+}}
+function showToast(msg){{
+  var t=document.getElementById('toast');
+  if(!t) return;
+  t.innerText=msg; t.classList.add('show');
+  setTimeout(function(){{t.classList.remove('show');}},2500);
+}}
+function getItems(){{return JSON.parse(localStorage.getItem('cano_items'))||[];}}
 
-        <div class="stats-bar">
-            <div class="stat"><div class="stat-val" id="statXP">0</div><div class="stat-lbl">TOPLAM XP</div></div>
-            <div class="stat"><div class="stat-val" id="statLvl">1</div><div class="stat-lbl">SEVİYE</div></div>
-            <div class="stat"><div class="stat-val" id="statItems">0</div><div class="stat-lbl">EŞYA</div></div>
-        </div>
+// ===== PARÇACIKLAR =====
+(function(){{
+  var pc=document.getElementById('particles');
+  if(!pc) return;
+  var cx=pc.getContext('2d');
+  pc.width=window.innerWidth; pc.height=window.innerHeight;
+  window.addEventListener('resize',function(){{pc.width=window.innerWidth;pc.height=window.innerHeight;}});
+  var pts=[];
+  for(var i=0;i<60;i++) pts.push({{
+    x:Math.random()*pc.width,y:Math.random()*pc.height,
+    vx:(Math.random()-0.5)*0.5,vy:(Math.random()-0.5)*0.5,
+    r:Math.random()*2+0.5,
+    c:['#ff4500','#00d4ff','#bf00ff'][Math.floor(Math.random()*3)]
+  }});
+  function draw(){{
+    cx.clearRect(0,0,pc.width,pc.height);
+    pts.forEach(function(p){{
+      p.x+=p.vx; p.y+=p.vy;
+      if(p.x<0||p.x>pc.width) p.vx*=-1;
+      if(p.y<0||p.y>pc.height) p.vy*=-1;
+      cx.beginPath(); cx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      cx.fillStyle=p.c; cx.fill();
+    }});
+    requestAnimationFrame(draw);
+  }}
+  draw();
+}})();
 
-        <div class="grid">
-            <a href="/neon-arcade" class="card">
-                <span class="card-icon">🎮</span>
-                <h2>ARCADE</h2>
-                <p>Hız ve Refleks</p>
-            </a>
-            <a href="/strateji" class="card">
-                <span class="card-icon">🌍</span>
-                <h2>STRATEJİ</h2>
-                <p>Gezegen Yönetimi</p>
-            </a>
-            <a href="/horror" class="card">
-                <span class="card-icon">👻</span>
-                <h2>HORROR</h2>
-                <p>Korku Hikayesi</p>
-            </a>
-            <a href="/store" class="card blue">
-                <span class="card-icon">🛒</span>
-                <h2>MARKET</h2>
-                <p>XP Harca</p>
-            </a>
-            <a href="/profil" class="card" style="border-color:rgba(0,255,136,0.3)">
-                <span class="card-icon">👤</span>
-                <h2>PROFİL</h2>
-                <p>İsim & İstatistikler</p>
-            </a>
-            <a href="/gorevler" class="card" style="border-color:rgba(0,255,136,0.3)">
-                <span class="card-icon">📋</span>
-                <h2>GÖREVLER</h2>
-                <p>Günlük XP Kazan</p>
-            </a>
-        </div>
-    </section>
+// ===== MÜZİK PLAYER =====
+var TRACKS=[
+  {{t:'Neon Drive',     a:'Synthwave Free', g:'Synthwave', s:'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'}},
+  {{t:'Cyber City',     a:'Cyberpunk Beats',g:'Cyberpunk',  s:'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3'}},
+  {{t:'Epic Quest',     a:'Orchestral Free',g:'Epic',       s:'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3'}},
+  {{t:'Midnight Lofi',  a:'Lofi Chill',     g:'Lofi',       s:'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3'}},
+  {{t:'Steel Storm',    a:'Metal Zone',     g:'Metal',      s:'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3'}},
+  {{t:'Digital Horizon',a:'Synthwave Free', g:'Synthwave',  s:'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3'}},
+  {{t:'Battle Theme',   a:'Orchestral Free',g:'Epic',       s:'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3'}},
+  {{t:'Rainy Night',    a:'Lofi Chill',     g:'Lofi',       s:'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3'}},
+  {{t:'Iron Fist',      a:'Metal Zone',     g:'Metal',      s:'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3'}},
+  {{t:'Ghost Protocol', a:'Cyberpunk Beats',g:'Cyberpunk',  s:'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3'}},
+];
+var mpAud=new Audio(), mpIdx=0, mpIsPlaying=false, mpPlOpen=false;
+function mpLoad(i){{
+  mpIdx=i; var tr=TRACKS[i];
+  mpAud.src=tr.s;
+  var ti=document.getElementById('mpTitle');
+  var ar=document.getElementById('mpArtist');
+  if(ti) ti.innerText=tr.t;
+  if(ar) ar.innerText=tr.a+' · '+tr.g;
+  if(mpIsPlaying) mpAud.play();
+  mpRenderPl();
+}}
+function mpPlay(){{
+  if(mpIsPlaying){{mpAud.pause();mpIsPlaying=false;document.getElementById('mpPlayBtn').innerHTML='&#9654;';}}
+  else{{mpAud.play();mpIsPlaying=true;document.getElementById('mpPlayBtn').innerHTML='&#9646;&#9646;';}}
+}}
+function mpPrev(){{mpLoad((mpIdx-1+TRACKS.length)%TRACKS.length);}}
+function mpNext(){{mpLoad((mpIdx+1)%TRACKS.length);}}
+function mpSeek(e){{
+  var b=document.getElementById('mpProg');
+  var r=b.getBoundingClientRect();
+  mpAud.currentTime=((e.clientX-r.left)/r.width)*mpAud.duration;
+}}
+function mpVol(v){{mpAud.volume=v/100;}}
+function mpToggle(){{
+  var p=document.getElementById('mp');
+  if(p) p.classList.toggle('mini');
+}}
+function mpTogglePl(){{
+  mpPlOpen=!mpPlOpen;
+  var d=document.getElementById('mpPl');
+  if(d) d.className='mp-pl'+(mpPlOpen?' open':'');
+}}
+function mpRenderPl(){{
+  var d=document.getElementById('mpPl'); if(!d) return;
+  d.innerHTML='';
+  TRACKS.forEach(function(tr,i){{
+    var div=document.createElement('div');
+    div.className='mp-item'+(i===mpIdx?' active':'');
+    div.innerHTML=(i===mpIdx?'&#9834; ':'')+tr.t+'<span class="mp-tag">'+tr.g+'</span>';
+    div.onclick=function(){{mpLoad(i);mpIsPlaying=true;mpAud.play();document.getElementById('mpPlayBtn').innerHTML='&#9646;&#9646;';}};
+    d.appendChild(div);
+  }});
+}}
+mpAud.addEventListener('timeupdate',function(){{
+  if(!mpAud.duration) return;
+  var f=document.getElementById('mpFill');
+  if(f) f.style.width=(mpAud.currentTime/mpAud.duration*100)+'%';
+}});
+mpAud.addEventListener('ended',mpNext);
 
-    <script>
-        {base_js}
-        {particles_js}
-        window.onload = function() {{
-            updateXPDisplay();
-            document.getElementById('statXP').innerText = getXP().toLocaleString();
-            document.getElementById('statLvl').innerText = Math.floor(getXP() / 500 + 1);
-            document.getElementById('statItems').innerText = getItems().length;
-        }};
-    </script>
+{extra_js}
+
+window.onload=function(){{updateXPDisplay();mpLoad(0);mpRenderPl();}};
+</script>
 </body>
 </html>"""
 
-# ============ 2. STRATEJİ OYUNU ============
-strateji_html = f"""<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>STRATEJİ | Cano Studio</title>
-    <style>{base_css}
-    .game-wrap {{
-        min-height: 100vh; display: flex; flex-direction: column;
-        align-items: center; justify-content: center;
-        text-align: center; padding: 80px 20px;
-    }}
-    h1 {{ font-family: 'Orbitron'; font-size: clamp(1.2rem, 4vw, 2rem); margin-bottom: 8px; color: var(--neon-blue); }}
-    .subtitle {{ color: #555; font-size: 0.85rem; letter-spacing: 2px; margin-bottom: 30px; }}
 
-    .planet-wrap {{ position: relative; width: 180px; height: 180px; margin: 0 auto 30px; }}
-    .planet {{
-        width: 180px; height: 180px; border-radius: 50%;
-        background: radial-gradient(circle at 35% 35%, #00eeff, #003a6e);
-        box-shadow: 0 0 60px rgba(0,212,255,0.6), 0 0 120px rgba(0,212,255,0.2);
-        animation: spin 12s linear infinite;
-        cursor: pointer; transition: transform 0.2s;
-    }}
-    .planet:hover {{ transform: scale(1.05); }}
-    .planet:active {{ transform: scale(0.95); }}
-    .planet-ring {{
-        position: absolute; top: 50%; left: 50%;
-        width: 240px; height: 60px;
-        border: 2px solid rgba(0,212,255,0.3);
-        border-radius: 50%; transform: translate(-50%,-50%) rotateX(75deg);
-        pointer-events: none;
-    }}
-    @keyframes spin {{ from {{ transform: rotate(0deg); }} to {{ transform: rotate(360deg); }} }}
+# ===== ANA SAYFA =====
+def ana_sayfa():
+    css = """
+.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:80px 20px;}
+.logo{font-family:'Orbitron';font-size:clamp(2rem,6vw,4rem);font-weight:900;letter-spacing:4px;background:linear-gradient(90deg,var(--neon-orange),var(--neon-blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px;}
+.tagline{color:#555;font-size:0.85rem;letter-spacing:3px;margin-bottom:40px;}
+.stats-bar{display:flex;gap:24px;margin-bottom:40px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);padding:14px 28px;border-radius:12px;}
+.stat-b{text-align:center;}
+.stat-b .v{font-family:'Orbitron';font-size:1.2rem;color:var(--neon-orange);}
+.stat-b .l{font-size:0.68rem;color:#555;letter-spacing:2px;}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;width:90%;max-width:1000px;}
+.card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);padding:28px 18px;border-radius:16px;text-decoration:none;color:#fff;transition:all 0.3s;cursor:pointer;position:relative;overflow:hidden;}
+.card:hover{border-color:var(--neon-orange);transform:translateY(-6px);background:rgba(255,69,0,0.08);}
+.card-icon{font-size:2.2rem;margin-bottom:10px;display:block;}
+.card h2{font-family:'Orbitron';font-size:0.9rem;margin-bottom:4px;letter-spacing:2px;}
+.card p{color:#777;font-size:0.8rem;}
+.card.blue:hover{border-color:var(--neon-blue);background:rgba(0,212,255,0.08);}
+.card.green:hover{border-color:var(--neon-green);background:rgba(0,255,136,0.08);}
+"""
+    body = """
+<section class="hero">
+  <div class="logo">CANO STUDIO</div>
+  <div class="tagline">OYUN &middot; STRATEJİ &middot; KORKU &middot; MARKET</div>
+  <div class="stats-bar">
+    <div class="stat-b"><div class="v" id="stXP">0</div><div class="l">TOPLAM XP</div></div>
+    <div class="stat-b"><div class="v" id="stLv">1</div><div class="l">SEVİYE</div></div>
+    <div class="stat-b"><div class="v" id="stIt">0</div><div class="l">EŞYA</div></div>
+  </div>
+  <div class="grid">
+    <a href="/neon-arcade" class="card"><span class="card-icon">&#127918;</span><h2>ARCADE</h2><p>Hız ve Refleks</p></a>
+    <a href="/strateji" class="card"><span class="card-icon">&#127758;</span><h2>STRATEJİ</h2><p>Gezegen Yönetimi</p></a>
+    <a href="/horror" class="card"><span class="card-icon">&#128123;</span><h2>HORROR</h2><p>Korku Hikayesi</p></a>
+    <a href="/store" class="card blue"><span class="card-icon">&#128722;</span><h2>MARKET</h2><p>XP Harca</p></a>
+    <a href="/profil" class="card green"><span class="card-icon">&#128100;</span><h2>PROFİL</h2><p>İsim &amp; İstatistik</p></a>
+    <a href="/gorevler" class="card green"><span class="card-icon">&#128203;</span><h2>GÖREVLER</h2><p>Günlük XP Kazan</p></a>
+  </div>
+</section>
+"""
+    js = """
+  document.getElementById('stXP').innerText=getXP().toLocaleString();
+  document.getElementById('stLv').innerText=Math.floor(getXP()/500+1);
+  document.getElementById('stIt').innerText=getItems().length;
+"""
+    return page("CANO STUDIO", css, body, js)
 
-    .resources {{
-        display: grid; grid-template-columns: repeat(3, 1fr);
-        gap: 15px; width: 100%; max-width: 500px; margin-bottom: 30px;
-    }}
-    .res-card {{
-        background: rgba(255,255,255,0.04);
-        border: 1px solid rgba(255,255,255,0.08);
-        padding: 15px 10px; border-radius: 12px;
-    }}
-    .res-icon {{ font-size: 1.5rem; }}
-    .res-name {{ font-size: 0.7rem; color: #666; letter-spacing: 1px; margin-top: 4px; }}
-    .res-val {{ font-family: 'Orbitron'; font-size: 1.1rem; color: #fff; margin-top: 4px; }}
 
-    .actions {{ display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-bottom: 20px; }}
-
-    .progress-bar {{
-        width: 100%; max-width: 400px;
-        background: #111; border-radius: 50px; height: 8px;
-        margin-bottom: 20px; overflow: hidden;
-    }}
-    .progress-fill {{
-        height: 100%; border-radius: 50px;
-        background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple));
-        transition: width 0.5s; width: 0%;
-    }}
-    .level-info {{ color: #666; font-size: 0.8rem; margin-bottom: 30px; }}
-
-    .upgrade-box {{
-        background: rgba(191,0,255,0.08);
-        border: 1px solid rgba(191,0,255,0.3);
-        border-radius: 12px; padding: 20px;
-        width: 100%; max-width: 500px; margin-bottom: 20px;
-    }}
-    .upgrade-box h3 {{ font-family: 'Orbitron'; color: var(--neon-purple); font-size: 0.85rem; margin-bottom: 12px; }}
-    .upgrade-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }}
-    .upg-item {{ background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; text-align: left; }}
-    .upg-name {{ font-size: 0.8rem; color: #aaa; }}
-    .upg-cost {{ font-size: 0.75rem; color: var(--neon-purple); }}
-    </style>
-</head>
-<body>
-    <canvas id="particles"></canvas>
-    <div class="xp-container"><span class="xp-val" id="xpVal">0</span><span class="xp-label">XP</span></div>
-    <div class="level-badge" id="levelBadge">SEV 1</div>
-    <div id="toast" class="toast"></div>
-
-    <div class="game-wrap">
-        <h1>GALAKTİK YÖNETİM</h1>
-        <div class="subtitle">GEZEGENİNİ YÖNET · KAYNAK TOPLA · EVRENİ FETHET</div>
-
-        <div class="planet-wrap">
-            <div class="planet" id="planet" onclick="mine()" title="Tıkla — Maden Çıkar"></div>
-            <div class="planet-ring"></div>
-        </div>
-
-        <div class="progress-bar"><div class="progress-fill" id="progBar"></div></div>
-        <div class="level-info" id="lvlInfo">Gezegen Seviyesi: 1 · Sonraki seviye için 100 maden gerekli</div>
-
-        <div class="resources">
-            <div class="res-card"><div class="res-icon">⛏️</div><div class="res-name">MADEN</div><div class="res-val" id="rMaden">0</div></div>
-            <div class="res-card"><div class="res-icon">⚡</div><div class="res-name">ENERJİ</div><div class="res-val" id="rEnerji">0</div></div>
-            <div class="res-card"><div class="res-icon">💎</div><div class="res-name">KRİSTAL</div><div class="res-val" id="rKristal">0</div></div>
-        </div>
-
-        <div class="actions">
-            <button class="btn" onclick="mine()">⛏️ MADEN (+10 XP)</button>
-            <button class="btn btn-blue" onclick="generateEnergy()">⚡ ENERJİ (+5 XP)</button>
-            <button class="btn btn-purple" id="crystalBtn" onclick="makeCrystal()" disabled>💎 KRİSTAL (50 Maden)</button>
-        </div>
-
-        <div class="upgrade-box">
-            <h3>🔬 GELİŞTİRMELER</h3>
-            <div class="upgrade-grid">
-                <div class="upg-item">
-                    <div class="upg-name">Maden Kazması x<span id="upMaden">1</span></div>
-                    <div class="upg-cost">Maliyet: <span id="upMadenCost">100</span> XP</div>
-                    <button class="btn" style="margin-top:8px;padding:6px 12px;font-size:0.7rem;" onclick="upgrade('maden')">YÜKSELT</button>
-                </div>
-                <div class="upg-item">
-                    <div class="upg-name">Enerji Jeneratörü x<span id="upEnerji">1</span></div>
-                    <div class="upg-cost">Maliyet: <span id="upEnerjiCost">150</span> XP</div>
-                    <button class="btn btn-blue" style="margin-top:8px;padding:6px 12px;font-size:0.7rem;" onclick="upgrade('enerji')">YÜKSELT</button>
-                </div>
-            </div>
-        </div>
+# ===== STRATEJİ =====
+def strateji_page():
+    css = """
+.gw{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:80px 20px;}
+h1{font-family:'Orbitron';font-size:clamp(1.2rem,4vw,2rem);margin-bottom:6px;color:var(--neon-blue);}
+.sub{color:#555;font-size:0.8rem;letter-spacing:2px;margin-bottom:24px;}
+.planet-wrap{position:relative;width:160px;height:160px;margin:0 auto 24px;}
+.planet{width:160px;height:160px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#00eeff,#003a6e);box-shadow:0 0 60px rgba(0,212,255,0.6);animation:spin 12s linear infinite;cursor:pointer;transition:transform 0.2s;}
+.planet:hover{transform:scale(1.06);}
+.planet:active{transform:scale(0.95);}
+@keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+.ring{position:absolute;top:50%;left:50%;width:220px;height:55px;border:2px solid rgba(0,212,255,0.3);border-radius:50%;transform:translate(-50%,-50%) rotateX(75deg);pointer-events:none;}
+.res-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:100%;max-width:460px;margin-bottom:24px;}
+.res-c{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);padding:14px 10px;border-radius:12px;}
+.res-c .ri{font-size:1.4rem;}
+.res-c .rn{font-size:0.65rem;color:#555;letter-spacing:1px;margin-top:3px;}
+.res-c .rv{font-family:'Orbitron';font-size:1.1rem;color:#fff;margin-top:3px;}
+.acts{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:18px;}
+.prog-bg{width:100%;max-width:400px;background:#111;border-radius:50px;height:7px;margin-bottom:8px;overflow:hidden;}
+.prog-f{height:100%;border-radius:50px;background:linear-gradient(90deg,var(--neon-blue),var(--neon-purple));transition:width 0.5s;}
+.upg-box{background:rgba(191,0,255,0.07);border:1px solid rgba(191,0,255,0.25);border-radius:12px;padding:18px;width:100%;max-width:460px;margin-bottom:16px;}
+.upg-box h3{font-family:'Orbitron';color:var(--neon-purple);font-size:0.8rem;margin-bottom:10px;}
+.upg-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.upg-i{background:rgba(0,0,0,0.3);padding:10px;border-radius:8px;text-align:left;}
+.upg-i .un{font-size:0.75rem;color:#aaa;}
+.upg-i .uc{font-size:0.7rem;color:var(--neon-purple);}
+"""
+    body = """
+<a href="/" class="back-btn">&larr; GERİ</a>
+<div class="gw">
+  <h1>GALAKTİK YÖNETİM</h1>
+  <div class="sub">GEZEGENİNİ YÖNET &middot; KAYNAK TOPLA</div>
+  <div class="planet-wrap">
+    <div class="planet" id="planet" onclick="mine()" title="Tıkla - Maden"></div>
+    <div class="ring"></div>
+  </div>
+  <div class="prog-bg"><div class="prog-f" id="progBar"></div></div>
+  <div style="color:#555;font-size:0.75rem;margin-bottom:20px;" id="lvlInfo">Gezegen Seviyesi: 1</div>
+  <div class="res-grid">
+    <div class="res-c"><div class="ri">&#9935;</div><div class="rn">MADEN</div><div class="rv" id="rM">0</div></div>
+    <div class="res-c"><div class="ri">&#9889;</div><div class="rn">ENERJİ</div><div class="rv" id="rE">0</div></div>
+    <div class="res-c"><div class="ri">&#128142;</div><div class="rn">KRİSTAL</div><div class="rv" id="rK">0</div></div>
+  </div>
+  <div class="acts">
+    <button class="btn" onclick="mine()">&#9935; MADEN (+10 XP)</button>
+    <button class="btn btn-blue" onclick="genEnergy()">&#9889; ENERJİ (+5 XP)</button>
+    <button class="btn btn-purple" id="crystalBtn" onclick="mkCrystal()" disabled>&#128142; KRİSTAL (50 Maden)</button>
+  </div>
+  <div class="upg-box">
+    <h3>&#128300; GELİŞTİRMELER</h3>
+    <div class="upg-grid">
+      <div class="upg-i"><div class="un">Kazma x<span id="upM">1</span></div><div class="uc">Maliyet: <span id="upMC">100</span> XP</div><button class="btn" style="margin-top:6px;padding:5px 10px;font-size:0.68rem;" onclick="upg('m')">YÜKSELT</button></div>
+      <div class="upg-i"><div class="un">Jeneratör x<span id="upE">1</span></div><div class="uc">Maliyet: <span id="upEC">150</span> XP</div><button class="btn btn-blue" style="margin-top:6px;padding:5px 10px;font-size:0.68rem;" onclick="upg('e')">YÜKSELT</button></div>
     </div>
+  </div>
+</div>
+"""
+    js = """
+  var ST=JSON.parse(localStorage.getItem('cano_st'))||{m:0,e:0,k:0,gl:1,gx:0,um:1,ue:1,umc:100,uec:150};
+  function saveST(){localStorage.setItem('cano_st',JSON.stringify(ST));}
+  function renderST(){
+    document.getElementById('rM').innerText=ST.m;
+    document.getElementById('rE').innerText=ST.e;
+    document.getElementById('rK').innerText=ST.k;
+    document.getElementById('crystalBtn').disabled=ST.m<50;
+    document.getElementById('upM').innerText=ST.um;
+    document.getElementById('upE').innerText=ST.ue;
+    document.getElementById('upMC').innerText=ST.umc;
+    document.getElementById('upEC').innerText=ST.uec;
+    var need=ST.gl*100;
+    document.getElementById('progBar').style.width=Math.min(100,(ST.gx/need)*100)+'%';
+    document.getElementById('lvlInfo').innerText='Gezegen Seviyesi: '+ST.gl+' · Sonraki: '+(need-ST.gx)+' maden';
+    updateXPDisplay();
+  }
+  function mine(){
+    var g=10*ST.um; ST.m+=ST.um; ST.gx+=ST.um;
+    var mn=parseInt(localStorage.getItem('cano_maden')||0)+ST.um;
+    localStorage.setItem('cano_maden',mn);
+    var need=ST.gl*100;
+    if(ST.gx>=need){ST.gx=0;ST.gl++;showToast('GEZEGEN SEVİYE '+ST.gl+'!');}
+    addXP(g,'Maden'); saveST(); renderST();
+  }
+  function genEnergy(){
+    var g=5*ST.ue; ST.e+=ST.ue;
+    addXP(g,'Enerji'); saveST(); renderST();
+  }
+  function mkCrystal(){
+    if(ST.m<50) return;
+    ST.m-=50; ST.k++;
+    addXP(30,'Kristal'); saveST(); renderST();
+  }
+  function upg(t){
+    var xp=getXP();
+    if(t==='m'){
+      if(xp<ST.umc){showToast('XP Yetersiz!');return;}
+      setXP(xp-ST.umc); ST.um++; ST.umc=Math.floor(ST.umc*1.8);
+    } else {
+      if(xp<ST.uec){showToast('XP Yetersiz!');return;}
+      setXP(xp-ST.uec); ST.ue++; ST.uec=Math.floor(ST.uec*1.8);
+    }
+    showToast('Yukseltme tamam!'); saveST(); renderST();
+  }
+  renderST();
+"""
+    return page("STRATEJİ", css, body, js)
 
-    <a href="/" class="back-btn">← GERİ</a>
 
-    <script>
-        {base_js}
-        {particles_js}
-
-        let state = JSON.parse(localStorage.getItem('cano_strateji')) || {{
-            maden: 0, enerji: 0, kristal: 0,
-            gezegenLvl: 1, gezegenXP: 0,
-            upgMaden: 1, upgEnerji: 1,
-            upgMadenCost: 100, upgEnerjiCost: 150
-        }};
-
-        function saveState() {{ localStorage.setItem('cano_strateji', JSON.stringify(state)); }}
-
-        function render() {{
-            document.getElementById('rMaden').innerText = state.maden;
-            document.getElementById('rEnerji').innerText = state.enerji;
-            document.getElementById('rKristal').innerText = state.kristal;
-            document.getElementById('crystalBtn').disabled = state.maden < 50;
-            document.getElementById('upMaden').innerText = state.upgMaden;
-            document.getElementById('upEnerji').innerText = state.upgEnerji;
-            document.getElementById('upMadenCost').innerText = state.upgMadenCost;
-            document.getElementById('upEnerjiCost').innerText = state.upgEnerjiCost;
-            let needed = state.gezegenLvl * 100;
-            let pct = Math.min(100, (state.gezegenXP / needed) * 100);
-            document.getElementById('progBar').style.width = pct + '%';
-            document.getElementById('lvlInfo').innerText =
-                'Gezegen Seviyesi: ' + state.gezegenLvl + ' · Sonraki seviye için ' + (needed - state.gezegenXP) + ' maden gerekli';
-            updateXPDisplay();
-        }}
-
-        function mine() {{
-            let gain = 10 * state.upgMaden;
-            state.maden += state.upgMaden;
-            state.gezegenXP += state.upgMaden;
-            let needed = state.gezegenLvl * 100;
-            if(state.gezegenXP >= needed) {{
-                state.gezegenXP = 0; state.gezegenLvl++;
-                showToast("🪐 GEZEGEN SEVİYE " + state.gezegenLvl + "!");
-            }}
-            addXP(gain, "Maden");
-            saveState(); render();
-        }}
-
-        function generateEnergy() {{
-            let gain = 5 * state.upgEnerji;
-            state.enerji += state.upgEnerji;
-            addXP(gain, "Enerji");
-            saveState(); render();
-        }}
-
-        function makeCrystal() {{
-            if(state.maden < 50) return;
-            state.maden -= 50; state.kristal++;
-            addXP(30, "Kristal");
-            saveState(); render();
-        }}
-
-        function upgrade(type) {{
-            let xp = getXP();
-            if(type === 'maden') {{
-                if(xp < state.upgMadenCost) {{ showToast("XP Yetersiz!"); return; }}
-                setXP(xp - state.upgMadenCost);
-                state.upgMaden++;
-                state.upgMadenCost = Math.floor(state.upgMadenCost * 1.8);
-            }} else {{
-                if(xp < state.upgEnerjiCost) {{ showToast("XP Yetersiz!"); return; }}
-                setXP(xp - state.upgEnerjiCost);
-                state.upgEnerji++;
-                state.upgEnerjiCost = Math.floor(state.upgEnerjiCost * 1.8);
-            }}
-            showToast("✅ Yükseltme Tamamlandı!");
-            saveState(); render();
-        }}
-
-        window.onload = render;
-    </script>
-</body>
-</html>"""
-
-# ============ 3. ARCADE OYUNU ============
-arcade_html = f"""<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ARCADE | Cano Studio</title>
-    <style>{base_css}
-    .arcade-wrap {{
-        min-height: 100vh; display: flex; flex-direction: column;
-        align-items: center; justify-content: center;
-        padding: 80px 20px; text-align: center;
-    }}
-    h1 {{ font-family: 'Orbitron'; color: var(--neon-orange); font-size: clamp(1.2rem, 4vw, 2rem); margin-bottom: 6px; }}
-    .subtitle {{ color: #555; font-size: 0.8rem; letter-spacing: 3px; margin-bottom: 30px; }}
-
-    #gameCanvas {{
-        border: 2px solid var(--neon-orange);
-        border-radius: 12px;
-        box-shadow: 0 0 40px rgba(255,69,0,0.4);
-        background: #0a0a0a;
-        max-width: 100%;
-        touch-action: none;
-    }}
-
-    .hud {{
-        display: flex; gap: 30px; margin-bottom: 16px;
-        font-family: 'Orbitron'; font-size: 0.85rem;
-    }}
-    .hud-item span {{ color: var(--neon-orange); font-size: 1.2rem; }}
-
-    .controls {{
-        display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; justify-content: center;
-    }}
-    .d-pad {{
-        display: grid; grid-template-columns: 1fr 1fr 1fr;
-        gap: 6px; margin-top: 16px;
-    }}
-    .d-btn {{
-        background: rgba(255,69,0,0.2); border: 1px solid var(--neon-orange);
-        color: #fff; padding: 14px 18px; border-radius: 8px;
-        font-size: 1.2rem; cursor: pointer; user-select: none;
-        transition: background 0.1s;
-    }}
-    .d-btn:active {{ background: rgba(255,69,0,0.5); }}
-    .d-empty {{ background: transparent; border: none; pointer-events: none; }}
-
-    #overlay {{
-        position: absolute; inset: 0;
-        background: rgba(0,0,0,0.85);
-        display: flex; flex-direction: column;
-        align-items: center; justify-content: center;
-        border-radius: 10px;
-        font-family: 'Orbitron';
-    }}
-    #overlay h2 {{ font-size: 1.5rem; color: var(--neon-orange); margin-bottom: 10px; }}
-    #overlay p {{ color: #aaa; margin-bottom: 20px; font-size: 0.85rem; }}
-    .canvas-wrap {{ position: relative; display: inline-block; }}
-    </style>
-</head>
-<body>
-    <canvas id="particles"></canvas>
-    <div class="xp-container"><span class="xp-val" id="xpVal">0</span><span class="xp-label">XP</span></div>
-    <div class="level-badge" id="levelBadge">SEV 1</div>
-    <div id="toast" class="toast"></div>
-
-    <div class="arcade-wrap">
-        <h1>NEON ARCADE</h1>
-        <div class="subtitle">REFLEKS OYUNU · OKÇU</div>
-
-        <div class="hud">
-            <div class="hud-item">SKOR: <span id="scoreVal">0</span></div>
-            <div class="hud-item">CAN: <span id="livesVal">❤️❤️❤️</span></div>
-            <div class="hud-item">DALGA: <span id="waveVal">1</span></div>
-            <div class="hud-item" style="color:var(--neon-blue)">💰 <span id="coinVal">0</span></div>
-        </div>
-
-        <div class="canvas-wrap">
-            <canvas id="gameCanvas" width="420" height="360"></canvas>
-            <div id="overlay">
-                <h2>NEON ARCHER</h2>
-                <p>Düşmanları vur, XP & coin kazan!</p>
-                <p style="font-size:0.75rem;color:#555;">← → hareket | SPACE ateş | Mobilde: d-pad</p>
-                <button class="btn" onclick="startGame()">BAŞLAT</button>
-            </div>
-        </div>
-
-        <div class="d-pad">
-            <div class="d-empty"></div>
-            <button class="d-btn" onpointerdown="keys.up=true" onpointerup="keys.up=false">▲</button>
-            <div class="d-empty"></div>
-            <button class="d-btn" onpointerdown="keys.left=true" onpointerup="keys.left=false">◀</button>
-            <button class="d-btn" onpointerdown="keys.fire=true" onpointerup="keys.fire=false">🔥</button>
-            <button class="d-btn" onpointerdown="keys.right=true" onpointerup="keys.right=false">▶</button>
-        </div>
-
-        <div style="margin-top:20px;width:100%;max-width:420px;">
-            <div style="font-family:'Orbitron';font-size:0.75rem;color:#555;letter-spacing:2px;margin-bottom:10px;text-align:center;">SİLAH MAĞAZASI</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
-                <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px;text-align:center;">
-                    <div style="font-size:1.4rem;">⚡</div>
-                    <div style="font-family:'Orbitron';font-size:0.65rem;margin:4px 0;">ATEŞ HIZI</div>
-                    <div style="font-size:0.7rem;color:#555;" id="atkSpeedLbl">Seviye 1</div>
-                    <div style="font-size:0.7rem;color:var(--neon-blue);margin:4px 0;" id="atkSpeedCost">20 💰</div>
-                    <button class="btn btn-blue" style="padding:6px 10px;font-size:0.6rem;" onclick="buyUpgrade('atkSpeed')">AL</button>
-                </div>
-                <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px;text-align:center;">
-                    <div style="font-size:1.4rem;">💥</div>
-                    <div style="font-family:'Orbitron';font-size:0.65rem;margin:4px 0;">HASAR</div>
-                    <div style="font-size:0.7rem;color:#555;" id="dmgLbl">Seviye 1</div>
-                    <div style="font-size:0.7rem;color:var(--neon-blue);margin:4px 0;" id="dmgCost">30 💰</div>
-                    <button class="btn btn-blue" style="padding:6px 10px;font-size:0.6rem;" onclick="buyUpgrade('dmg')">AL</button>
-                </div>
-                <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px;text-align:center;">
-                    <div style="font-size:1.4rem;">❤️</div>
-                    <div style="font-family:'Orbitron';font-size:0.65rem;margin:4px 0;">CAN AL</div>
-                    <div style="font-size:0.7rem;color:#555;" id="lifeLbl">3 Can</div>
-                    <div style="font-size:0.7rem;color:var(--neon-blue);margin:4px 0;" id="lifeCost">50 💰</div>
-                    <button class="btn btn-blue" style="padding:6px 10px;font-size:0.6rem;" onclick="buyUpgrade('life')">AL</button>
-                </div>
-            </div>
-        </div>
+# ===== ARCADE =====
+def arcade_page():
+    css = """
+.aw{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;text-align:center;}
+h1{font-family:'Orbitron';color:var(--neon-orange);font-size:clamp(1.2rem,4vw,2rem);margin-bottom:4px;}
+.sub{color:#555;font-size:0.78rem;letter-spacing:3px;margin-bottom:20px;}
+.hud{display:flex;gap:20px;margin-bottom:12px;font-family:'Orbitron';font-size:0.8rem;}
+.hud span{color:var(--neon-orange);font-size:1.1rem;}
+#gameCanvas{border:2px solid var(--neon-orange);border-radius:12px;box-shadow:0 0 40px rgba(255,69,0,0.4);background:#0a0a0a;max-width:100%;touch-action:none;}
+.cw{position:relative;display:inline-block;}
+#ov{position:absolute;inset:0;background:rgba(0,0,0,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:10px;font-family:'Orbitron';}
+#ov h2{font-size:1.4rem;color:var(--neon-orange);margin-bottom:8px;}
+#ov p{color:#aaa;margin-bottom:16px;font-size:0.8rem;}
+.dpad{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:14px;}
+.db{background:rgba(255,69,0,0.2);border:1px solid var(--neon-orange);color:#fff;padding:13px 16px;border-radius:8px;font-size:1.1rem;cursor:pointer;user-select:none;transition:background 0.1s;}
+.db:active{background:rgba(255,69,0,0.5);}
+.de{background:transparent;border:none;pointer-events:none;}
+.shop{margin-top:18px;width:100%;max-width:420px;}
+.shop-title{font-family:'Orbitron';font-size:0.72rem;color:#444;letter-spacing:2px;margin-bottom:8px;text-align:center;}
+.shop-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+.shop-c{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px;text-align:center;}
+.shop-ic{font-size:1.3rem;}
+.shop-nm{font-family:'Orbitron';font-size:0.6rem;margin:4px 0;}
+.shop-lv{font-size:0.65rem;color:#555;}
+.shop-co{font-size:0.65rem;color:var(--neon-blue);margin:3px 0;}
+"""
+    body = """
+<a href="/" class="back-btn">&larr; GERİ</a>
+<div class="aw">
+  <h1>NEON ARCADE</h1>
+  <div class="sub">REFLEKS OYUNU &middot; OKÇU</div>
+  <div class="hud">
+    <div>SKOR: <span id="scoreVal">0</span></div>
+    <div>CAN: <span id="livesVal">&#10084;&#10084;&#10084;</span></div>
+    <div>DALGA: <span id="waveVal">1</span></div>
+    <div style="color:var(--neon-blue)">&#128176; <span id="coinVal">0</span></div>
+  </div>
+  <div class="cw">
+    <canvas id="gameCanvas" width="420" height="360"></canvas>
+    <div id="ov">
+      <h2>NEON ARCHER</h2>
+      <p>Dusmanları vur, XP &amp; coin kazan!</p>
+      <p style="font-size:0.72rem;color:#444;">&larr; &rarr; hareket | SPACE ates | Mobil: dpad</p>
+      <button class="btn" onclick="startGame()">BASLAT</button>
     </div>
-
-    <a href="/" class="back-btn">← GERİ</a>
-
-    <script>
-        {base_js}
-
-        // Particles (ayrı scope — gameCanvas ile çakışmasın)
-        (function() {{
-            const pc = document.getElementById('particles');
-            const pcx = pc.getContext('2d');
-            pc.width = window.innerWidth; pc.height = window.innerHeight;
-            window.addEventListener('resize', () => {{ pc.width = window.innerWidth; pc.height = window.innerHeight; }});
-            const pts = Array.from({{length: 60}}, () => ({{
-                x: Math.random()*pc.width, y: Math.random()*pc.height,
-                vx: (Math.random()-0.5)*0.5, vy: (Math.random()-0.5)*0.5,
-                r: Math.random()*2+0.5,
-                c: ['#ff4500','#00d4ff','#bf00ff'][Math.floor(Math.random()*3)]
-            }}));
-            function drawPts() {{
-                pcx.clearRect(0,0,pc.width,pc.height);
-                pts.forEach(p => {{
-                    p.x += p.vx; p.y += p.vy;
-                    if(p.x<0||p.x>pc.width) p.vx*=-1;
-                    if(p.y<0||p.y>pc.height) p.vy*=-1;
-                    pcx.beginPath(); pcx.arc(p.x,p.y,p.r,0,Math.PI*2);
-                    pcx.fillStyle = p.c; pcx.fill();
-                }});
-                requestAnimationFrame(drawPts);
-            }}
-            drawPts();
-        }})();
-
-        const gameCanvas = document.getElementById('gameCanvas');
-        const ctx2 = gameCanvas.getContext('2d');
-        let gameRunning = false, score = 0, lives = 3, wave = 1;
-        let player = {{ x: 200, y: 320, w: 32, h: 32, speed: 5 }};
-        let bullets = [], enemies = [], particles2 = [], drops = [];
-        let keys = {{}};
-        let lastBulletTime = 0, lastEnemySpawn = 0;
-        let frameCount = 0;
-
-        // Güçlendirme sistemi
-        let upgrades = JSON.parse(localStorage.getItem('cano_arcade_upg')) || {{
-            coins: 0, atkSpeed: 1, dmg: 1, maxLives: 3,
-            atkSpeedCost: 20, dmgCost: 30, lifeCost: 50
-        }};
-
-        function saveUpgrades() {{
-            localStorage.setItem('cano_arcade_upg', JSON.stringify(upgrades));
-        }}
-
-        function renderShop() {{
-            document.getElementById('coinVal').innerText = upgrades.coins;
-            document.getElementById('atkSpeedLbl').innerText = 'Seviye ' + upgrades.atkSpeed;
-            document.getElementById('atkSpeedCost').innerText = upgrades.atkSpeedCost + ' 💰';
-            document.getElementById('dmgLbl').innerText = 'Seviye ' + upgrades.dmg;
-            document.getElementById('dmgCost').innerText = upgrades.dmgCost + ' 💰';
-            document.getElementById('lifeLbl').innerText = upgrades.maxLives + ' Can';
-            document.getElementById('lifeCost').innerText = upgrades.lifeCost + ' 💰';
-        }}
-
-        function buyUpgrade(type) {{
-            if(type === 'atkSpeed') {{
-                if(upgrades.coins < upgrades.atkSpeedCost) {{ showToast('Coin yetersiz!'); return; }}
-                upgrades.coins -= upgrades.atkSpeedCost;
-                upgrades.atkSpeed++;
-                upgrades.atkSpeedCost = Math.floor(upgrades.atkSpeedCost * 1.6);
-                showToast('⚡ Ateş hızı yükseltildi!');
-            }} else if(type === 'dmg') {{
-                if(upgrades.coins < upgrades.dmgCost) {{ showToast('Coin yetersiz!'); return; }}
-                upgrades.coins -= upgrades.dmgCost;
-                upgrades.dmg++;
-                upgrades.dmgCost = Math.floor(upgrades.dmgCost * 1.6);
-                showToast('💥 Hasar yükseltildi!');
-            }} else if(type === 'life') {{
-                if(upgrades.coins < upgrades.lifeCost) {{ showToast('Coin yetersiz!'); return; }}
-                upgrades.coins -= upgrades.lifeCost;
-                upgrades.maxLives++;
-                lives++;
-                upgrades.lifeCost = Math.floor(upgrades.lifeCost * 1.8);
-                showToast('❤️ Can eklendi!');
-            }}
-            saveUpgrades(); renderShop();
-        }}
-
-        document.addEventListener('keydown', e => {{
-            keys[e.code] = true;
-            if(e.code === 'Space') e.preventDefault();
-        }});
-        document.addEventListener('keyup', e => {{ keys[e.code] = false; }});
-
-        function startGame() {{
-            document.getElementById('overlay').style.display = 'none';
-            score = 0; lives = upgrades.maxLives; wave = 1;
-            bullets = []; enemies = []; particles2 = []; drops = [];
-            player.x = 200; gameRunning = true;
-            renderShop();
-            gameLoop();
-        }}
-
-        function spawnEnemy() {{
-            let types = ['basic','fast','tank'];
-            let t = types[Math.floor(Math.random() * Math.min(wave, 3))];
-            enemies.push({{
-                x: Math.random() * 380 + 20,
-                y: -20, w: 28, h: 28,
-                hp: t==='tank'?3:1,
-                speed: t==='fast'?3.5:(1.2 + wave*0.15),
-                type: t, color: t==='tank'?'#ff0066':t==='fast'?'#00ff88':'#00d4ff'
-            }});
-        }}
-
-        function gameLoop() {{
-            if(!gameRunning) return;
-            frameCount++;
-
-            // Hareket
-            if((keys['ArrowLeft']||keys['left']) && player.x > 16) player.x -= player.speed;
-            if((keys['ArrowRight']||keys['right']) && player.x < gameCanvas.width-16) player.x += player.speed;
-
-            // Ateş (hız upgrades'e göre)
-            let now = Date.now();
-            let fireRate = Math.max(80, 220 - (upgrades.atkSpeed - 1) * 30);
-            if((keys['Space']||keys['fire']) && now - lastBulletTime > fireRate) {{
-                bullets.push({{ x: player.x, y: player.y - 16, speed: 9, w: 4, h: 12 }});
-                if(upgrades.atkSpeed >= 3) {{
-                    bullets.push({{ x: player.x - 10, y: player.y - 10, speed: 9, w: 4, h: 12 }});
-                    bullets.push({{ x: player.x + 10, y: player.y - 10, speed: 9, w: 4, h: 12 }});
-                }}
-                lastBulletTime = now;
-            }}
-
-            // Düşman spawn
-            let spawnInterval = Math.max(600, 1400 - wave * 100);
-            if(now - lastEnemySpawn > spawnInterval) {{
-                spawnEnemy(); lastEnemySpawn = now;
-                if(Math.random() < 0.3) spawnEnemy(); // çift spawn şansı
-            }}
-
-            // Güncelle
-            bullets = bullets.filter(b => {{ b.y -= b.speed; return b.y > -20; }});
-
-            enemies.forEach(e => {{ e.y += e.speed; }});
-
-            // Çarpışma — kurşun × düşman
-            bullets = bullets.filter(b => {{
-                let hit = false;
-                enemies = enemies.map(e => {{
-                    if(!hit && b.x > e.x-14 && b.x < e.x+14 && b.y > e.y-14 && b.y < e.y+14) {{
-                        e.hp--; hit = true;
-                        e.hp -= upgrades.dmg;
-                        if(e.hp <= 0) {{
-                            e.dead = true;
-                            let pts = e.type==='tank'?30:e.type==='fast'?15:10;
-                            let coinDrop = e.type==='tank'?5:e.type==='fast'?3:1;
-                            score += pts;
-                            addXP(pts, "Düşman");
-                            // Coin drop
-                            drops.push({{ x:e.x, y:e.y, vy:1.5, coin:coinDrop, life:80 }});
-                            // Kill sayacı (görevler için)
-                            let kills = parseInt(localStorage.getItem('cano_kill')||0);
-                            localStorage.setItem('cano_kill', kills+1);
-                            for(let i=0;i<8;i++) particles2.push({{
-                                x:e.x,y:e.y,vx:(Math.random()-0.5)*4,vy:(Math.random()-0.5)*4,
-                                life:25,color:e.color
-                            }});
-                        }}
-                    }}
-                    return e;
-                }}).filter(e=>!e.dead);
-                return !hit;
-            }});
-
-            // Düşman ekrana ulaşırsa can azalt
-            enemies = enemies.filter(e => {{
-                if(e.y > gameCanvas.height + 10) {{
-                    lives--;
-                    if(lives <= 0) {{ gameOver(); }}
-                    return false;
-                }}
-                return true;
-            }});
-
-            // Dalga ilerlemesi
-            if(score > wave * 150) {{ wave++; showToast("🌊 DALGA " + wave + "!"); }}
-
-            // Coin drop güncelle & topla
-            drops = drops.filter(d => {{
-                d.y += d.vy; d.life--;
-                if(Math.abs(d.x - player.x) < 20 && Math.abs(d.y - player.y) < 20) {{
-                    upgrades.coins += d.coin;
-                    saveUpgrades(); renderShop();
-                    showToast('+' + d.coin + ' 💰');
-                    return false;
-                }}
-                return d.life > 0 && d.y < gameCanvas.height + 20;
-            }});
-
-            // Parçacıklar
-            particles2 = particles2.filter(p => {{ p.x+=p.vx; p.y+=p.vy; p.life--; return p.life>0; }});
-
-            // HUD güncelle
-            document.getElementById('scoreVal').innerText = score;
-            document.getElementById('livesVal').innerText = '❤️'.repeat(Math.max(0,lives));
-            document.getElementById('waveVal').innerText = wave;
-
-            // Çiz
-            ctx2.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
-
-            // Grid arka plan
-            ctx2.strokeStyle = 'rgba(255,69,0,0.05)';
-            ctx2.lineWidth = 1;
-            for(let i=0;i<gameCanvas.width;i+=40) {{ ctx2.beginPath(); ctx2.moveTo(i,0); ctx2.lineTo(i,gameCanvas.height); ctx2.stroke(); }}
-            for(let i=0;i<gameCanvas.height;i+=40) {{ ctx2.beginPath(); ctx2.moveTo(0,i); ctx2.lineTo(gameCanvas.width,i); ctx2.stroke(); }}
-
-            // Oyuncu
-            ctx2.save();
-            ctx2.translate(player.x, player.y);
-            ctx2.fillStyle = '#ff4500';
-            ctx2.shadowColor = '#ff4500'; ctx2.shadowBlur = 15;
-            ctx2.beginPath(); ctx2.moveTo(0,-16); ctx2.lineTo(12,12); ctx2.lineTo(0,6); ctx2.lineTo(-12,12); ctx2.closePath(); ctx2.fill();
-            ctx2.restore();
-
-            // Kurşunlar
-            bullets.forEach(b => {{
-                ctx2.fillStyle = '#ffdd00';
-                ctx2.shadowColor = '#ffdd00'; ctx2.shadowBlur = 8;
-                ctx2.fillRect(b.x-2, b.y, b.w, b.h);
-            }});
-
-            // Düşmanlar
-            enemies.forEach(e => {{
-                ctx2.save();
-                ctx2.translate(e.x, e.y);
-                ctx2.fillStyle = e.color;
-                ctx2.shadowColor = e.color; ctx2.shadowBlur = 12;
-                if(e.type==='tank') {{
-                    ctx2.fillRect(-14,-14,28,28);
-                }} else if(e.type==='fast') {{
-                    ctx2.beginPath(); ctx2.moveTo(0,14); ctx2.lineTo(12,-14); ctx2.lineTo(-12,-14); ctx2.closePath(); ctx2.fill();
-                }} else {{
-                    ctx2.beginPath(); ctx2.arc(0,0,14,0,Math.PI*2); ctx2.fill();
-                }}
-                // HP bar (tank için)
-                if(e.type==='tank' && e.hp>0) {{
-                    ctx2.fillStyle = '#333'; ctx2.fillRect(-14,16,28,4);
-                    ctx2.fillStyle = '#ff0066'; ctx2.fillRect(-14,16,28*(e.hp/3),4);
-                }}
-                ctx2.restore();
-            }});
-
-            // Coin drop çiz
-            drops.forEach(d => {{
-                ctx2.globalAlpha = d.life/80;
-                ctx2.fillStyle = '#ffd700';
-                ctx2.shadowColor = '#ffd700'; ctx2.shadowBlur = 8;
-                ctx2.beginPath(); ctx2.arc(d.x, d.y, 6, 0, Math.PI*2); ctx2.fill();
-                ctx2.fillStyle = '#000';
-                ctx2.shadowBlur = 0;
-                ctx2.font = 'bold 7px Orbitron';
-                ctx2.textAlign = 'center';
-                ctx2.fillText(d.coin, d.x, d.y+3);
-            }});
-
-            // Parçacıklar
-            particles2.forEach(p => {{
-                ctx2.globalAlpha = p.life/25;
-                ctx2.fillStyle = p.color;
-                ctx2.beginPath(); ctx2.arc(p.x,p.y,3,0,Math.PI*2); ctx2.fill();
-            }});
-            ctx2.globalAlpha = 1;
-
-            requestAnimationFrame(gameLoop);
-        }}
-
-        function gameOver() {{
-            gameRunning = false;
-            let ov = document.getElementById('overlay');
-            ov.style.display = 'flex';
-            ov.innerHTML = '<h2>GAME OVER</h2><p>Skor: '+score+' · Dalga: '+wave+'</p><button class="btn" onclick="startGame()">TEKRAR OYNA</button>';
-        }}
-
-        window.onload = function() {{ updateXPDisplay(); renderShop(); }};
-    </script>
-</body>
-</html>"""
-
-# ============ 4. HORROR ============
-horror_html = f"""<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HORROR | Cano Studio</title>
-    <style>{base_css}
-    body {{ background: #000; }}
-    .horror-wrap {{
-        min-height: 100vh; display: flex; flex-direction: column;
-        align-items: center; justify-content: center;
-        padding: 80px 20px; text-align: center;
-    }}
-    h1 {{ font-family: 'Orbitron'; color: #cc0000; font-size: clamp(1.2rem, 4vw, 2rem);
-          margin-bottom: 6px; text-shadow: 0 0 20px #cc0000; }}
-    .subtitle {{ color: #400; font-size: 0.8rem; letter-spacing: 3px; margin-bottom: 30px; }}
-
-    .story-box {{
-        background: rgba(100,0,0,0.12);
-        border: 1px solid rgba(200,0,0,0.3);
-        border-radius: 16px; padding: 30px;
-        width: 100%; max-width: 560px;
-        margin-bottom: 24px; text-align: left;
-        min-height: 200px;
-        position: relative; overflow: hidden;
-    }}
-    .story-box::before {{
-        content: ''; position: absolute;
-        top: 0; left: 0; right: 0; height: 2px;
-        background: linear-gradient(90deg, transparent, #cc0000, transparent);
-        animation: scanline 3s linear infinite;
-    }}
-    @keyframes scanline {{ from {{ top: 0; }} to {{ top: 100%; }} }}
-
-    .story-text {{
-        color: #ccc; font-size: 1rem; line-height: 1.8;
-        font-family: 'Rajdhani'; min-height: 80px;
-    }}
-
-    .choices {{ display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 560px; }}
-    .choice-btn {{
-        background: rgba(100,0,0,0.2);
-        border: 1px solid rgba(200,0,0,0.3);
-        color: #ccc; padding: 14px 20px;
-        border-radius: 8px; cursor: pointer;
-        font-family: 'Rajdhani'; font-size: 0.95rem;
-        text-align: left; transition: all 0.2s;
-    }}
-    .choice-btn:hover {{ background: rgba(200,0,0,0.2); border-color: #cc0000; color: #fff; }}
-
-    .stats-row {{
-        display: flex; gap: 20px; margin-bottom: 20px;
-        font-family: 'Orbitron'; font-size: 0.75rem;
-    }}
-    .h-stat {{ background: rgba(100,0,0,0.2); border: 1px solid rgba(200,0,0,0.3); padding: 8px 16px; border-radius: 8px; }}
-    .h-stat span {{ color: #cc0000; }}
-
-    .end-screen {{
-        display: none; padding: 30px; text-align: center;
-    }}
-    .end-screen h2 {{ font-family: 'Orbitron'; color: #cc0000; font-size: 1.5rem; margin-bottom: 10px; }}
-    .end-screen p {{ color: #888; margin-bottom: 20px; }}
-
-    #scareFlash {{
-        position: fixed; inset: 0; background: red;
-        opacity: 0; pointer-events: none; z-index: 9999;
-        transition: opacity 0.05s;
-    }}
-    </style>
-</head>
-<body>
-    <div id="scareFlash"></div>
-    <canvas id="particles"></canvas>
-    <div class="xp-container"><span class="xp-val" id="xpVal">0</span><span class="xp-label">XP</span></div>
-    <div class="level-badge" id="levelBadge">SEV 1</div>
-    <div id="toast" class="toast"></div>
-
-    <div class="horror-wrap">
-        <h1>👻 KARANLIK EV</h1>
-        <div class="subtitle">İNTERAKTİF KORKU HİKAYESİ</div>
-
-        <div class="stats-row">
-            <div class="h-stat">CAN: <span id="hpVal">❤️❤️❤️</span></div>
-            <div class="h-stat">KOR KOR: <span id="fearVal">0</span>/100</div>
-            <div class="h-stat">BÖLÜM: <span id="chapVal">1</span>/5</div>
-        </div>
-
-        <div class="story-box">
-            <div class="story-text" id="storyText">Yükleniyor...</div>
-        </div>
-
-        <div class="choices" id="choicesBox"></div>
-
-        <div class="end-screen" id="endScreen">
-            <h2 id="endTitle"></h2>
-            <p id="endDesc"></p>
-            <button class="btn btn-purple" onclick="restartGame()">TEKRAR OYNA</button>
-        </div>
+  </div>
+  <div class="dpad">
+    <div class="de"></div>
+    <button class="db" onpointerdown="keys.up=true" onpointerup="keys.up=false">&#9650;</button>
+    <div class="de"></div>
+    <button class="db" onpointerdown="keys.left=true" onpointerup="keys.left=false">&#9664;</button>
+    <button class="db" onpointerdown="keys.fire=true" onpointerup="keys.fire=false">&#128293;</button>
+    <button class="db" onpointerdown="keys.right=true" onpointerup="keys.right=false">&#9654;</button>
+  </div>
+  <div class="shop">
+    <div class="shop-title">SİLAH MAGAZA</div>
+    <div class="shop-grid">
+      <div class="shop-c"><div class="shop-ic">&#9889;</div><div class="shop-nm">ATES HIZI</div><div class="shop-lv" id="spLv">Sev 1</div><div class="shop-co" id="spCo">20 &#128176;</div><button class="btn btn-blue" style="padding:5px 8px;font-size:0.58rem;margin-top:4px;" onclick="buyU('sp')">AL</button></div>
+      <div class="shop-c"><div class="shop-ic">&#128165;</div><div class="shop-nm">HASAR</div><div class="shop-lv" id="dmLv">Sev 1</div><div class="shop-co" id="dmCo">30 &#128176;</div><button class="btn btn-blue" style="padding:5px 8px;font-size:0.58rem;margin-top:4px;" onclick="buyU('dm')">AL</button></div>
+      <div class="shop-c"><div class="shop-ic">&#10084;</div><div class="shop-nm">CAN AL</div><div class="shop-lv" id="hpLv">3 Can</div><div class="shop-co" id="hpCo">50 &#128176;</div><button class="btn btn-blue" style="padding:5px 8px;font-size:0.58rem;margin-top:4px;" onclick="buyU('hp')">AL</button></div>
     </div>
-
-    <a href="/" class="back-btn">← GERİ</a>
-
-    <script>
-        {base_js}
-        {particles_js}
-
-        let hp = 3, fear = 0, chapter = 1;
-
-        const story = [
-            {{
-                text: "Gece yarısı eski bir eve giriyorsun. Kapı ağır bir sesle kapanıyor arkandan. Uzakta bir bebek ağlaması duyuyorsun... Elinde kırık bir fener var. Ne yaparsın?",
-                choices: [
-                    {{ text: "🔦 Sesi takip et", next: 1, xp: 10, fearUp: 15 }},
-                    {{ text: "🚪 Kapıyı açmayı dene", next: 2, xp: 5, fearUp: 5 }},
-                    {{ text: "📱 Telefona bak", next: 3, xp: 8, fearUp: 8, damage: 0 }},
-                ]
-            }},
-            {{
-                text: "Sesi takip ediyorsun. Merdivenden çıkıyorsun, her adımda tahta gıcırdıyor. En üst odanın kapısı hafifçe açık... İçeriden soğuk bir rüzgar geliyor. Bebek sesi durdu.",
-                choices: [
-                    {{ text: "😱 Kapıyı itiyor — içeri giriyorsun", next: 4, xp: 20, fearUp: 20 }},
-                    {{ text: "👂 Kulak kabartıyorsun", next: 5, xp: 10, fearUp: 10 }},
-                    {{ text: "🏃 Kaçıyorsun aşağı", next: 6, xp: 5, fearUp: 5, damage: 0 }},
-                ]
-            }},
-            {{
-                text: "Kapıyı it— ve efsane bir BOOM! sesiyle yüzüne kapanıyor. Görünmez bir güç itmiş seni. Düşüyorsun. Korku seviyeni artıyor...",
-                choices: [
-                    {{ text: "💪 Tekrar kalkıyorsun", next: 1, xp: 15, fearUp: 15, damage: 1 }},
-                    {{ text: "😰 Yerde bekliyorsun", next: 7, xp: 5, fearUp: 25, damage: 0 }},
-                ]
-            }},
-            {{
-                text: "Telefonuna bakıyorsun — şarj %2. Ekranda garip bir mesaj var: 'EVİ TERK ET'. Mesajı kim gönderdi?! Göndereni ararsın, 'hatlar dışında' uyarısı geliyor...",
-                choices: [
-                    {{ text: "📞 Tekrar arıyorsun", next: 8, xp: 10, fearUp: 10 }},
-                    {{ text: "🔦 Feneri yakıyorsun", next: 1, xp: 8, fearUp: 5 }},
-                ]
-            }},
-            {{
-                text: "Odaya giriyorsun. Ortada küçük bir karyola var. Yavaşça yaklaşıyorsun... Karyola BOŞ. Ama sıcak! Birisi az önce buradaydı. Perdenin arkası hareket etti...",
-                choices: [
-                    {{ text: "🔪 Perdeyi çekiyorsun", next: 9, xp: 25, fearUp: 30 }},
-                    {{ text: "💨 Dışarı fırlıyorsun", next: 6, xp: 10, fearUp: 10, damage: 0 }},
-                ]
-            }},
-            {{
-                text: "Kulak kabarttın. Bir hışırtı duyuyorsun. Ardından derin bir nefes. Ve bir fısıltı: 'Neden geldin...' Donup kalıyorsun. Sesin kaynağı tam arkanda!",
-                choices: [
-                    {{ text: "😱 Dönüyorsun yavaşça", next: 10, xp: 30, fearUp: 35 }},
-                    {{ text: "🏃 Sprint atıyorsun", next: 6, xp: 10, fearUp: 15, damage: 1 }},
-                ]
-            }},
-            {{
-                text: "Koşarak aşağı iniyorsun, kapıya ulaşıyorsun ama... kapı kilitli! Anahtarı yok. Bir pencere var sol tarafta. Dışarısı kasvetli, soğuk bir gece. Ay ışığı içeri vuruyor.",
-                choices: [
-                    {{ text: "🪟 Pencereden çıkıyorsun", next: 11, xp: 20, fearUp: 5, damage: 0 }},
-                    {{ text: "🔑 Anahtar arıyorsun", next: 1, xp: 15, fearUp: 20 }},
-                ]
-            }},
-            {{
-                text: "Yerde bekliyorsun. Sessizlik var. Sonra... bir şey senin yanına oturdu. Onu göremiyorsun. Ama ağırlığını hissediyorsun. Soğuk bir el koluna dokunuyor...",
-                choices: [
-                    {{ text: "😱 Bağırıyorsun", next: 12, xp: 5, fearUp: 40, damage: 1 }},
-                    {{ text: "🧊 Hareketsiz kalıyorsun", next: 13, xp: 20, fearUp: 15 }},
-                ]
-            }},
-            {{
-                text: "Hat bağlandı! Ses geliyor ama insan sesi değil... Gürültü, parazit, ve uzaktan bir çığlık. Telefon kapanıyor ve ekran tamamen karardı. Artık karanlıkta yalnızsın.",
-                choices: [
-                    {{ text: "🔦 Feneri yakıyorsun", next: 1, xp: 10, fearUp: 10 }},
-                    {{ text: "🚶 Sese doğru yürüyorsun", next: 4, xp: 20, fearUp: 20 }},
-                ]
-            }},
-            {{
-                text: "Perdeyi çekiyorsun ve — HİÇ BİR ŞEY YOK. Sadece soğuk bir duvar. Nefes alıyorsun. Sonra tam arkandan duyuyorsun: karyola gıcırdadı. Yavaşça dönüyorsun...",
-                choices: [
-                    {{ text: "💀 Yüzleşiyorsun", next: 14, xp: 40, fearUp: 40 }},
-                    {{ text: "😰 Gözlerini kapıyorsun", next: 7, xp: 5, fearUp: 20 }},
-                ]
-            }},
-            {{
-                text: "Dönüyorsun... Beyaz geceliği olan küçük bir kız duruyor. Sana bakıyor. Gözleri yok. Sadece karanlık. Ağzını açıyor ve konuşuyor: 'Neden bizi terk ettin?'",
-                choices: [
-                    {{ text: "🗣️ Cevap veriyorsun", next: 15, xp: 35, fearUp: 50 }},
-                    {{ text: "🏃 Kaçıyorsun", next: 6, xp: 10, fearUp: 30, damage: 1 }},
-                ]
-            }},
-            {{
-                text: "Pencereden atlıyorsun! Dışarısı özgürlük! Soğuk hava yüzüne çarpıyor. Arkana bakıyorsun — evin üst penceresinde biri seni izliyor. Koşmaya devam ediyorsun ve hayatta kalıyorsun!",
-                choices: [], win: true
-            }},
-            {{
-                text: "Bağırdın ve ses duvarları sarıyor. O soğuk el sıkıştı. Korku zirvede...",
-                choices: [
-                    {{ text: "😤 Direniniyorsun", next: 13, xp: 10, fearUp: 5, damage: 0 }},
-                    {{ text: "💀 Vazgeçiyorsun", next: -1, xp: 0, fearUp: 0, damage: 2 }},
-                ]
-            }},
-            {{
-                text: "Sakin kalıyorsun. El yavaşça çekiliyor. Sessizlik geri dönüyor. Bir fısıltı: 'Güçlüsün...' ve kaybolup gidiyor. Etraf aydınlanıyor, kapı açılıyor. Çıkış yolunu buldun!",
-                choices: [], win: true
-            }},
-            {{
-                text: "Kız ve sen karşı karşıya geliyorsunuz. Yüzleşmek ona iyi geldi... 'Teşekkürler.' diyor ve kaybolup gidiyor. Ev aydınlanıyor. Huzur buluyor, sen de çıkış yolunu buluyorsun!",
-                choices: [], win: true, xpBonus: 100
-            }},
-            {{
-                text: "'Ben... bilmiyorum' diyorsun. Kız sana uzun uzun bakıyor. Sonra gülümsüyor — gözleri beliriyor. 'Artık biliyorsun.' diyor. Bir ışık parlıyor ve ev yıkılıyor. Sağ çıkıyorsun!",
-                choices: [], win: true, xpBonus: 150
-            }},
-        ];
-
-        function loadChapter(idx) {{
-            if(idx === -1 || hp <= 0 || fear >= 100) {{ gameEnd(false); return; }}
-            let s = story[idx];
-            if(!s) {{ gameEnd(false); return; }}
-
-            chapter++;
-            document.getElementById('chapVal').innerText = Math.min(chapter, 5);
-
-            // Korku efekti
-            if(s.fearUp && s.fearUp > 20) scareFlash();
-
-            document.getElementById('storyText').innerText = s.text;
-            document.getElementById('hpVal').innerText = '❤️'.repeat(Math.max(0,hp));
-            document.getElementById('fearVal').innerText = fear;
-
-            let box = document.getElementById('choicesBox');
-            box.innerHTML = '';
-
-            if(s.win) {{ gameEnd(true, s.xpBonus || 0); return; }}
-
-            s.choices.forEach(c => {{
-                let btn = document.createElement('button');
-                btn.className = 'choice-btn';
-                btn.innerText = c.text;
-                btn.onclick = () => {{
-                    if(c.damage) {{ hp -= c.damage; }}
-                    if(c.fearUp) {{ fear = Math.min(100, fear + c.fearUp); }}
-                    if(c.xp) {{ addXP(c.xp, "Korku"); }}
-                    loadChapter(c.next);
-                }};
-                box.appendChild(btn);
-            }});
-        }}
-
-        function scareFlash() {{
-            let el = document.getElementById('scareFlash');
-            el.style.opacity = '0.4';
-            setTimeout(() => el.style.opacity = '0', 150);
-        }}
-
-        function gameEnd(win, bonusXP=0) {{
-            document.getElementById('storyText').innerText = '';
-            document.getElementById('choicesBox').innerHTML = '';
-            let es = document.getElementById('endScreen');
-            es.style.display = 'block';
-            if(win) {{
-                document.getElementById('endTitle').innerText = '🏆 HAYATTA KALDIN!';
-                document.getElementById('endDesc').innerText = 'Tebrikler! Evi geçtin. Korku puanın: ' + fear;
-                if(bonusXP) addXP(bonusXP, "Ev Bitti!");
-                addXP(50, "Hayatta Kaldın");
-            }} else {{
-                document.getElementById('endTitle').innerText = '💀 KARANLIĞA YUTULDUN';
-                document.getElementById('endDesc').innerText = fear >= 100 ? 'Korku seni yendi!' : 'Canın bitti!';
-            }}
-        }}
-
-        function restartGame() {{
-            hp = 3; fear = 0; chapter = 1;
-            document.getElementById('endScreen').style.display = 'none';
-            loadChapter(0);
-        }}
-
-        window.onload = function() {{
-            updateXPDisplay();
-            loadChapter(0);
-        }};
-    </script>
-</body>
-</html>"""
-
-# ============ 5. MARKET ============
-store_css = """
-    .store-wrap {
-        min-height: 100vh; padding: 100px 20px 80px;
-        max-width: 1000px; margin: 0 auto;
-    }
-    h1 { font-family: 'Orbitron'; text-align: center; font-size: clamp(1.2rem, 4vw, 2rem);
-          background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple));
-          -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-          margin-bottom: 6px; }
-    .subtitle { color: #555; text-align: center; font-size: 0.8rem; letter-spacing: 3px; margin-bottom: 30px; }
-    .balance-box {
-        background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.3);
-        border-radius: 12px; padding: 16px 24px; text-align: center; margin-bottom: 30px;
-        font-family: 'Orbitron';
-    }
-    .balance-box .big { font-size: 2rem; color: var(--neon-blue); }
-    .balance-box .lbl { color: #555; font-size: 0.75rem; letter-spacing: 2px; }
-    .category-tabs { display: flex; gap: 10px; justify-content: center; margin-bottom: 24px; flex-wrap: wrap; }
-    .tab {
-        background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
-        color: #666; padding: 8px 20px; border-radius: 50px; cursor: pointer;
-        font-family: 'Orbitron'; font-size: 0.75rem; transition: all 0.2s;
-    }
-    .tab.active { border-color: var(--neon-blue); color: var(--neon-blue); background: rgba(0,212,255,0.08); }
-    .store-grid {
-        display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 16px;
-    }
-    .item {
-        background: rgba(255,255,255,0.04);
-        border: 1px solid rgba(255,255,255,0.08);
-        padding: 24px 16px; border-radius: 14px; text-align: center;
-        transition: all 0.3s; position: relative; overflow: hidden;
-    }
-    .item:hover { transform: translateY(-4px); border-color: var(--neon-blue); }
-    .item.owned { border-color: var(--neon-green); opacity: 0.7; }
-    .item-icon { font-size: 2.5rem; display: block; margin-bottom: 10px; }
-    .item-name { font-family: 'Orbitron'; font-size: 0.85rem; margin-bottom: 6px; }
-    .item-desc { color: #666; font-size: 0.75rem; margin-bottom: 14px; }
-    .item-price { color: var(--neon-orange); font-family: 'Orbitron'; font-size: 0.9rem; margin-bottom: 12px; }
-    .owned-badge {
-        position: absolute; top: 10px; right: 10px;
-        background: var(--neon-green); color: #000;
-        font-size: 0.6rem; font-family: 'Orbitron';
-        padding: 3px 8px; border-radius: 50px;
-    }
+  </div>
+</div>
 """
-
-store_js = """
-        function getXP() { return parseInt(localStorage.getItem('cano_xp')) || 0; }
-        function setXP(v) { localStorage.setItem('cano_xp', v); updateXPDisplay(); }
-        function updateXPDisplay() {
-            var xp = getXP();
-            var el = document.getElementById('xpVal');
-            if(el) el.innerText = xp.toLocaleString();
-            var lvl = document.getElementById('levelBadge');
-            if(lvl) lvl.innerText = 'SEV ' + Math.floor(xp / 500 + 1);
-            var bal = document.getElementById('balanceVal');
-            if(bal) bal.innerText = xp.toLocaleString();
+    js = r"""
+  var gc=document.getElementById('gameCanvas');
+  var cx2=gc.getContext('2d');
+  var running=false,score=0,lives=3,wave=1;
+  var player={x:200,y:320,spd:5};
+  var bullets=[],enemies=[],parts=[],drops=[];
+  var keys={};
+  var lastBullet=0,lastSpawn=0;
+  var UPG=JSON.parse(localStorage.getItem('cano_au'))||{coins:0,sp:1,dm:1,hp:3,spc:20,dmc:30,hpc:50};
+  function saveU(){localStorage.setItem('cano_au',JSON.stringify(UPG));}
+  function renderShop(){
+    document.getElementById('coinVal').innerText=UPG.coins;
+    document.getElementById('spLv').innerText='Sev '+UPG.sp;
+    document.getElementById('spCo').innerText=UPG.spc+' \uD83D\uDCB0';
+    document.getElementById('dmLv').innerText='Sev '+UPG.dm;
+    document.getElementById('dmCo').innerText=UPG.dmc+' \uD83D\uDCB0';
+    document.getElementById('hpLv').innerText=UPG.hp+' Can';
+    document.getElementById('hpCo').innerText=UPG.hpc+' \uD83D\uDCB0';
+  }
+  function buyU(t){
+    if(t==='sp'){if(UPG.coins<UPG.spc){showToast('Coin yetersiz!');return;}UPG.coins-=UPG.spc;UPG.sp++;UPG.spc=Math.floor(UPG.spc*1.6);showToast('Ates hizi yukseltildi!');}
+    else if(t==='dm'){if(UPG.coins<UPG.dmc){showToast('Coin yetersiz!');return;}UPG.coins-=UPG.dmc;UPG.dm++;UPG.dmc=Math.floor(UPG.dmc*1.6);showToast('Hasar yukseltildi!');}
+    else if(t==='hp'){if(UPG.coins<UPG.hpc){showToast('Coin yetersiz!');return;}UPG.coins-=UPG.hpc;UPG.hp++;lives++;UPG.hpc=Math.floor(UPG.hpc*1.8);showToast('Can eklendi!');}
+    saveU();renderShop();
+  }
+  document.addEventListener('keydown',function(e){keys[e.code]=true;if(e.code==='Space')e.preventDefault();});
+  document.addEventListener('keyup',function(e){keys[e.code]=false;});
+  function startGame(){
+    document.getElementById('ov').style.display='none';
+    score=0;lives=UPG.hp;wave=1;
+    bullets=[];enemies=[];parts=[];drops=[];
+    player.x=200;running=true;
+    renderShop();loop();
+  }
+  function spawnE(){
+    var types=['basic','fast','tank'];
+    var t=types[Math.floor(Math.random()*Math.min(wave,3))];
+    enemies.push({x:Math.random()*380+20,y:-20,hp:t==='tank'?3:1,spd:t==='fast'?3.5:(1.2+wave*0.15),type:t,color:t==='tank'?'#ff0066':t==='fast'?'#00ff88':'#00d4ff'});
+  }
+  function loop(){
+    if(!running) return;
+    if(keys['ArrowLeft']||keys['left']) player.x=Math.max(16,player.x-player.spd);
+    if(keys['ArrowRight']||keys['right']) player.x=Math.min(gc.width-16,player.x+player.spd);
+    var now=Date.now();
+    var fr=Math.max(80,220-(UPG.sp-1)*30);
+    if((keys['Space']||keys['fire'])&&now-lastBullet>fr){
+      bullets.push({x:player.x,y:player.y-16,spd:9,w:4,h:12});
+      if(UPG.sp>=3){bullets.push({x:player.x-10,y:player.y-10,spd:9,w:4,h:12});bullets.push({x:player.x+10,y:player.y-10,spd:9,w:4,h:12});}
+      lastBullet=now;
+    }
+    var si=Math.max(600,1400-wave*100);
+    if(now-lastSpawn>si){spawnE();lastSpawn=now;if(Math.random()<0.3)spawnE();}
+    bullets=bullets.filter(function(b){b.y-=b.spd;return b.y>-20;});
+    enemies.forEach(function(e){e.y+=e.spd;});
+    bullets=bullets.filter(function(b){
+      var hit=false;
+      enemies=enemies.map(function(e){
+        if(!hit&&b.x>e.x-14&&b.x<e.x+14&&b.y>e.y-14&&b.y<e.y+14){
+          e.hp-=UPG.dm;hit=true;
+          if(e.hp<=0){
+            e.dead=true;
+            var pts=e.type==='tank'?30:e.type==='fast'?15:10;
+            var cd=e.type==='tank'?5:e.type==='fast'?3:1;
+            score+=pts;addXP(pts,'Dusман');
+            drops.push({x:e.x,y:e.y,vy:1.5,c:cd,life:80});
+            var kl=parseInt(localStorage.getItem('cano_kill')||0)+1;
+            localStorage.setItem('cano_kill',kl);
+            for(var i=0;i<8;i++) parts.push({x:e.x,y:e.y,vx:(Math.random()-0.5)*4,vy:(Math.random()-0.5)*4,life:25,col:e.color});
+          }
         }
-        function showToast(msg) {
-            var t = document.getElementById('toast');
-            if(!t) return;
-            t.innerText = msg; t.style.opacity = '1';
-            setTimeout(function() { t.style.opacity = '0'; }, 2500);
-        }
-        function getItems() { return JSON.parse(localStorage.getItem('cano_items')) || []; }
-
-        var ITEMS = [
-            { id: 'gold_skin', name: 'Altin Skin', icon: '&#10024;', cat: 'skin', price: 500, desc: 'Oyuncuna altin parlaklik katar' },
-            { id: 'neon_skin', name: 'Neon Skin', icon: '&#128161;', cat: 'skin', price: 750, desc: 'Neon renk paleti' },
-            { id: 'dark_skin', name: 'Karanlik Skin', icon: '&#127761;', cat: 'skin', price: 1000, desc: 'Gecenin derinliklerinden' },
-            { id: 'speed_boost', name: 'Hiz Botu', icon: '&#9889;', cat: 'boost', price: 1000, desc: 'Arcade +20% hiz' },
-            { id: 'xp_boost', name: 'XP x2', icon: '&#128293;', cat: 'boost', price: 800, desc: '24 saat boyunca cift XP' },
-            { id: 'mine_boost', name: 'Maden Boost', icon: '&#9935;', cat: 'boost', price: 600, desc: 'Stratejide +5 maden/tiklama' },
-            { id: 'ghost_badge', name: 'Hayalet Rozeti', icon: '&#128123;', cat: 'special', price: 1500, desc: 'Horror tamamlayanlarin rozeti' },
-            { id: 'crown', name: 'Kral Taci', icon: '&#128081;', cat: 'special', price: 3000, desc: 'En prestijli odul' },
-            { id: 'crystal_key', name: 'Kristal Anahtar', icon: '&#128142;', cat: 'special', price: 2000, desc: 'Gizli alanlari acar' },
-        ];
-
-        var currentFilter = 'all';
-
-        function filterItems(cat, tab) {
-            currentFilter = cat;
-            document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
-            tab.classList.add('active');
-            renderStore();
-        }
-
-        function renderStore() {
-            var xp = getXP();
-            var owned = getItems();
-            document.getElementById('balanceVal').innerText = xp.toLocaleString();
-            var grid = document.getElementById('storeGrid');
-            grid.innerHTML = '';
-            ITEMS.filter(function(i) { return currentFilter === 'all' || i.cat === currentFilter; }).forEach(function(item) {
-                var isOwned = owned.includes(item.id);
-                var canBuy = xp >= item.price && !isOwned;
-                var div = document.createElement('div');
-                div.className = 'item' + (isOwned ? ' owned' : '');
-                var html = '';
-                if(isOwned) html += '<div class="owned-badge">SAHIPSIN</div>';
-                html += '<span class="item-icon">' + item.icon + '</span>';
-                html += '<div class="item-name">' + item.name + '</div>';
-                html += '<div class="item-desc">' + item.desc + '</div>';
-                html += '<div class="item-price">' + item.price.toLocaleString() + ' XP</div>';
-                html += '<button class="btn btn-blue" ' + (!canBuy ? 'disabled' : '') + ' onclick="buyItem(\'' + item.id + '\',' + item.price + ')">';
-                html += isOwned ? 'SATIN ALINDI' : 'SATIN AL';
-                html += '</button>';
-                div.innerHTML = html;
-                grid.appendChild(div);
-            });
-        }
-
-        function buyItem(id, price) {
-            var xp = getXP();
-            var owned = getItems();
-            if(xp < price || owned.includes(id)) { showToast('XP Yetersiz!'); return; }
-            setXP(xp - price);
-            owned.push(id);
-            localStorage.setItem('cano_items', JSON.stringify(owned));
-            showToast('Satin Alindi!');
-            renderStore();
-        }
-
-        window.onload = function() { updateXPDisplay(); renderStore(); };
+        return e;
+      }).filter(function(e){return !e.dead;});
+      return !hit;
+    });
+    enemies=enemies.filter(function(e){
+      if(e.y>gc.height+10){lives--;if(lives<=0)gameOver();return false;}
+      return true;
+    });
+    if(score>wave*150){wave++;showToast('DALGA '+wave+'!');}
+    drops=drops.filter(function(d){
+      d.y+=d.vy;d.life--;
+      if(Math.abs(d.x-player.x)<20&&Math.abs(d.y-player.y)<20){
+        UPG.coins+=d.c;saveU();renderShop();showToast('+'+d.c+' coin');return false;
+      }
+      return d.life>0&&d.y<gc.height+20;
+    });
+    parts=parts.filter(function(p){p.x+=p.vx;p.y+=p.vy;p.life--;return p.life>0;});
+    document.getElementById('scoreVal').innerText=score;
+    document.getElementById('livesVal').innerText='\u2764\uFE0F'.repeat(Math.max(0,lives));
+    document.getElementById('waveVal').innerText=wave;
+    cx2.clearRect(0,0,gc.width,gc.height);
+    cx2.strokeStyle='rgba(255,69,0,0.05)';cx2.lineWidth=1;
+    for(var i=0;i<gc.width;i+=40){cx2.beginPath();cx2.moveTo(i,0);cx2.lineTo(i,gc.height);cx2.stroke();}
+    for(var i=0;i<gc.height;i+=40){cx2.beginPath();cx2.moveTo(0,i);cx2.lineTo(gc.width,i);cx2.stroke();}
+    cx2.save();cx2.translate(player.x,player.y);
+    cx2.fillStyle='#ff4500';cx2.shadowColor='#ff4500';cx2.shadowBlur=15;
+    cx2.beginPath();cx2.moveTo(0,-16);cx2.lineTo(12,12);cx2.lineTo(0,6);cx2.lineTo(-12,12);cx2.closePath();cx2.fill();
+    cx2.restore();
+    bullets.forEach(function(b){cx2.fillStyle='#ffdd00';cx2.shadowColor='#ffdd00';cx2.shadowBlur=8;cx2.fillRect(b.x-2,b.y,b.w,b.h);});
+    enemies.forEach(function(e){
+      cx2.save();cx2.translate(e.x,e.y);cx2.fillStyle=e.color;cx2.shadowColor=e.color;cx2.shadowBlur=12;
+      if(e.type==='tank'){cx2.fillRect(-14,-14,28,28);}
+      else if(e.type==='fast'){cx2.beginPath();cx2.moveTo(0,14);cx2.lineTo(12,-14);cx2.lineTo(-12,-14);cx2.closePath();cx2.fill();}
+      else{cx2.beginPath();cx2.arc(0,0,14,0,Math.PI*2);cx2.fill();}
+      if(e.type==='tank'&&e.hp>0){cx2.fillStyle='#333';cx2.fillRect(-14,16,28,4);cx2.fillStyle='#ff0066';cx2.fillRect(-14,16,28*(e.hp/3),4);}
+      cx2.restore();
+    });
+    drops.forEach(function(d){
+      cx2.globalAlpha=d.life/80;cx2.fillStyle='#ffd700';cx2.shadowColor='#ffd700';cx2.shadowBlur=8;
+      cx2.beginPath();cx2.arc(d.x,d.y,6,0,Math.PI*2);cx2.fill();
+      cx2.fillStyle='#000';cx2.shadowBlur=0;cx2.font='bold 7px Arial';cx2.textAlign='center';cx2.fillText(d.c,d.x,d.y+3);
+    });
+    parts.forEach(function(p){cx2.globalAlpha=p.life/25;cx2.fillStyle=p.col;cx2.beginPath();cx2.arc(p.x,p.y,3,0,Math.PI*2);cx2.fill();});
+    cx2.globalAlpha=1;
+    requestAnimationFrame(loop);
+  }
+  function gameOver(){
+    running=false;
+    var ov=document.getElementById('ov');ov.style.display='flex';
+    ov.innerHTML='<h2>GAME OVER</h2><p>Skor: '+score+' Dalga: '+wave+'</p><button class="btn" onclick="startGame()">TEKRAR</button>';
+  }
+  renderShop();
 """
+    return page("ARCADE", css, body, js)
 
-store_html = (
-    '<!DOCTYPE html>\n<html lang="tr">\n<head>\n'
-    '    <meta charset="UTF-8">\n'
-    '    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">\n'
-    '    <title>MARKET | Cano Studio</title>\n'
-    '    <style>' + base_css + store_css + '</style>\n'
-    '</head>\n<body>\n'
-    '    <canvas id="particles"></canvas>\n'
-    '    <div class="xp-container"><span class="xp-val" id="xpVal">0</span><span class="xp-label">XP</span></div>\n'
-    '    <div class="level-badge" id="levelBadge">SEV 1</div>\n'
-    '    <div id="toast" class="toast"></div>\n'
-    '    <div class="store-wrap">\n'
-    '        <h1>MARKET</h1>\n'
-    '        <div class="subtitle">XP ILE ESYA SATIN AL</div>\n'
-    '        <div class="balance-box">\n'
-    '            <div class="big" id="balanceVal">0</div>\n'
-    '            <div class="lbl">MEVCUT XP BAKIYESI</div>\n'
-    '        </div>\n'
-    '        <div class="category-tabs">\n'
-    '            <div class="tab active" onclick="filterItems(\'all\', this)">TUMU</div>\n'
-    '            <div class="tab" onclick="filterItems(\'skin\', this)">SKINLER</div>\n'
-    '            <div class="tab" onclick="filterItems(\'boost\', this)">BOOST</div>\n'
-    '            <div class="tab" onclick="filterItems(\'special\', this)">OZEL</div>\n'
-    '        </div>\n'
-    '        <div class="store-grid" id="storeGrid"></div>\n'
-    '    </div>\n'
-    '    <a href="/" class="back-btn">&larr; GERI</a>\n'
-    '    <script>\n'
-    + store_js +
-    '    </script>\n</body>\n</html>'
-)
 
-# ============ PROFİL SAYFASI ============
-profil_css = """
-    .profil-wrap { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 20px; }
-    .avatar { width: 100px; height: 100px; border-radius: 50%; background: linear-gradient(135deg, var(--neon-orange), var(--neon-purple)); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; margin-bottom: 16px; box-shadow: 0 0 40px rgba(255,69,0,0.4); cursor: pointer; }
-    .username { font-family: 'Orbitron'; font-size: 1.5rem; color: #fff; margin-bottom: 4px; }
-    .user-title { color: #555; font-size: 0.8rem; letter-spacing: 3px; margin-bottom: 30px; }
-    .profil-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; width: 100%; max-width: 600px; margin-bottom: 30px; }
-    .stat-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); padding: 20px; border-radius: 14px; text-align: center; }
-    .stat-card .val { font-family: 'Orbitron'; font-size: 1.4rem; color: var(--neon-orange); }
-    .stat-card .lbl { font-size: 0.7rem; color: #555; letter-spacing: 2px; margin-top: 4px; }
-    .badge-row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-bottom: 30px; }
-    .badge { background: rgba(191,0,255,0.15); border: 1px solid rgba(191,0,255,0.4); padding: 8px 16px; border-radius: 50px; font-size: 0.75rem; font-family: 'Orbitron'; color: var(--neon-purple); }
-    .name-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 9999; }
-    .name-box { background: #111; border: 1px solid var(--neon-orange); border-radius: 16px; padding: 40px; text-align: center; max-width: 400px; width: 90%; }
-    .name-box h2 { font-family: 'Orbitron'; color: var(--neon-orange); margin-bottom: 20px; }
-    .name-input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 12px 20px; border-radius: 8px; font-family: 'Orbitron'; font-size: 1rem; width: 100%; margin-bottom: 16px; outline: none; text-align: center; }
-    .name-input:focus { border-color: var(--neon-orange); }
-    .xp-bar-wrap { width: 100%; max-width: 600px; margin-bottom: 30px; }
-    .xp-bar-label { display: flex; justify-content: space-between; font-size: 0.75rem; color: #555; margin-bottom: 6px; font-family: 'Orbitron'; }
-    .xp-bar-bg { background: #111; border-radius: 50px; height: 10px; overflow: hidden; }
-    .xp-bar-fill { height: 100%; border-radius: 50px; background: linear-gradient(90deg, var(--neon-orange), var(--neon-purple)); transition: width 0.6s; }
-    .items-section { width: 100%; max-width: 600px; }
-    .items-section h3 { font-family: 'Orbitron'; font-size: 0.85rem; color: #555; letter-spacing: 2px; margin-bottom: 12px; }
-    .owned-items { display: flex; gap: 10px; flex-wrap: wrap; }
-    .owned-item { background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.3); padding: 8px 16px; border-radius: 8px; font-size: 0.8rem; color: var(--neon-blue); }
+# ===== HORROR =====
+def horror_page():
+    css = """
+body{background:#000;}
+.hw{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;text-align:center;}
+h1{font-family:'Orbitron';color:#cc0000;font-size:clamp(1.2rem,4vw,2rem);margin-bottom:6px;text-shadow:0 0 20px #cc0000;}
+.sub{color:#400;font-size:0.78rem;letter-spacing:3px;margin-bottom:20px;}
+.hrow{display:flex;gap:16px;margin-bottom:18px;font-family:'Orbitron';font-size:0.72rem;}
+.hst{background:rgba(100,0,0,0.2);border:1px solid rgba(200,0,0,0.3);padding:7px 14px;border-radius:8px;}
+.hst span{color:#cc0000;}
+.sb{background:rgba(100,0,0,0.12);border:1px solid rgba(200,0,0,0.3);border-radius:16px;padding:28px;width:100%;max-width:540px;margin-bottom:20px;text-align:left;min-height:180px;position:relative;overflow:hidden;}
+.sb::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#cc0000,transparent);animation:sc 3s linear infinite;}
+@keyframes sc{from{top:0;}to{top:100%;}}
+.st{color:#ccc;font-size:0.95rem;line-height:1.8;font-family:'Rajdhani';}
+.ch{display:flex;flex-direction:column;gap:10px;width:100%;max-width:540px;}
+.cb{background:rgba(100,0,0,0.2);border:1px solid rgba(200,0,0,0.3);color:#ccc;padding:13px 18px;border-radius:8px;cursor:pointer;font-family:'Rajdhani';font-size:0.92rem;text-align:left;transition:all 0.2s;}
+.cb:hover{background:rgba(200,0,0,0.2);border-color:#cc0000;color:#fff;}
+.es{display:none;padding:28px;text-align:center;}
+.es h2{font-family:'Orbitron';color:#cc0000;font-size:1.4rem;margin-bottom:8px;}
+.es p{color:#777;margin-bottom:18px;}
+#sf{position:fixed;inset:0;background:red;opacity:0;pointer-events:none;z-index:9999;transition:opacity 0.05s;}
 """
-
-profil_js = """
-    function getXP() { return parseInt(localStorage.getItem('cano_xp')) || 0; }
-    function setXP(v) { localStorage.setItem('cano_xp', v); }
-    function updateXPDisplay() {
-        var xp = getXP();
-        var el = document.getElementById('xpVal');
-        if(el) el.innerText = xp.toLocaleString();
-        var lvl = document.getElementById('levelBadge');
-        if(lvl) lvl.innerText = 'SEV ' + Math.floor(xp / 500 + 1);
-    }
-    function showToast(msg) {
-        var t = document.getElementById('toast');
-        if(!t) return;
-        t.innerText = msg; t.style.opacity = '1';
-        setTimeout(function() { t.style.opacity = '0'; }, 2500);
-    }
-    function getItems() { return JSON.parse(localStorage.getItem('cano_items')) || []; }
-    function getName() { return localStorage.getItem('cano_name') || ''; }
-    function setName(n) { localStorage.setItem('cano_name', n); }
-
-    var ITEM_NAMES = {
-        'gold_skin': 'Altin Skin &#10024;', 'neon_skin': 'Neon Skin &#128161;',
-        'dark_skin': 'Karanlik Skin &#127761;', 'speed_boost': 'Hiz Botu &#9889;',
-        'xp_boost': 'XP x2 &#128293;', 'mine_boost': 'Maden Boost &#9935;',
-        'ghost_badge': 'Hayalet Rozeti &#128123;', 'crown': 'Kral Taci &#128081;',
-        'crystal_key': 'Kristal Anahtar &#128142;'
-    };
-
-    var TITLES = [
-        [0,    'ACEMI'],
-        [500,  'GEZGIN'],
-        [1000, 'SAVASCИ'],
-        [2500, 'EFSANE'],
-        [5000, 'TANRI'],
-    ];
-
-    function getTitle(xp) {
-        var t = TITLES[0][1];
-        for(var i = 0; i < TITLES.length; i++) {
-            if(xp >= TITLES[i][0]) t = TITLES[i][1];
-        }
-        return t;
-    }
-
-    function renderProfil() {
-        var xp = getXP();
-        var name = getName();
-        var items = getItems();
-        var lvl = Math.floor(xp / 500 + 1);
-        var nextLvlXp = lvl * 500;
-        var pct = Math.min(100, ((xp % 500) / 500) * 100);
-
-        document.getElementById('profilName').innerText = name || 'ISIMSIZ';
-        document.getElementById('profilTitle').innerText = getTitle(xp);
-        document.getElementById('statXP').innerText = xp.toLocaleString();
-        document.getElementById('statLvl').innerText = lvl;
-        document.getElementById('statItems').innerText = items.length;
-        document.getElementById('xpBarFill').style.width = pct + '%';
-        document.getElementById('xpBarLabel').innerText = (xp % 500) + ' / 500 XP';
-        document.getElementById('nextLvl').innerText = 'SEV ' + (lvl + 1);
-
-        var itemsDiv = document.getElementById('ownedItems');
-        itemsDiv.innerHTML = '';
-        if(items.length === 0) {
-            itemsDiv.innerHTML = '<span style="color:#333;font-size:0.8rem;">Henuz esya yok</span>';
-        } else {
-            items.forEach(function(id) {
-                var span = document.createElement('span');
-                span.className = 'owned-item';
-                span.innerHTML = ITEM_NAMES[id] || id;
-                itemsDiv.appendChild(span);
-            });
-        }
-        updateXPDisplay();
-    }
-
-    function checkName() {
-        var name = getName();
-        if(!name) {
-            document.getElementById('nameModal').style.display = 'flex';
-        }
-    }
-
-    function saveName() {
-        var inp = document.getElementById('nameInput').value.trim();
-        if(!inp) return;
-        setName(inp.toUpperCase());
-        document.getElementById('nameModal').style.display = 'none';
-        renderProfil();
-    }
-
-    function changeName() {
-        document.getElementById('nameInput').value = getName();
-        document.getElementById('nameModal').style.display = 'flex';
-    }
-
-    window.onload = function() { checkName(); renderProfil(); };
+    body = """
+<div id="sf"></div>
+<a href="/" class="back-btn">&larr; GERİ</a>
+<div class="hw">
+  <h1>&#128123; KARANLIK EV</h1>
+  <div class="sub">İNTERAKTİF KORKU HİKAYESİ</div>
+  <div class="hrow">
+    <div class="hst">CAN: <span id="hpV">&#10084;&#10084;&#10084;</span></div>
+    <div class="hst">KORKU: <span id="frV">0</span>/100</div>
+    <div class="hst">BOLUM: <span id="chV">1</span>/5</div>
+  </div>
+  <div class="sb"><div class="st" id="stT">Yukleniyor...</div></div>
+  <div class="ch" id="chB"></div>
+  <div class="es" id="endS">
+    <h2 id="endTit"></h2>
+    <p id="endDsc"></p>
+    <button class="btn btn-purple" onclick="restart()">TEKRAR OYNA</button>
+  </div>
+</div>
 """
-
-profil_html = (
-    '<!DOCTYPE html>\n<html lang="tr">\n<head>\n'
-    '    <meta charset="UTF-8">\n'
-    '    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
-    '    <title>PROFİL | Cano Studio</title>\n'
-    '    <style>' + base_css + profil_css + '</style>\n'
-    '</head>\n<body>\n'
-    '    <canvas id="particles"></canvas>\n'
-    '    <div class="xp-container"><span class="xp-val" id="xpVal">0</span><span class="xp-label">XP</span></div>\n'
-    '    <div class="level-badge" id="levelBadge">SEV 1</div>\n'
-    '    <div id="toast" class="toast"></div>\n'
-    '    <div id="nameModal" class="name-modal" style="display:none">\n'
-    '        <div class="name-box">\n'
-    '            <h2>KULLANICI ADINИ GIR</h2>\n'
-    '            <input id="nameInput" class="name-input" maxlength="16" placeholder="ADINIZ...">\n'
-    '            <button class="btn" onclick="saveName()">KAYDET</button>\n'
-    '        </div>\n'
-    '    </div>\n'
-    '    <div class="profil-wrap">\n'
-    '        <div class="avatar" onclick="changeName()">&#128100;</div>\n'
-    '        <div class="username" id="profilName">ISIMSIZ</div>\n'
-    '        <div class="user-title" id="profilTitle">ACEMI</div>\n'
-    '        <div class="profil-grid">\n'
-    '            <div class="stat-card"><div class="val" id="statXP">0</div><div class="lbl">TOPLAM XP</div></div>\n'
-    '            <div class="stat-card"><div class="val" id="statLvl">1</div><div class="lbl">SEVIYE</div></div>\n'
-    '            <div class="stat-card"><div class="val" id="statItems">0</div><div class="lbl">ESYA</div></div>\n'
-    '        </div>\n'
-    '        <div class="xp-bar-wrap">\n'
-    '            <div class="xp-bar-label"><span id="xpBarLabel">0 / 500 XP</span><span id="nextLvl">SEV 2</span></div>\n'
-    '            <div class="xp-bar-bg"><div class="xp-bar-fill" id="xpBarFill" style="width:0%"></div></div>\n'
-    '        </div>\n'
-    '        <div class="items-section">\n'
-    '            <h3>SAHIP OLUNAN ESYALAR</h3>\n'
-    '            <div class="owned-items" id="ownedItems"></div>\n'
-    '        </div>\n'
-    '    </div>\n'
-    '    <a href="/" class="back-btn">&larr; GERI</a>\n'
-    '    <script>\n' + profil_js + particles_js + '\n    </script>\n'
-    '</body>\n</html>'
-)
-
-# ============ GÜNLÜK GÖREV SİSTEMİ ============
-gorev_css = """
-    .gorev-wrap { min-height: 100vh; padding: 90px 20px 80px; max-width: 700px; margin: 0 auto; }
-    h1 { font-family: 'Orbitron'; text-align: center; font-size: clamp(1.2rem, 4vw, 2rem); color: var(--neon-green); margin-bottom: 6px; }
-    .subtitle { color: #555; text-align: center; font-size: 0.8rem; letter-spacing: 3px; margin-bottom: 30px; }
-    .refresh-timer { text-align: center; font-family: 'Orbitron'; font-size: 0.75rem; color: #444; margin-bottom: 24px; }
-    .refresh-timer span { color: var(--neon-green); }
-    .gorev-list { display: flex; flex-direction: column; gap: 14px; }
-    .gorev-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 20px; display: flex; align-items: center; gap: 16px; transition: all 0.3s; }
-    .gorev-card.done { border-color: var(--neon-green); opacity: 0.6; }
-    .gorev-icon { font-size: 2rem; min-width: 44px; text-align: center; }
-    .gorev-info { flex: 1; }
-    .gorev-name { font-family: 'Orbitron'; font-size: 0.85rem; margin-bottom: 4px; }
-    .gorev-desc { font-size: 0.8rem; color: #666; margin-bottom: 8px; }
-    .gorev-prog-bg { background: #111; border-radius: 50px; height: 6px; overflow: hidden; }
-    .gorev-prog-fill { height: 100%; border-radius: 50px; background: linear-gradient(90deg, var(--neon-green), var(--neon-blue)); transition: width 0.4s; }
-    .gorev-reward { font-family: 'Orbitron'; font-size: 0.8rem; color: var(--neon-orange); min-width: 70px; text-align: right; }
-    .gorev-card.done .gorev-reward { color: var(--neon-green); }
+    js = """
+  var hp=3,fear=0,chapter=1;
+  var STORY=[
+    {text:"Gece yarisi eski bir eve giriyorsun. Kapi agir bir sesle kapaniyor. Uzakta bebek aglamasi duyuyorsun... Ne yaparsın?",
+     choices:[{t:"Sesi takip et",n:1,xp:10,f:15},{t:"Kapiyi acmayi dene",n:2,xp:5,f:5},{t:"Telefona bak",n:3,xp:8,f:8}]},
+    {text:"Merdivenden cikiyorsun. En ust odanin kapisi hafifce acik. Iceriden soguk bir ruzgar geliyor. Bebek sesi durdu.",
+     choices:[{t:"Iceri giriyorsun",n:4,xp:20,f:20},{t:"Kulak kabartiyor",n:5,xp:10,f:10},{t:"Kaciyorsun",n:6,xp:5,f:5,d:0}]},
+    {text:"Kapiya kosu... BOOM! Gorünmez bir guc seni geri itti. Dusuyor, korkuyorsun.",
+     choices:[{t:"Tekrar kalkiyorsun",n:1,xp:15,f:15,d:1},{t:"Yerde bekliyorsun",n:7,xp:5,f:25}]},
+    {text:"Telefon sarji %2. Ekranda garip mesaj: 'EVİ TERK ET'. Kim gonderdi?",
+     choices:[{t:"Tekrar ariyorsun",n:8,xp:10,f:10},{t:"Feneri yakiyorsun",n:1,xp:8,f:5}]},
+    {text:"Odaya giriyorsun. Karyola bos ama SICAK. Perde hareket etti...",
+     choices:[{t:"Perdeyi cekiyorsun",n:9,xp:25,f:30},{t:"Disari firliyorsun",n:6,xp:10,f:10}]},
+    {text:"Kulak kabartin. Fisiltı: 'Neden geldin...' Ses tam arkanda!",
+     choices:[{t:"Yavascа donuyorsun",n:10,xp:30,f:35},{t:"Sprint atiyorsun",n:6,xp:10,f:15,d:1}]},
+    {text:"Asagi kostun ama kapi KILITLI! Pencere var sol tarafta.",
+     choices:[{t:"Pencereden cikiyorsun",n:11,xp:20,f:5},{t:"Anahtar ariyorsun",n:1,xp:15,f:20}]},
+    {text:"Yerde bekliyorsun. Birsey yanina oturdu. Soguk el koluna dokunuyor...",
+     choices:[{t:"Bagiriyorsun",n:12,xp:5,f:40,d:1},{t:"Hareketsiz kaliyorsun",n:13,xp:20,f:15}]},
+    {text:"Hat baglandi - insan sesi degil. Gurultu, parazit, uzaktan ciglik. Telefon kapandi.",
+     choices:[{t:"Feneri yakiyorsun",n:1,xp:10,f:10},{t:"Sese dogru yuruyorsun",n:4,xp:20,f:20}]},
+    {text:"Perdeyi cekiyorsun - HIC BIR SEY YOK. Sonra arkadan: karyola girirladı...",
+     choices:[{t:"Yuzlesiyorsun",n:14,xp:40,f:40},{t:"Gozlerini kapiyorsun",n:7,xp:5,f:20}]},
+    {text:"Donuyorsun... Gozleri olmayan kiz: 'Neden bizi terk ettin?'",
+     choices:[{t:"Cevap veriyorsun",n:15,xp:35,f:50},{t:"Kaciyorsun",n:6,xp:10,f:30,d:1}]},
+    {text:"Pencereden atladın! Arkana bakiyorsun — bir silüet pencereden izliyor. KURTULDUN!",choices:[],win:true},
+    {text:"Bagirdin ve o soguk el sıkıstı. Korku zırvede...",
+     choices:[{t:"Direniyorsun",n:13,xp:10,f:5},{t:"Vazgeciyorsun",n:-1,xp:0,f:0,d:2}]},
+    {text:"Sakin kaliyorsun. El cekiliyor. 'Guclusun...' fısıltisi. Kapi acıliyor!",choices:[],win:true},
+    {text:"Karsi karşıya. Yuzlesme ona iyi geldi. 'Tesekkurler' deyip kayboluyor. Cikis!",choices:[],win:true,xpB:100},
+    {text:"'Bilmiyorum' diyorsun. Kiz gülumsuyor — gozleri beliriyor. 'Artık biliyorsun.' KURTULDUN!",choices:[],win:true,xpB:150},
+  ];
+  function loadCh(idx){
+    if(idx===-1||hp<=0||fear>=100){gameEnd(false);return;}
+    var s=STORY[idx]; if(!s){gameEnd(false);return;}
+    chapter++;
+    document.getElementById('chV').innerText=Math.min(chapter,5);
+    if(s.f&&s.f>20){var sf=document.getElementById('sf');sf.style.opacity='0.4';setTimeout(function(){sf.style.opacity='0';},150);}
+    document.getElementById('stT').innerText=s.text;
+    document.getElementById('hpV').innerText='\u2764\uFE0F'.repeat(Math.max(0,hp));
+    document.getElementById('frV').innerText=fear;
+    var box=document.getElementById('chB'); box.innerHTML='';
+    if(s.win){gameEnd(true,s.xpB||0);return;}
+    s.choices.forEach(function(c){
+      var btn=document.createElement('button'); btn.className='cb'; btn.innerText=c.t;
+      btn.onclick=function(){
+        if(c.d) hp-=c.d;
+        if(c.f) fear=Math.min(100,fear+c.f);
+        if(c.xp) addXP(c.xp,'Korku');
+        var hc=parseInt(localStorage.getItem('cano_horror_choice')||0)+1;
+        localStorage.setItem('cano_horror_choice',hc);
+        loadCh(c.n);
+      };
+      box.appendChild(btn);
+    });
+  }
+  function gameEnd(win,bonus){
+    document.getElementById('stT').innerText='';
+    document.getElementById('chB').innerHTML='';
+    var es=document.getElementById('endS'); es.style.display='block';
+    if(win){
+      document.getElementById('endTit').innerText='HAYATTA KALDIN!';
+      document.getElementById('endDsc').innerText='Tebrikler! Korku: '+fear;
+      if(bonus) addXP(bonus,'Ev Bitti');
+      addXP(50,'Hayatta Kaldi');
+    } else {
+      document.getElementById('endTit').innerText='KARANLIGA YUTULDUN';
+      document.getElementById('endDsc').innerText=fear>=100?'Korku seni yendi!':'Canın bitti!';
+    }
+  }
+  function restart(){hp=3;fear=0;chapter=1;document.getElementById('endS').style.display='none';loadCh(0);}
+  loadCh(0);
 """
+    return page("HORROR", css, body, js)
 
-gorev_js = """
-    function getXP() { return parseInt(localStorage.getItem('cano_xp')) || 0; }
-    function setXP(v) { localStorage.setItem('cano_xp', v); updateXPDisplay(); }
-    function updateXPDisplay() {
-        var xp = getXP();
-        var el = document.getElementById('xpVal');
-        if(el) el.innerText = xp.toLocaleString();
-        var lvl = document.getElementById('levelBadge');
-        if(lvl) lvl.innerText = 'SEV ' + Math.floor(xp / 500 + 1);
-    }
-    function showToast(msg) {
-        var t = document.getElementById('toast');
-        if(!t) return;
-        t.innerText = msg; t.style.opacity = '1';
-        setTimeout(function() { t.style.opacity = '0'; }, 2500);
-    }
 
-    var GOREVLER = [
-        { id: 'mine10',   icon: '&#9935;', name: 'MADENCI',       desc: 'Stratejide 10 maden cikart',    hedef: 10, xp: 50,  key: 'cano_maden' },
-        { id: 'kill20',   icon: '&#128165;', name: 'AVCI',        desc: 'Arcadede 20 dusман vur',        hedef: 20, xp: 75,  key: 'cano_kill' },
-        { id: 'story3',   icon: '&#128123;', name: 'KORKUSUZ',    desc: 'Horrorda 3 karar ver',          hedef: 3,  xp: 60,  key: 'cano_horror_choice' },
-        { id: 'buy1',     icon: '&#128722;', name: 'ALISVERISCI', desc: 'Marketten 1 esya al',           hedef: 1,  xp: 40,  key: 'cano_bought' },
-        { id: 'xp500',    icon: '&#11088;',  name: 'XP AVCISI',   desc: 'Toplam 500 XP kazan',           hedef: 500, xp: 100, key: 'cano_xp' },
-    ];
-
-    function getTodayKey() {
-        var d = new Date();
-        return d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
-    }
-
-    function getDoneGorevler() {
-        var key = 'cano_done_' + getTodayKey();
-        return JSON.parse(localStorage.getItem(key)) || [];
-    }
-
-    function markDone(id) {
-        var key = 'cano_done_' + getTodayKey();
-        var done = getDoneGorevler();
-        if(!done.includes(id)) {
-            done.push(id);
-            localStorage.setItem(key, JSON.stringify(done));
-        }
-    }
-
-    function renderGorevler() {
-        var done = getDoneGorevler();
-        var list = document.getElementById('gorevList');
-        list.innerHTML = '';
-        GOREVLER.forEach(function(g) {
-            var isDone = done.includes(g.id);
-            var current = parseInt(localStorage.getItem(g.key)) || 0;
-            var prog = Math.min(g.hedef, current);
-            var pct = Math.min(100, (prog / g.hedef) * 100);
-
-            if(!isDone && prog >= g.hedef) {
-                markDone(g.id);
-                setXP(getXP() + g.xp);
-                showToast('+' + g.xp + ' XP — ' + g.name + ' tamamlandi!');
-                isDone = true;
-            }
-
-            var card = document.createElement('div');
-            card.className = 'gorev-card' + (isDone ? ' done' : '');
-            card.innerHTML =
-                '<div class="gorev-icon">' + g.icon + '</div>' +
-                '<div class="gorev-info">' +
-                    '<div class="gorev-name">' + g.name + '</div>' +
-                    '<div class="gorev-desc">' + g.desc + '</div>' +
-                    '<div class="gorev-prog-bg"><div class="gorev-prog-fill" style="width:' + pct + '%"></div></div>' +
-                    '<div style="font-size:0.7rem;color:#444;margin-top:4px;">' + prog + ' / ' + g.hedef + '</div>' +
-                '</div>' +
-                '<div class="gorev-reward">' + (isDone ? '&#10003; TAMAM' : '+' + g.xp + ' XP') + '</div>';
-            list.appendChild(card);
-        });
-
-        // Geri sayım
-        var now = new Date();
-        var midnight = new Date(now); midnight.setHours(24,0,0,0);
-        var diff = Math.floor((midnight - now) / 1000);
-        var h = Math.floor(diff/3600), m = Math.floor((diff%3600)/60), s = diff%60;
-        var timer = document.getElementById('timer');
-        if(timer) timer.innerText = h + 's ' + m + 'd ' + s + 'sn';
-    }
-
-    window.onload = function() {
-        updateXPDisplay();
-        renderGorevler();
-        setInterval(renderGorevler, 1000);
-    };
+# ===== MARKET =====
+def store_page():
+    css = """
+.sw{min-height:100vh;padding:90px 20px 80px;max-width:1000px;margin:0 auto;}
+h1{font-family:'Orbitron';text-align:center;font-size:clamp(1.2rem,4vw,2rem);background:linear-gradient(90deg,var(--neon-blue),var(--neon-purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px;}
+.sub{color:#555;text-align:center;font-size:0.78rem;letter-spacing:3px;margin-bottom:24px;}
+.bal{background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.3);border-radius:12px;padding:14px 22px;text-align:center;margin-bottom:24px;font-family:'Orbitron';}
+.bal .big{font-size:1.9rem;color:var(--neon-blue);}
+.bal .lbl{color:#444;font-size:0.7rem;letter-spacing:2px;}
+.tabs{display:flex;gap:8px;justify-content:center;margin-bottom:20px;flex-wrap:wrap;}
+.tab{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);color:#555;padding:7px 18px;border-radius:50px;cursor:pointer;font-family:'Orbitron';font-size:0.72rem;transition:all 0.2s;}
+.tab.active{border-color:var(--neon-blue);color:var(--neon-blue);background:rgba(0,212,255,0.08);}
+.sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;}
+.si{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);padding:22px 14px;border-radius:14px;text-align:center;transition:all 0.3s;position:relative;}
+.si:hover{transform:translateY(-4px);border-color:var(--neon-blue);}
+.si.owned{border-color:var(--neon-green);opacity:0.7;}
+.si-ic{font-size:2.3rem;display:block;margin-bottom:8px;}
+.si-nm{font-family:'Orbitron';font-size:0.82rem;margin-bottom:4px;}
+.si-ds{color:#555;font-size:0.72rem;margin-bottom:12px;}
+.si-pr{color:var(--neon-orange);font-family:'Orbitron';font-size:0.88rem;margin-bottom:10px;}
+.ob{position:absolute;top:8px;right:8px;background:var(--neon-green);color:#000;font-size:0.58rem;font-family:'Orbitron';padding:2px 7px;border-radius:50px;}
 """
+    body = """
+<a href="/" class="back-btn">&larr; GERİ</a>
+<div class="sw">
+  <h1>MARKET</h1>
+  <div class="sub">XP İLE ESYA SATIN AL</div>
+  <div class="bal"><div class="big" id="balV">0</div><div class="lbl">MEVCUT XP</div></div>
+  <div class="tabs">
+    <div class="tab active" onclick="filt('all',this)">TUMU</div>
+    <div class="tab" onclick="filt('skin',this)">SKİNLER</div>
+    <div class="tab" onclick="filt('boost',this)">BOOST</div>
+    <div class="tab" onclick="filt('special',this)">OZEL</div>
+  </div>
+  <div class="sg" id="sg"></div>
+</div>
+"""
+    js = """
+  var ITEMS=[
+    {id:'gold_skin',  nm:'Altin Skin',    ic:'&#10024;',cat:'skin',   pr:500, ds:'Altin parlaklik'},
+    {id:'neon_skin',  nm:'Neon Skin',     ic:'&#128161;',cat:'skin',   pr:750, ds:'Neon renk paleti'},
+    {id:'dark_skin',  nm:'Karanlik Skin', ic:'&#127761;',cat:'skin',   pr:1000,ds:'Gece derinligi'},
+    {id:'speed_boost',nm:'Hiz Botu',      ic:'&#9889;',  cat:'boost',  pr:1000,ds:'Arcade +20% hiz'},
+    {id:'xp_boost',   nm:'XP x2',        ic:'&#128293;',cat:'boost',  pr:800, ds:'24 saat cift XP'},
+    {id:'mine_boost', nm:'Maden Boost',   ic:'&#9935;',  cat:'boost',  pr:600, ds:'Stratejide +5 maden'},
+    {id:'ghost_badge',nm:'Hayalet Rozeti',ic:'&#128123;',cat:'special',pr:1500,ds:'Horror bitirenlerin rozeti'},
+    {id:'crown',      nm:'Kral Taci',     ic:'&#128081;',cat:'special',pr:3000,ds:'En prestijli odul'},
+    {id:'crystal_key',nm:'Kristal Anahtar',ic:'&#128142;',cat:'special',pr:2000,ds:'Gizli alanlari acar'},
+  ];
+  var cur='all';
+  function filt(c,tab){
+    cur=c;
+    document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
+    tab.classList.add('active');
+    render();
+  }
+  function render(){
+    var xp=getXP(); var owned=getItems();
+    document.getElementById('balV').innerText=xp.toLocaleString();
+    var g=document.getElementById('sg'); g.innerHTML='';
+    ITEMS.filter(function(i){return cur==='all'||i.cat===cur;}).forEach(function(item){
+      var io=owned.includes(item.id);
+      var cb=xp>=item.pr&&!io;
+      var d=document.createElement('div');
+      d.className='si'+(io?' owned':'');
+      var h='';
+      if(io) h+='<div class="ob">SAHİBİSİN</div>';
+      h+='<span class="si-ic">'+item.ic+'</span>';
+      h+='<div class="si-nm">'+item.nm+'</div>';
+      h+='<div class="si-ds">'+item.ds+'</div>';
+      h+='<div class="si-pr">'+item.pr.toLocaleString()+' XP</div>';
+      h+='<button class="btn btn-blue" '+(cb?'':'disabled')+' onclick="buy(\''+item.id+'\','+item.pr+')">'+(io?'ALINDI':'SATIN AL')+'</button>';
+      d.innerHTML=h; g.appendChild(d);
+    });
+  }
+  function buy(id,pr){
+    var xp=getXP(); var owned=getItems();
+    if(xp<pr||owned.includes(id)){showToast('XP Yetersiz!');return;}
+    setXP(xp-pr); owned.push(id);
+    localStorage.setItem('cano_items',JSON.stringify(owned));
+    var b=parseInt(localStorage.getItem('cano_bought')||0)+1;
+    localStorage.setItem('cano_bought',b);
+    showToast('Satin Alindi!'); render();
+  }
+  render();
+"""
+    return page("MARKET", css, body, js)
 
-gorev_html = (
-    '<!DOCTYPE html>\n<html lang="tr">\n<head>\n'
-    '    <meta charset="UTF-8">\n'
-    '    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
-    '    <title>GUNLUK GOREVLER | Cano Studio</title>\n'
-    '    <style>' + base_css + gorev_css + '</style>\n'
-    '</head>\n<body>\n'
-    '    <canvas id="particles"></canvas>\n'
-    '    <div class="xp-container"><span class="xp-val" id="xpVal">0</span><span class="xp-label">XP</span></div>\n'
-    '    <div class="level-badge" id="levelBadge">SEV 1</div>\n'
-    '    <div id="toast" class="toast"></div>\n'
-    '    <div class="gorev-wrap">\n'
-    '        <h1>GUNLUK GOREVLER</h1>\n'
-    '        <div class="subtitle">HER GUN YENILENIR</div>\n'
-    '        <div class="refresh-timer">Yenileme: <span id="timer">--:--:--</span></div>\n'
-    '        <div class="gorev-list" id="gorevList"></div>\n'
-    '    </div>\n'
-    '    <a href="/" class="back-btn">&larr; GERI</a>\n'
-    '    <script>\n' + gorev_js + particles_js + '\n    </script>\n'
-    '</body>\n</html>'
-)
 
-# ============ FLASK ROTALAR ============
+# ===== PROFİL =====
+def profil_page():
+    css = """
+.pw{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;}
+.av{width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,var(--neon-orange),var(--neon-purple));display:flex;align-items:center;justify-content:center;font-size:2.2rem;margin-bottom:14px;box-shadow:0 0 40px rgba(255,69,0,0.4);cursor:pointer;}
+.uname{font-family:'Orbitron';font-size:1.4rem;color:#fff;margin-bottom:3px;}
+.utitle{color:#444;font-size:0.75rem;letter-spacing:3px;margin-bottom:26px;}
+.pg{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:100%;max-width:560px;margin-bottom:22px;}
+.pc{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);padding:18px 10px;border-radius:14px;text-align:center;}
+.pc .v{font-family:'Orbitron';font-size:1.3rem;color:var(--neon-orange);}
+.pc .l{font-size:0.65rem;color:#444;letter-spacing:2px;margin-top:3px;}
+.xpbw{width:100%;max-width:560px;margin-bottom:22px;}
+.xpbl{display:flex;justify-content:space-between;font-size:0.7rem;color:#444;margin-bottom:5px;font-family:'Orbitron';}
+.xpbb{background:#111;border-radius:50px;height:8px;overflow:hidden;}
+.xpbf{height:100%;border-radius:50px;background:linear-gradient(90deg,var(--neon-orange),var(--neon-purple));transition:width 0.6s;}
+.its{width:100%;max-width:560px;}
+.its h3{font-family:'Orbitron';font-size:0.78rem;color:#444;letter-spacing:2px;margin-bottom:10px;}
+.irow{display:flex;gap:8px;flex-wrap:wrap;}
+.it{background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.25);padding:6px 14px;border-radius:8px;font-size:0.75rem;color:var(--neon-blue);}
+.nm-modal{position:fixed;inset:0;background:rgba(0,0,0,0.92);display:flex;align-items:center;justify-content:center;z-index:9999;}
+.nm-box{background:#111;border:1px solid var(--neon-orange);border-radius:16px;padding:36px;text-align:center;max-width:380px;width:90%;}
+.nm-box h2{font-family:'Orbitron';color:var(--neon-orange);margin-bottom:18px;}
+.nm-inp{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);color:#fff;padding:11px 18px;border-radius:8px;font-family:'Orbitron';font-size:0.95rem;width:100%;margin-bottom:14px;outline:none;text-align:center;}
+.nm-inp:focus{border-color:var(--neon-orange);}
+"""
+    body = """
+<a href="/" class="back-btn">&larr; GERİ</a>
+<div id="nmModal" class="nm-modal" style="display:none">
+  <div class="nm-box">
+    <h2>KULLANICI ADINI GİR</h2>
+    <input id="nmInp" class="nm-inp" maxlength="16" placeholder="ADINIZ...">
+    <button class="btn" onclick="saveName()">KAYDET</button>
+  </div>
+</div>
+<div class="pw">
+  <div class="av" onclick="changeName()">&#128100;</div>
+  <div class="uname" id="pName">İSİMSİZ</div>
+  <div class="utitle" id="pTitle">ACEMİ</div>
+  <div class="pg">
+    <div class="pc"><div class="v" id="pXP">0</div><div class="l">TOPLAM XP</div></div>
+    <div class="pc"><div class="v" id="pLv">1</div><div class="l">SEVİYE</div></div>
+    <div class="pc"><div class="v" id="pIt">0</div><div class="l">EŞYA</div></div>
+  </div>
+  <div class="xpbw">
+    <div class="xpbl"><span id="xpBL">0 / 500 XP</span><span id="xpBN">SEV 2</span></div>
+    <div class="xpbb"><div class="xpbf" id="xpBF" style="width:0%"></div></div>
+  </div>
+  <div class="its">
+    <h3>SAHİP OLUNAN EŞYALAR</h3>
+    <div class="irow" id="iRow"></div>
+  </div>
+</div>
+"""
+    js = """
+  var INAMES={
+    'gold_skin':'Altin Skin &#10024;','neon_skin':'Neon Skin &#128161;',
+    'dark_skin':'Karanlik Skin &#127761;','speed_boost':'Hiz Botu &#9889;',
+    'xp_boost':'XP x2 &#128293;','mine_boost':'Maden Boost &#9935;',
+    'ghost_badge':'Hayalet Rozeti &#128123;','crown':'Kral Taci &#128081;',
+    'crystal_key':'Kristal Anahtar &#128142;'
+  };
+  var TITLES=[[0,'ACEMİ'],[500,'GEZGİN'],[1000,'SAVAŞÇI'],[2500,'EFSANE'],[5000,'TANRI']];
+  function getTitle(xp){var t=TITLES[0][1];for(var i=0;i<TITLES.length;i++){if(xp>=TITLES[i][0])t=TITLES[i][1];}return t;}
+  function renderP(){
+    var xp=getXP(); var items=getItems(); var lv=Math.floor(xp/500+1);
+    var nm=localStorage.getItem('cano_name')||'';
+    document.getElementById('pName').innerText=nm||'İSİMSİZ';
+    document.getElementById('pTitle').innerText=getTitle(xp);
+    document.getElementById('pXP').innerText=xp.toLocaleString();
+    document.getElementById('pLv').innerText=lv;
+    document.getElementById('pIt').innerText=items.length;
+    document.getElementById('xpBF').style.width=Math.min(100,(xp%500)/500*100)+'%';
+    document.getElementById('xpBL').innerText=(xp%500)+' / 500 XP';
+    document.getElementById('xpBN').innerText='SEV '+(lv+1);
+    var ir=document.getElementById('iRow'); ir.innerHTML='';
+    if(!items.length){ir.innerHTML='<span style="color:#333;font-size:0.78rem;">Henuz esya yok</span>';}
+    else{items.forEach(function(id){var s=document.createElement('span');s.className='it';s.innerHTML=INAMES[id]||id;ir.appendChild(s);});}
+    updateXPDisplay();
+  }
+  function saveName(){
+    var v=document.getElementById('nmInp').value.trim();
+    if(!v) return;
+    localStorage.setItem('cano_name',v.toUpperCase());
+    document.getElementById('nmModal').style.display='none';
+    renderP();
+  }
+  function changeName(){document.getElementById('nmInp').value=localStorage.getItem('cano_name')||'';document.getElementById('nmModal').style.display='flex';}
+  if(!localStorage.getItem('cano_name')) document.getElementById('nmModal').style.display='flex';
+  renderP();
+"""
+    return page("PROFİL", css, body, js)
+
+# ===== GÜNLÜK GÖREVLER =====
+def gorevler_page():
+    css = """
+.gw{min-height:100vh;padding:90px 20px 80px;max-width:680px;margin:0 auto;}
+h1{font-family:'Orbitron';text-align:center;font-size:clamp(1.2rem,4vw,2rem);color:var(--neon-green);margin-bottom:4px;}
+.sub{color:#444;text-align:center;font-size:0.78rem;letter-spacing:3px;margin-bottom:12px;}
+.timer{text-align:center;font-family:'Orbitron';font-size:0.72rem;color:#333;margin-bottom:22px;}
+.timer span{color:var(--neon-green);}
+.gl{display:flex;flex-direction:column;gap:12px;}
+.gc{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:18px;display:flex;align-items:center;gap:14px;transition:all 0.3s;}
+.gc.done{border-color:var(--neon-green);opacity:0.6;}
+.gi{font-size:1.8rem;min-width:40px;text-align:center;}
+.ginfo{flex:1;}
+.gn{font-family:'Orbitron';font-size:0.82rem;margin-bottom:3px;}
+.gd{font-size:0.75rem;color:#555;margin-bottom:7px;}
+.gpb{background:#111;border-radius:50px;height:5px;overflow:hidden;}
+.gpf{height:100%;border-radius:50px;background:linear-gradient(90deg,var(--neon-green),var(--neon-blue));transition:width 0.4s;}
+.gpc{font-size:0.65rem;color:#333;margin-top:3px;}
+.gr{font-family:'Orbitron';font-size:0.78rem;color:var(--neon-orange);min-width:65px;text-align:right;}
+.gc.done .gr{color:var(--neon-green);}
+"""
+    body = """
+<a href="/" class="back-btn">&larr; GERİ</a>
+<div class="gw">
+  <h1>GÜNLÜK GÖREVLER</h1>
+  <div class="sub">HER GÜN YENİLENİR</div>
+  <div class="timer">Yenileme: <span id="timer">--:--:--</span></div>
+  <div class="gl" id="gl"></div>
+</div>
+"""
+    js = """
+  var GOREVLER=[
+    {id:'mine10',  ic:'&#9935;',  nm:'MADENCİ',     ds:'Stratejide 10 maden cikart', h:10, xp:50,  k:'cano_maden'},
+    {id:'kill20',  ic:'&#128165;',nm:'AVCI',         ds:'Arcadede 20 dusман vur',     h:20, xp:75,  k:'cano_kill'},
+    {id:'story3',  ic:'&#128123;',nm:'KORKUSUZ',     ds:'Horrorda 3 karar ver',        h:3,  xp:60,  k:'cano_horror_choice'},
+    {id:'buy1',    ic:'&#128722;',nm:'ALISVERİŞÇİ',  ds:'Marketten 1 esya al',         h:1,  xp:40,  k:'cano_bought'},
+    {id:'xp500',   ic:'&#11088;', nm:'XP AVCISI',   ds:'Toplam 500 XP kazan',         h:500,xp:100, k:'cano_xp'},
+  ];
+  function getDayKey(){var d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
+  function getDone(){return JSON.parse(localStorage.getItem('cano_done_'+getDayKey()))||[];}
+  function markDone(id){var k='cano_done_'+getDayKey();var d=getDone();if(!d.includes(id)){d.push(id);localStorage.setItem(k,JSON.stringify(d));}}
+  function renderG(){
+    var done=getDone();
+    var gl=document.getElementById('gl'); gl.innerHTML='';
+    GOREVLER.forEach(function(g){
+      var isDone=done.includes(g.id);
+      var cur=parseInt(localStorage.getItem(g.k))||0;
+      var prog=Math.min(g.h,cur);
+      var pct=Math.min(100,(prog/g.h)*100);
+      if(!isDone&&prog>=g.h){markDone(g.id);setXP(getXP()+g.xp);showToast('+'+g.xp+' XP — '+g.nm+' tamam!');isDone=true;}
+      var c=document.createElement('div'); c.className='gc'+(isDone?' done':'');
+      c.innerHTML='<div class="gi">'+g.ic+'</div><div class="ginfo"><div class="gn">'+g.nm+'</div><div class="gd">'+g.ds+'</div><div class="gpb"><div class="gpf" style="width:'+pct+'%"></div></div><div class="gpc">'+prog+' / '+g.h+'</div></div><div class="gr">'+(isDone?'&#10003; TAMAM':'+'+g.xp+' XP')+'</div>';
+      gl.appendChild(c);
+    });
+    var now=new Date(); var mn=new Date(now); mn.setHours(24,0,0,0);
+    var diff=Math.floor((mn-now)/1000);
+    var h=Math.floor(diff/3600),m=Math.floor((diff%3600)/60),s=diff%60;
+    var ti=document.getElementById('timer');
+    if(ti) ti.innerText=h+'s '+m+'d '+s+'sn';
+  }
+  renderG();
+  setInterval(renderG,1000);
+"""
+    return page("GÖREVLER", css, body, js)
+
+# ===== FLASK ROTALAR =====
 @app.route('/')
-def home(): return ana_sayfa_html
+def home(): return ana_sayfa()
 
 @app.route('/strateji')
-def strateji(): return strateji_html
+def strateji(): return strateji_page()
 
 @app.route('/neon-arcade')
-def arcade(): return arcade_html
+def arcade(): return arcade_page()
 
 @app.route('/horror')
-def horror(): return horror_html
+def horror(): return horror_page()
 
 @app.route('/store')
-def store(): return store_html
+def store(): return store_page()
 
 @app.route('/profil')
-def profil(): return profil_html
+def profil(): return profil_page()
 
 @app.route('/gorevler')
-def gorevler(): return gorev_html
+def gorevler(): return gorevler_page()
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
