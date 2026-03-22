@@ -244,6 +244,16 @@ ana_sayfa_html = f"""<!DOCTYPE html>
                 <h2>MARKET</h2>
                 <p>XP Harca</p>
             </a>
+            <a href="/profil" class="card" style="border-color:rgba(0,255,136,0.3)">
+                <span class="card-icon">👤</span>
+                <h2>PROFİL</h2>
+                <p>İsim & İstatistikler</p>
+            </a>
+            <a href="/gorevler" class="card" style="border-color:rgba(0,255,136,0.3)">
+                <span class="card-icon">📋</span>
+                <h2>GÖREVLER</h2>
+                <p>Günlük XP Kazan</p>
+            </a>
         </div>
     </section>
 
@@ -1206,6 +1216,306 @@ store_html = (
     '    </script>\n</body>\n</html>'
 )
 
+# ============ PROFİL SAYFASI ============
+profil_css = """
+    .profil-wrap { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 20px; }
+    .avatar { width: 100px; height: 100px; border-radius: 50%; background: linear-gradient(135deg, var(--neon-orange), var(--neon-purple)); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; margin-bottom: 16px; box-shadow: 0 0 40px rgba(255,69,0,0.4); cursor: pointer; }
+    .username { font-family: 'Orbitron'; font-size: 1.5rem; color: #fff; margin-bottom: 4px; }
+    .user-title { color: #555; font-size: 0.8rem; letter-spacing: 3px; margin-bottom: 30px; }
+    .profil-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; width: 100%; max-width: 600px; margin-bottom: 30px; }
+    .stat-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); padding: 20px; border-radius: 14px; text-align: center; }
+    .stat-card .val { font-family: 'Orbitron'; font-size: 1.4rem; color: var(--neon-orange); }
+    .stat-card .lbl { font-size: 0.7rem; color: #555; letter-spacing: 2px; margin-top: 4px; }
+    .badge-row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-bottom: 30px; }
+    .badge { background: rgba(191,0,255,0.15); border: 1px solid rgba(191,0,255,0.4); padding: 8px 16px; border-radius: 50px; font-size: 0.75rem; font-family: 'Orbitron'; color: var(--neon-purple); }
+    .name-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+    .name-box { background: #111; border: 1px solid var(--neon-orange); border-radius: 16px; padding: 40px; text-align: center; max-width: 400px; width: 90%; }
+    .name-box h2 { font-family: 'Orbitron'; color: var(--neon-orange); margin-bottom: 20px; }
+    .name-input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 12px 20px; border-radius: 8px; font-family: 'Orbitron'; font-size: 1rem; width: 100%; margin-bottom: 16px; outline: none; text-align: center; }
+    .name-input:focus { border-color: var(--neon-orange); }
+    .xp-bar-wrap { width: 100%; max-width: 600px; margin-bottom: 30px; }
+    .xp-bar-label { display: flex; justify-content: space-between; font-size: 0.75rem; color: #555; margin-bottom: 6px; font-family: 'Orbitron'; }
+    .xp-bar-bg { background: #111; border-radius: 50px; height: 10px; overflow: hidden; }
+    .xp-bar-fill { height: 100%; border-radius: 50px; background: linear-gradient(90deg, var(--neon-orange), var(--neon-purple)); transition: width 0.6s; }
+    .items-section { width: 100%; max-width: 600px; }
+    .items-section h3 { font-family: 'Orbitron'; font-size: 0.85rem; color: #555; letter-spacing: 2px; margin-bottom: 12px; }
+    .owned-items { display: flex; gap: 10px; flex-wrap: wrap; }
+    .owned-item { background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.3); padding: 8px 16px; border-radius: 8px; font-size: 0.8rem; color: var(--neon-blue); }
+"""
+
+profil_js = """
+    function getXP() { return parseInt(localStorage.getItem('cano_xp')) || 0; }
+    function setXP(v) { localStorage.setItem('cano_xp', v); }
+    function updateXPDisplay() {
+        var xp = getXP();
+        var el = document.getElementById('xpVal');
+        if(el) el.innerText = xp.toLocaleString();
+        var lvl = document.getElementById('levelBadge');
+        if(lvl) lvl.innerText = 'SEV ' + Math.floor(xp / 500 + 1);
+    }
+    function showToast(msg) {
+        var t = document.getElementById('toast');
+        if(!t) return;
+        t.innerText = msg; t.style.opacity = '1';
+        setTimeout(function() { t.style.opacity = '0'; }, 2500);
+    }
+    function getItems() { return JSON.parse(localStorage.getItem('cano_items')) || []; }
+    function getName() { return localStorage.getItem('cano_name') || ''; }
+    function setName(n) { localStorage.setItem('cano_name', n); }
+
+    var ITEM_NAMES = {
+        'gold_skin': 'Altin Skin &#10024;', 'neon_skin': 'Neon Skin &#128161;',
+        'dark_skin': 'Karanlik Skin &#127761;', 'speed_boost': 'Hiz Botu &#9889;',
+        'xp_boost': 'XP x2 &#128293;', 'mine_boost': 'Maden Boost &#9935;',
+        'ghost_badge': 'Hayalet Rozeti &#128123;', 'crown': 'Kral Taci &#128081;',
+        'crystal_key': 'Kristal Anahtar &#128142;'
+    };
+
+    var TITLES = [
+        [0,    'ACEMI'],
+        [500,  'GEZGIN'],
+        [1000, 'SAVASCИ'],
+        [2500, 'EFSANE'],
+        [5000, 'TANRI'],
+    ];
+
+    function getTitle(xp) {
+        var t = TITLES[0][1];
+        for(var i = 0; i < TITLES.length; i++) {
+            if(xp >= TITLES[i][0]) t = TITLES[i][1];
+        }
+        return t;
+    }
+
+    function renderProfil() {
+        var xp = getXP();
+        var name = getName();
+        var items = getItems();
+        var lvl = Math.floor(xp / 500 + 1);
+        var nextLvlXp = lvl * 500;
+        var pct = Math.min(100, ((xp % 500) / 500) * 100);
+
+        document.getElementById('profilName').innerText = name || 'ISIMSIZ';
+        document.getElementById('profilTitle').innerText = getTitle(xp);
+        document.getElementById('statXP').innerText = xp.toLocaleString();
+        document.getElementById('statLvl').innerText = lvl;
+        document.getElementById('statItems').innerText = items.length;
+        document.getElementById('xpBarFill').style.width = pct + '%';
+        document.getElementById('xpBarLabel').innerText = (xp % 500) + ' / 500 XP';
+        document.getElementById('nextLvl').innerText = 'SEV ' + (lvl + 1);
+
+        var itemsDiv = document.getElementById('ownedItems');
+        itemsDiv.innerHTML = '';
+        if(items.length === 0) {
+            itemsDiv.innerHTML = '<span style="color:#333;font-size:0.8rem;">Henuz esya yok</span>';
+        } else {
+            items.forEach(function(id) {
+                var span = document.createElement('span');
+                span.className = 'owned-item';
+                span.innerHTML = ITEM_NAMES[id] || id;
+                itemsDiv.appendChild(span);
+            });
+        }
+        updateXPDisplay();
+    }
+
+    function checkName() {
+        var name = getName();
+        if(!name) {
+            document.getElementById('nameModal').style.display = 'flex';
+        }
+    }
+
+    function saveName() {
+        var inp = document.getElementById('nameInput').value.trim();
+        if(!inp) return;
+        setName(inp.toUpperCase());
+        document.getElementById('nameModal').style.display = 'none';
+        renderProfil();
+    }
+
+    function changeName() {
+        document.getElementById('nameInput').value = getName();
+        document.getElementById('nameModal').style.display = 'flex';
+    }
+
+    window.onload = function() { checkName(); renderProfil(); };
+"""
+
+profil_html = (
+    '<!DOCTYPE html>\n<html lang="tr">\n<head>\n'
+    '    <meta charset="UTF-8">\n'
+    '    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
+    '    <title>PROFİL | Cano Studio</title>\n'
+    '    <style>' + base_css + profil_css + '</style>\n'
+    '</head>\n<body>\n'
+    '    <canvas id="particles"></canvas>\n'
+    '    <div class="xp-container"><span class="xp-val" id="xpVal">0</span><span class="xp-label">XP</span></div>\n'
+    '    <div class="level-badge" id="levelBadge">SEV 1</div>\n'
+    '    <div id="toast" class="toast"></div>\n'
+    '    <div id="nameModal" class="name-modal" style="display:none">\n'
+    '        <div class="name-box">\n'
+    '            <h2>KULLANICI ADINИ GIR</h2>\n'
+    '            <input id="nameInput" class="name-input" maxlength="16" placeholder="ADINIZ...">\n'
+    '            <button class="btn" onclick="saveName()">KAYDET</button>\n'
+    '        </div>\n'
+    '    </div>\n'
+    '    <div class="profil-wrap">\n'
+    '        <div class="avatar" onclick="changeName()">&#128100;</div>\n'
+    '        <div class="username" id="profilName">ISIMSIZ</div>\n'
+    '        <div class="user-title" id="profilTitle">ACEMI</div>\n'
+    '        <div class="profil-grid">\n'
+    '            <div class="stat-card"><div class="val" id="statXP">0</div><div class="lbl">TOPLAM XP</div></div>\n'
+    '            <div class="stat-card"><div class="val" id="statLvl">1</div><div class="lbl">SEVIYE</div></div>\n'
+    '            <div class="stat-card"><div class="val" id="statItems">0</div><div class="lbl">ESYA</div></div>\n'
+    '        </div>\n'
+    '        <div class="xp-bar-wrap">\n'
+    '            <div class="xp-bar-label"><span id="xpBarLabel">0 / 500 XP</span><span id="nextLvl">SEV 2</span></div>\n'
+    '            <div class="xp-bar-bg"><div class="xp-bar-fill" id="xpBarFill" style="width:0%"></div></div>\n'
+    '        </div>\n'
+    '        <div class="items-section">\n'
+    '            <h3>SAHIP OLUNAN ESYALAR</h3>\n'
+    '            <div class="owned-items" id="ownedItems"></div>\n'
+    '        </div>\n'
+    '    </div>\n'
+    '    <a href="/" class="back-btn">&larr; GERI</a>\n'
+    '    <script>\n' + profil_js + particles_js + '\n    </script>\n'
+    '</body>\n</html>'
+)
+
+# ============ GÜNLÜK GÖREV SİSTEMİ ============
+gorev_css = """
+    .gorev-wrap { min-height: 100vh; padding: 90px 20px 80px; max-width: 700px; margin: 0 auto; }
+    h1 { font-family: 'Orbitron'; text-align: center; font-size: clamp(1.2rem, 4vw, 2rem); color: var(--neon-green); margin-bottom: 6px; }
+    .subtitle { color: #555; text-align: center; font-size: 0.8rem; letter-spacing: 3px; margin-bottom: 30px; }
+    .refresh-timer { text-align: center; font-family: 'Orbitron'; font-size: 0.75rem; color: #444; margin-bottom: 24px; }
+    .refresh-timer span { color: var(--neon-green); }
+    .gorev-list { display: flex; flex-direction: column; gap: 14px; }
+    .gorev-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 20px; display: flex; align-items: center; gap: 16px; transition: all 0.3s; }
+    .gorev-card.done { border-color: var(--neon-green); opacity: 0.6; }
+    .gorev-icon { font-size: 2rem; min-width: 44px; text-align: center; }
+    .gorev-info { flex: 1; }
+    .gorev-name { font-family: 'Orbitron'; font-size: 0.85rem; margin-bottom: 4px; }
+    .gorev-desc { font-size: 0.8rem; color: #666; margin-bottom: 8px; }
+    .gorev-prog-bg { background: #111; border-radius: 50px; height: 6px; overflow: hidden; }
+    .gorev-prog-fill { height: 100%; border-radius: 50px; background: linear-gradient(90deg, var(--neon-green), var(--neon-blue)); transition: width 0.4s; }
+    .gorev-reward { font-family: 'Orbitron'; font-size: 0.8rem; color: var(--neon-orange); min-width: 70px; text-align: right; }
+    .gorev-card.done .gorev-reward { color: var(--neon-green); }
+"""
+
+gorev_js = """
+    function getXP() { return parseInt(localStorage.getItem('cano_xp')) || 0; }
+    function setXP(v) { localStorage.setItem('cano_xp', v); updateXPDisplay(); }
+    function updateXPDisplay() {
+        var xp = getXP();
+        var el = document.getElementById('xpVal');
+        if(el) el.innerText = xp.toLocaleString();
+        var lvl = document.getElementById('levelBadge');
+        if(lvl) lvl.innerText = 'SEV ' + Math.floor(xp / 500 + 1);
+    }
+    function showToast(msg) {
+        var t = document.getElementById('toast');
+        if(!t) return;
+        t.innerText = msg; t.style.opacity = '1';
+        setTimeout(function() { t.style.opacity = '0'; }, 2500);
+    }
+
+    var GOREVLER = [
+        { id: 'mine10',   icon: '&#9935;', name: 'MADENCI',       desc: 'Stratejide 10 maden cikart',    hedef: 10, xp: 50,  key: 'cano_maden' },
+        { id: 'kill20',   icon: '&#128165;', name: 'AVCI',        desc: 'Arcadede 20 dusман vur',        hedef: 20, xp: 75,  key: 'cano_kill' },
+        { id: 'story3',   icon: '&#128123;', name: 'KORKUSUZ',    desc: 'Horrorda 3 karar ver',          hedef: 3,  xp: 60,  key: 'cano_horror_choice' },
+        { id: 'buy1',     icon: '&#128722;', name: 'ALISVERISCI', desc: 'Marketten 1 esya al',           hedef: 1,  xp: 40,  key: 'cano_bought' },
+        { id: 'xp500',    icon: '&#11088;',  name: 'XP AVCISI',   desc: 'Toplam 500 XP kazan',           hedef: 500, xp: 100, key: 'cano_xp' },
+    ];
+
+    function getTodayKey() {
+        var d = new Date();
+        return d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
+    }
+
+    function getDoneGorevler() {
+        var key = 'cano_done_' + getTodayKey();
+        return JSON.parse(localStorage.getItem(key)) || [];
+    }
+
+    function markDone(id) {
+        var key = 'cano_done_' + getTodayKey();
+        var done = getDoneGorevler();
+        if(!done.includes(id)) {
+            done.push(id);
+            localStorage.setItem(key, JSON.stringify(done));
+        }
+    }
+
+    function renderGorevler() {
+        var done = getDoneGorevler();
+        var list = document.getElementById('gorevList');
+        list.innerHTML = '';
+        GOREVLER.forEach(function(g) {
+            var isDone = done.includes(g.id);
+            var current = parseInt(localStorage.getItem(g.key)) || 0;
+            var prog = Math.min(g.hedef, current);
+            var pct = Math.min(100, (prog / g.hedef) * 100);
+
+            if(!isDone && prog >= g.hedef) {
+                markDone(g.id);
+                setXP(getXP() + g.xp);
+                showToast('+' + g.xp + ' XP — ' + g.name + ' tamamlandi!');
+                isDone = true;
+            }
+
+            var card = document.createElement('div');
+            card.className = 'gorev-card' + (isDone ? ' done' : '');
+            card.innerHTML =
+                '<div class="gorev-icon">' + g.icon + '</div>' +
+                '<div class="gorev-info">' +
+                    '<div class="gorev-name">' + g.name + '</div>' +
+                    '<div class="gorev-desc">' + g.desc + '</div>' +
+                    '<div class="gorev-prog-bg"><div class="gorev-prog-fill" style="width:' + pct + '%"></div></div>' +
+                    '<div style="font-size:0.7rem;color:#444;margin-top:4px;">' + prog + ' / ' + g.hedef + '</div>' +
+                '</div>' +
+                '<div class="gorev-reward">' + (isDone ? '&#10003; TAMAM' : '+' + g.xp + ' XP') + '</div>';
+            list.appendChild(card);
+        });
+
+        // Geri sayım
+        var now = new Date();
+        var midnight = new Date(now); midnight.setHours(24,0,0,0);
+        var diff = Math.floor((midnight - now) / 1000);
+        var h = Math.floor(diff/3600), m = Math.floor((diff%3600)/60), s = diff%60;
+        var timer = document.getElementById('timer');
+        if(timer) timer.innerText = h + 's ' + m + 'd ' + s + 'sn';
+    }
+
+    window.onload = function() {
+        updateXPDisplay();
+        renderGorevler();
+        setInterval(renderGorevler, 1000);
+    };
+"""
+
+gorev_html = (
+    '<!DOCTYPE html>\n<html lang="tr">\n<head>\n'
+    '    <meta charset="UTF-8">\n'
+    '    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
+    '    <title>GUNLUK GOREVLER | Cano Studio</title>\n'
+    '    <style>' + base_css + gorev_css + '</style>\n'
+    '</head>\n<body>\n'
+    '    <canvas id="particles"></canvas>\n'
+    '    <div class="xp-container"><span class="xp-val" id="xpVal">0</span><span class="xp-label">XP</span></div>\n'
+    '    <div class="level-badge" id="levelBadge">SEV 1</div>\n'
+    '    <div id="toast" class="toast"></div>\n'
+    '    <div class="gorev-wrap">\n'
+    '        <h1>GUNLUK GOREVLER</h1>\n'
+    '        <div class="subtitle">HER GUN YENILENIR</div>\n'
+    '        <div class="refresh-timer">Yenileme: <span id="timer">--:--:--</span></div>\n'
+    '        <div class="gorev-list" id="gorevList"></div>\n'
+    '    </div>\n'
+    '    <a href="/" class="back-btn">&larr; GERI</a>\n'
+    '    <script>\n' + gorev_js + particles_js + '\n    </script>\n'
+    '</body>\n</html>'
+)
+
 # ============ FLASK ROTALAR ============
 @app.route('/')
 def home(): return ana_sayfa_html
@@ -1221,6 +1531,12 @@ def horror(): return horror_html
 
 @app.route('/store')
 def store(): return store_html
+
+@app.route('/profil')
+def profil(): return profil_html
+
+@app.route('/gorevler')
+def gorevler(): return gorev_html
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
