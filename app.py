@@ -1,7 +1,36 @@
-from flask import Flask
+from flask import Flask, request
 import os
+import json
+from datetime import datetime, date
 
 app = Flask(__name__)
+
+# ===== ZİYARETÇİ SAYACI =====
+STATS_FILE = 'stats.json'
+ADMIN_PASSWORD = 'semanur1086'  # Bunu istediğin şifreyle değiştir!
+
+def load_stats():
+    if not os.path.exists(STATS_FILE):
+        return {'total': 0, 'daily': {}, 'monthly': {}, 'pages': {}}
+    try:
+        with open(STATS_FILE, 'r') as f:
+            return json.load(f)
+    except:
+        return {'total': 0, 'daily': {}, 'monthly': {}, 'pages': {}}
+
+def save_stats(s):
+    with open(STATS_FILE, 'w') as f:
+        json.dump(s, f)
+
+def track(page_name):
+    s = load_stats()
+    today = str(date.today())
+    month = today[:7]
+    s['total'] = s.get('total', 0) + 1
+    s['daily'][today] = s['daily'].get(today, 0) + 1
+    s['monthly'][month] = s['monthly'].get(month, 0) + 1
+    s['pages'][page_name] = s['pages'].get(page_name, 0) + 1
+    save_stats(s)
 
 # ============ YARDIMCI FONKSİYON ============
 def page(title, extra_css, body_html, extra_js, color="var(--neon-orange)"):
@@ -934,25 +963,137 @@ h1{font-family:'Orbitron';text-align:center;font-size:clamp(1.2rem,4vw,2rem);col
 
 # ===== FLASK ROTALAR =====
 @app.route('/')
-def home(): return ana_sayfa()
+def home(): track('anasayfa'); return ana_sayfa()
 
 @app.route('/strateji')
-def strateji(): return strateji_page()
+def strateji(): track('strateji'); return strateji_page()
 
 @app.route('/neon-arcade')
-def arcade(): return arcade_page()
+def arcade(): track('arcade'); return arcade_page()
 
 @app.route('/horror')
-def horror(): return horror_page()
+def horror(): track('horror'); return horror_page()
 
 @app.route('/store')
-def store(): return store_page()
+def store(): track('market'); return store_page()
 
 @app.route('/profil')
-def profil(): return profil_page()
+def profil(): track('profil'); return profil_page()
 
 @app.route('/gorevler')
-def gorevler(): return gorevler_page()
+def gorevler(): track('gorevler'); return gorevler_page()
+
+@app.route('/admin')
+def admin():
+    pw = request.args.get('pw', '')
+    if pw != ADMIN_PASSWORD:
+        return (
+            "<html><body style='background:#050505;color:#fff;font-family:monospace;"
+            "display:flex;align-items:center;justify-content:center;height:100vh;"
+            "flex-direction:column;gap:16px;'>"
+            "<div style='font-size:1.2rem;color:#ff4500;'>CANO STUDIO ADMIN</div>"
+            "<form method='get'>"
+            "<input name='pw' type='password' placeholder='Sifre...' "
+            "style='background:#111;border:1px solid #333;color:#fff;padding:10px 16px;"
+            "border-radius:8px;font-size:1rem;outline:none;'>"
+            "<button type='submit' style='background:#ff4500;border:none;color:#fff;"
+            "padding:10px 18px;border-radius:8px;cursor:pointer;margin-left:8px;font-size:1rem;'>"
+            "GIRIS</button></form></body></html>"
+        )
+
+    s = load_stats()
+    today = str(date.today())
+    month = today[:7]
+
+    from datetime import timedelta
+
+    # Son 7 gun
+    days7 = []
+    for i in range(6, -1, -1):
+        from datetime import date as dt2
+        d = str(dt2.today() - timedelta(days=i))
+        days7.append({'d': d[5:], 'v': s['daily'].get(d, 0)})
+
+    # Son 6 ay
+    months6 = []
+    from datetime import date as dt3
+    for i in range(5, -1, -1):
+        m_date = dt3.today().replace(day=1)
+        for _ in range(i):
+            m_date = (m_date.replace(day=1) - timedelta(days=1)).replace(day=1)
+        mk = str(m_date)[:7]
+        months6.append({'m': mk[5:], 'v': s['monthly'].get(mk, 0)})
+
+    max7 = max([d['v'] for d in days7] + [1])
+    max6 = max([m['v'] for m in months6] + [1])
+
+    def bar(items, color, key_d, key_v):
+        out = ''
+        for item in items:
+            h = max(4, int(item[key_v] / (max7 if color == '#ff4500' else max6) * 80))
+            out += (
+                "<div style='display:flex;flex-direction:column;align-items:center;"
+                "gap:4px;flex:1;'>"
+                f"<div style='font-size:0.65rem;color:{color};'>{item[key_v]}</div>"
+                f"<div style='width:100%;background:{color};border-radius:4px 4px 0 0;"
+                f"height:{h}px;'></div>"
+                f"<div style='font-size:0.6rem;color:#444;'>{item[key_d]}</div>"
+                "</div>"
+            )
+        return out
+
+    bars7 = bar(days7, '#ff4500', 'd', 'v')
+    bars6 = bar(months6, '#00d4ff', 'm', 'v')
+
+    pages_html = ''.join(
+        "<div style='display:flex;justify-content:space-between;padding:8px 0;"
+        "border-bottom:1px solid #111;'>"
+        f"<span style='color:#aaa;'>{pg}</span>"
+        f"<span style='color:#ff4500;font-family:monospace;'>{cnt}</span></div>"
+        for pg, cnt in sorted(s['pages'].items(), key=lambda x: -x[1])
+    )
+
+    css = (
+        "*{margin:0;padding:0;box-sizing:border-box;}"
+        "body{background:#050505;color:#fff;font-family:Rajdhani,sans-serif;padding:30px 20px;}"
+        ".logo{font-family:Orbitron,monospace;font-size:1.4rem;color:#ff4500;margin-bottom:6px;}"
+        ".sub{color:#333;font-size:0.78rem;letter-spacing:2px;margin-bottom:28px;}"
+        ".cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:24px;}"
+        ".card{background:#0a0a0a;border:1px solid #1a1a1a;border-radius:12px;padding:18px;text-align:center;}"
+        ".v{font-family:Orbitron,monospace;font-size:1.7rem;color:#ff4500;}"
+        ".vb{color:#00d4ff;} .vg{color:#00ff88;}"
+        ".l{font-size:0.68rem;color:#444;letter-spacing:2px;margin-top:4px;}"
+        ".sec{background:#0a0a0a;border:1px solid #1a1a1a;border-radius:12px;padding:18px;margin-bottom:16px;}"
+        ".sec h3{font-family:Orbitron,monospace;font-size:0.8rem;color:#444;letter-spacing:2px;margin-bottom:14px;}"
+        ".bars{display:flex;align-items:flex-end;gap:5px;height:95px;}"
+        ".back{display:inline-block;margin-top:18px;color:#333;text-decoration:none;"
+        "font-family:Orbitron,monospace;font-size:0.7rem;border:1px solid #1a1a1a;"
+        "padding:7px 16px;border-radius:50px;}"
+    )
+
+    html = (
+        "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1.0'>"
+        "<title>Admin | Cano Studio</title>"
+        f"<style>{css}</style></head><body>"
+        "<div class='logo'>CANO STUDIO ADMIN</div>"
+        "<div class='sub'>ZİYARETÇİ İSTATİSTİKLERİ</div>"
+        "<div class='cards'>"
+        f"<div class='card'><div class='v'>{s['total']}</div><div class='l'>TOPLAM ZİYARET</div></div>"
+        f"<div class='card'><div class='v vb'>{s['daily'].get(today, 0)}</div><div class='l'>BUGÜN</div></div>"
+        f"<div class='card'><div class='v vg'>{s['monthly'].get(month, 0)}</div><div class='l'>BU AY</div></div>"
+        f"<div class='card'><div class='v'>{len(s['pages'])}</div><div class='l'>AKTİF SAYFA</div></div>"
+        "</div>"
+        "<div class='sec'><h3>SON 7 GÜN</h3>"
+        f"<div class='bars'>{bars7}</div></div>"
+        "<div class='sec'><h3>SON 6 AY</h3>"
+        f"<div class='bars'>{bars6}</div></div>"
+        "<div class='sec'><h3>SAYFA BAZINDA ZİYARET</h3>"
+        f"{pages_html}</div>"
+        "<a href='/' class='back'>&larr; ANASAYFA</a>"
+        "</body></html>"
+    )
+    return html
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
