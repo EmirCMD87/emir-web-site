@@ -5,32 +5,76 @@ from datetime import datetime, date
 
 app = Flask(__name__)
 
-# ===== ZİYARETÇİ SAYACI =====
-STATS_FILE = 'stats.json'
-ADMIN_PASSWORD = 'semanur1086'  # Bunu istediğin şifreyle değiştir!
+# ===== DOSYALAR =====
+STATS_FILE    = "stats.json"
+YORUMLAR_FILE = "yorumlar.json"
+ANONS_FILE    = "anons.json"
+XP_FILE       = "xp_scores.json"
+ADMIN_PASSWORD = "cano2024"
 
+# ===== STATS =====
 def load_stats():
     if not os.path.exists(STATS_FILE):
-        return {'total': 0, 'daily': {}, 'monthly': {}, 'pages': {}}
+        return {"total": 0, "daily": {}, "monthly": {}, "pages": {}}
     try:
-        with open(STATS_FILE, 'r') as f:
-            return json.load(f)
+        with open(STATS_FILE, "r") as f: return json.load(f)
     except:
-        return {'total': 0, 'daily': {}, 'monthly': {}, 'pages': {}}
+        return {"total": 0, "daily": {}, "monthly": {}, "pages": {}}
 
 def save_stats(s):
-    with open(STATS_FILE, 'w') as f:
-        json.dump(s, f)
+    with open(STATS_FILE, "w") as f: json.dump(s, f)
 
 def track(page_name):
     s = load_stats()
-    today = str(date.today())
-    month = today[:7]
-    s['total'] = s.get('total', 0) + 1
-    s['daily'][today] = s['daily'].get(today, 0) + 1
-    s['monthly'][month] = s['monthly'].get(month, 0) + 1
-    s['pages'][page_name] = s['pages'].get(page_name, 0) + 1
+    today = str(date.today()); month = today[:7]
+    s["total"] = s.get("total", 0) + 1
+    s["daily"][today] = s["daily"].get(today, 0) + 1
+    s["monthly"][month] = s["monthly"].get(month, 0) + 1
+    s["pages"][page_name] = s["pages"].get(page_name, 0) + 1
     save_stats(s)
+
+# ===== YORUMLAR =====
+def load_yorumlar():
+    if not os.path.exists(YORUMLAR_FILE): return []
+    try:
+        with open(YORUMLAR_FILE, "r") as f: return json.load(f)
+    except: return []
+
+def save_yorumlar(y):
+    with open(YORUMLAR_FILE, "w") as f: json.dump(y, f, ensure_ascii=False)
+
+# ===== ANONS =====
+def load_anons():
+    if not os.path.exists(ANONS_FILE): return {"text": "", "active": False, "maintenance": False}
+    try:
+        with open(ANONS_FILE, "r") as f: return json.load(f)
+    except: return {"text": "", "active": False, "maintenance": False}
+
+def save_anons(a):
+    with open(ANONS_FILE, "w") as f: json.dump(a, f, ensure_ascii=False)
+
+# ===== XP SIRALAMASI =====
+def load_xp():
+    if not os.path.exists(XP_FILE): return []
+    try:
+        with open(XP_FILE, "r") as f: return json.load(f)
+    except: return []
+
+def save_xp(x):
+    with open(XP_FILE, "w") as f: json.dump(x, f, ensure_ascii=False)
+
+def update_xp(name, xp):
+    scores = load_xp()
+    found = False
+    for s in scores:
+        if s["name"] == name:
+            if xp > s["xp"]: s["xp"] = xp
+            found = True; break
+    if not found:
+        scores.append({"name": name, "xp": xp})
+    scores.sort(key=lambda x: -x["xp"])
+    scores = scores[:50]
+    save_xp(scores)
 
 # ============ YARDIMCI FONKSİYON ============
 def page(title, extra_css, body_html, extra_js, color="var(--neon-orange)"):
@@ -289,6 +333,7 @@ def ana_sayfa():
     <a href="/store" class="card blue"><span class="card-icon">&#128722;</span><h2>MARKET</h2><p>XP Harca</p></a>
     <a href="/profil" class="card green"><span class="card-icon">&#128100;</span><h2>PROFİL</h2><p>İsim &amp; İstatistik</p></a>
     <a href="/gorevler" class="card green"><span class="card-icon">&#128203;</span><h2>GÖREVLER</h2><p>Günlük XP Kazan</p></a>
+    <a href="/yorumlar" class="card" style="border-color:rgba(191,0,255,0.3)"><span class="card-icon">&#128172;</span><h2>YORUMLAR</h2><p>Görüşünü Yaz</p></a>
   </div>
 </section>
 """
@@ -893,6 +938,16 @@ def profil_page():
   function changeName(){document.getElementById('nmInp').value=localStorage.getItem('cano_name')||'';document.getElementById('nmModal').style.display='flex';}
   if(!localStorage.getItem('cano_name')) document.getElementById('nmModal').style.display='flex';
   renderP();
+  // XP'yi sunucuya kaydet (leaderboard için)
+  var nm = localStorage.getItem("cano_name");
+  var xpVal = getXP();
+  if(nm && xpVal > 0) {
+    fetch("/xp-kaydet", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({name: nm, xp: xpVal})
+    });
+  }
 """
     return page("PROFİL", css, body, js)
 
@@ -962,59 +1017,207 @@ h1{font-family:'Orbitron';text-align:center;font-size:clamp(1.2rem,4vw,2rem);col
     return page("GÖREVLER", css, body, js)
 
 # ===== FLASK ROTALAR =====
-@app.route('/')
-def home(): track('anasayfa'); return ana_sayfa()
+@app.route("/")
+def home():
+    a = load_anons()
+    if a.get("maintenance"):
+        return "<html><body style='background:#050505;color:#fff;font-family:Orbitron,monospace;display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:12px;'><div style='font-size:2rem;color:#ff4500;'>BAKIM MODU</div><div style='color:#444;font-size:0.85rem;letter-spacing:3px;'>Site gecici olarak kapali. Yakinda donuyoruz!</div></body></html>"
+    track("anasayfa")
+    return ana_sayfa()
 
-@app.route('/strateji')
-def strateji(): track('strateji'); return strateji_page()
+@app.route("/strateji")
+def strateji(): track("strateji"); return strateji_page()
 
-@app.route('/neon-arcade')
-def arcade(): track('arcade'); return arcade_page()
+@app.route("/neon-arcade")
+def arcade(): track("arcade"); return arcade_page()
 
-@app.route('/horror')
-def horror(): track('horror'); return horror_page()
+@app.route("/horror")
+def horror(): track("horror"); return horror_page()
 
-@app.route('/store')
-def store(): track('market'); return store_page()
+@app.route("/store")
+def store(): track("market"); return store_page()
 
-@app.route('/profil')
-def profil(): track('profil'); return profil_page()
+@app.route("/profil")
+def profil(): track("profil"); return profil_page()
 
-@app.route('/gorevler')
-def gorevler(): track('gorevler'); return gorevler_page()
+@app.route("/gorevler")
+def gorevler(): track("gorevler"); return gorevler_page()
 
-@app.route('/admin')
+@app.route("/yorumlar")
+def yorumlar():
+    track("yorumlar")
+    yorumlar_list = load_yorumlar()
+    anons = load_anons()
+    anons_html = ""
+    if anons.get("active") and anons.get("text"):
+        anons_html = f"<div style=\"position:fixed;top:70px;left:50%;transform:translateX(-50%);background:rgba(255,69,0,0.15);border:1px solid var(--neon-orange);padding:10px 24px;border-radius:50px;z-index:999;font-family:Orbitron,sans-serif;font-size:0.75rem;color:#ff4500;\">&#128226; {anons['text']}</div>"
+
+    cards = ""
+    for y in reversed(yorumlar_list):
+        stars = "&#11088;" * y.get("puan", 5)
+        cards += (
+            "<div style='background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);"
+            "border-radius:14px;padding:20px;margin-bottom:14px;'>"
+            f"<div style='display:flex;justify-content:space-between;margin-bottom:8px;'>"
+            f"<span style='font-family:Orbitron,sans-serif;font-size:0.82rem;color:#fff;'>{y['isim']}</span>"
+            f"<span style='font-size:0.8rem;'>{stars}</span></div>"
+            f"<div style='color:#aaa;font-size:0.9rem;line-height:1.6;'>{y['metin']}</div>"
+            f"<div style='color:#333;font-size:0.65rem;margin-top:8px;font-family:Orbitron,sans-serif;'>{y['tarih']}</div>"
+            "</div>"
+        )
+    if not cards:
+        cards = "<div style='color:#333;text-align:center;font-family:Orbitron,sans-serif;font-size:0.8rem;padding:40px;'>Henuz yorum yok. İlk sen yaz!</div>"
+
+    css = (
+        ".yw{min-height:100vh;padding:90px 20px 80px;max-width:680px;margin:0 auto;}"
+        "h1{font-family:Orbitron,sans-serif;text-align:center;font-size:clamp(1.2rem,4vw,2rem);"
+        "color:var(--neon-purple);margin-bottom:6px;}"
+        ".sub{color:#444;text-align:center;font-size:0.78rem;letter-spacing:3px;margin-bottom:24px;}"
+        ".form-box{background:rgba(191,0,255,0.07);border:1px solid rgba(191,0,255,0.25);"
+        "border-radius:14px;padding:22px;margin-bottom:28px;}"
+        ".form-box h3{font-family:Orbitron,sans-serif;font-size:0.8rem;color:var(--neon-purple);margin-bottom:14px;}"
+        ".inp{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);"
+        "color:#fff;padding:10px 16px;border-radius:8px;font-family:Rajdhani,sans-serif;"
+        "font-size:0.95rem;width:100%;margin-bottom:10px;outline:none;}"
+        ".inp:focus{border-color:var(--neon-purple);}"
+        "textarea.inp{min-height:90px;resize:vertical;}"
+        ".stars{display:flex;gap:8px;margin-bottom:12px;}"
+        ".star{font-size:1.4rem;cursor:pointer;opacity:0.3;transition:opacity 0.2s;}"
+        ".star.on{opacity:1;}"
+        "#charCount{font-size:0.65rem;color:#444;text-align:right;margin-top:-6px;margin-bottom:10px;}"
+    )
+
+    body = f"""
+{anons_html}
+<a href="/" class="back-btn">&larr; GERİ</a>
+<div class="yw">
+  <h1>&#128172; ZİYARETÇİ YORUMLARI</h1>
+  <div class="sub">DENEYİMİNİ PAYLAŞ</div>
+  <div class="form-box">
+    <h3>YENİ YORUM YAZ</h3>
+    <input id="yIsim" class="inp" maxlength="20" placeholder="İsmin...">
+    <div class="stars" id="stars">
+      <span class="star on" data-v="1">&#11088;</span>
+      <span class="star on" data-v="2">&#11088;</span>
+      <span class="star on" data-v="3">&#11088;</span>
+      <span class="star on" data-v="4">&#11088;</span>
+      <span class="star on" data-v="5">&#11088;</span>
+    </div>
+    <textarea id="yMetin" class="inp" maxlength="300" placeholder="Yorumun..." oninput="document.getElementById('charCount').innerText=this.value.length+'/300'"></textarea>
+    <div id="charCount">0/300</div>
+    <button class="btn btn-purple" onclick="submitYorum()">YORUM GÖNDER</button>
+  </div>
+  <div id="yorumCards">{cards}</div>
+</div>
+"""
+    js = """
+  var puan = 5;
+  document.querySelectorAll(".star").forEach(function(s) {
+    s.onclick = function() {
+      puan = parseInt(this.getAttribute("data-v"));
+      document.querySelectorAll(".star").forEach(function(st, i) {
+        st.className = "star" + (i < puan ? " on" : "");
+      });
+    };
+  });
+  function submitYorum() {
+    var isim = document.getElementById("yIsim").value.trim();
+    var metin = document.getElementById("yMetin").value.trim();
+    if(!isim || !metin) { showToast("Isim ve yorum gerekli!"); return; }
+    fetch("/yorum-gonder", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({isim: isim, metin: metin, puan: puan})
+    }).then(function(r) { return r.json(); })
+      .then(function(d) {
+        if(d.ok) { showToast("Yorum gonderildi!"); setTimeout(function(){location.reload();}, 1000); }
+        else showToast("Hata: " + d.error);
+      });
+  }
+"""
+    return page("YORUMLAR", css, body, js)
+
+@app.route("/yorum-gonder", methods=["POST"])
+def yorum_gonder():
+    from flask import jsonify
+    data = request.get_json()
+    isim = (data.get("isim") or "").strip()[:20]
+    metin = (data.get("metin") or "").strip()[:300]
+    puan = max(1, min(5, int(data.get("puan", 5))))
+    if not isim or not metin:
+        return jsonify({"ok": False, "error": "Bos alan"})
+    yorumlar = load_yorumlar()
+    yorumlar.append({
+        "isim": isim, "metin": metin, "puan": puan,
+        "tarih": datetime.now().strftime("%d.%m.%Y %H:%M")
+    })
+    save_yorumlar(yorumlar)
+    return jsonify({"ok": True})
+
+@app.route("/xp-kaydet", methods=["POST"])
+def xp_kaydet():
+    from flask import jsonify
+    data = request.get_json()
+    name = (data.get("name") or "").strip()[:16]
+    xp = int(data.get("xp", 0))
+    if name and xp > 0:
+        update_xp(name, xp)
+    return jsonify({"ok": True})
+
+@app.route("/admin", methods=["GET", "POST"])
 def admin():
-    pw = request.args.get('pw', '')
+    from flask import jsonify
+    pw = request.args.get("pw", "")
     if pw != ADMIN_PASSWORD:
         return (
             "<html><body style='background:#050505;color:#fff;font-family:monospace;"
             "display:flex;align-items:center;justify-content:center;height:100vh;"
             "flex-direction:column;gap:16px;'>"
-            "<div style='font-size:1.2rem;color:#ff4500;'>CANO STUDIO ADMIN</div>"
+            "<div style='font-size:1.3rem;color:#ff4500;font-family:Orbitron,monospace;'>CANO STUDIO ADMIN</div>"
             "<form method='get'>"
             "<input name='pw' type='password' placeholder='Sifre...' "
             "style='background:#111;border:1px solid #333;color:#fff;padding:10px 16px;"
             "border-radius:8px;font-size:1rem;outline:none;'>"
             "<button type='submit' style='background:#ff4500;border:none;color:#fff;"
-            "padding:10px 18px;border-radius:8px;cursor:pointer;margin-left:8px;font-size:1rem;'>"
-            "GIRIS</button></form></body></html>"
+            "padding:10px 18px;border-radius:8px;cursor:pointer;margin-left:8px;'>GİRİŞ</button>"
+            "</form></body></html>"
         )
 
+    # POST işlemleri
+    if request.method == "POST":
+        action = request.form.get("action")
+        if action == "anons":
+            a = load_anons()
+            a["text"] = request.form.get("text", "")
+            a["active"] = request.form.get("active") == "1"
+            save_anons(a)
+        elif action == "maintenance":
+            a = load_anons()
+            a["maintenance"] = not a.get("maintenance", False)
+            save_anons(a)
+        elif action == "del_yorum":
+            idx = int(request.form.get("idx", -1))
+            yorumlar = load_yorumlar()
+            if 0 <= idx < len(yorumlar):
+                yorumlar.pop(idx)
+                save_yorumlar(yorumlar)
+
     s = load_stats()
+    anons = load_anons()
+    yorumlar = load_yorumlar()
+    xp_scores = load_xp()
     today = str(date.today())
     month = today[:7]
 
     from datetime import timedelta
 
-    # Son 7 gun
     days7 = []
     for i in range(6, -1, -1):
         from datetime import date as dt2
         d = str(dt2.today() - timedelta(days=i))
-        days7.append({'d': d[5:], 'v': s['daily'].get(d, 0)})
+        days7.append({"d": d[5:], "v": s["daily"].get(d, 0)})
+    max7 = max([d["v"] for d in days7] + [1])
 
-    # Son 6 ay
     months6 = []
     from datetime import date as dt3
     for i in range(5, -1, -1):
@@ -1022,79 +1225,143 @@ def admin():
         for _ in range(i):
             m_date = (m_date.replace(day=1) - timedelta(days=1)).replace(day=1)
         mk = str(m_date)[:7]
-        months6.append({'m': mk[5:], 'v': s['monthly'].get(mk, 0)})
+        months6.append({"m": mk[5:], "v": s["monthly"].get(mk, 0)})
+    max6 = max([m["v"] for m in months6] + [1])
 
-    max7 = max([d['v'] for d in days7] + [1])
-    max6 = max([m['v'] for m in months6] + [1])
-
-    def bar(items, color, key_d, key_v):
-        out = ''
-        for item in items:
-            h = max(4, int(item[key_v] / (max7 if color == '#ff4500' else max6) * 80))
-            out += (
-                "<div style='display:flex;flex-direction:column;align-items:center;"
-                "gap:4px;flex:1;'>"
-                f"<div style='font-size:0.65rem;color:{color};'>{item[key_v]}</div>"
-                f"<div style='width:100%;background:{color};border-radius:4px 4px 0 0;"
-                f"height:{h}px;'></div>"
-                f"<div style='font-size:0.6rem;color:#444;'>{item[key_d]}</div>"
-                "</div>"
-            )
-        return out
-
-    bars7 = bar(days7, '#ff4500', 'd', 'v')
-    bars6 = bar(months6, '#00d4ff', 'm', 'v')
-
-    pages_html = ''.join(
-        "<div style='display:flex;justify-content:space-between;padding:8px 0;"
-        "border-bottom:1px solid #111;'>"
-        f"<span style='color:#aaa;'>{pg}</span>"
-        f"<span style='color:#ff4500;font-family:monospace;'>{cnt}</span></div>"
-        for pg, cnt in sorted(s['pages'].items(), key=lambda x: -x[1])
+    bars7 = "".join(
+        "<div style='display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;'>"
+        f"<div style='font-size:0.62rem;color:#ff4500;'>{d['v']}</div>"
+        f"<div style='width:100%;background:#ff4500;border-radius:3px 3px 0 0;height:{max(3,int(d['v']/max7*80))}px;'></div>"
+        f"<div style='font-size:0.58rem;color:#333;'>{d['d']}</div></div>"
+        for d in days7
     )
+    bars6 = "".join(
+        "<div style='display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;'>"
+        f"<div style='font-size:0.62rem;color:#00d4ff;'>{m['v']}</div>"
+        f"<div style='width:100%;background:#00d4ff;border-radius:3px 3px 0 0;height:{max(3,int(m['v']/max6*80))}px;'></div>"
+        f"<div style='font-size:0.58rem;color:#333;'>{m['m']}</div></div>"
+        for m in months6
+    )
+
+    pages_html = "".join(
+        f"<div style='display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #111;'>"
+        f"<span style='color:#888;'>{pg}</span>"
+        f"<span style='color:#ff4500;font-family:Orbitron,monospace;'>{cnt}</span></div>"
+        for pg, cnt in sorted(s["pages"].items(), key=lambda x: -x[1])
+    )
+
+    xp_html = "".join(
+        f"<div style='display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #111;'>"
+        f"<div style='display:flex;align-items:center;gap:10px;'>"
+        f"<span style='font-family:Orbitron,monospace;font-size:0.7rem;color:#444;'>#{i+1}</span>"
+        f"<span style='color:#fff;'>{sc['name']}</span></div>"
+        f"<span style='color:#ff4500;font-family:Orbitron,monospace;'>{sc['xp']:,} XP</span></div>"
+        for i, sc in enumerate(xp_scores[:20])
+    ) or "<div style='color:#333;font-size:0.78rem;padding:12px 0;'>Henuz kayit yok.</div>"
+
+    yorum_html = "".join(
+        f"<div style='background:#0d0d0d;border:1px solid #1a1a1a;border-radius:10px;padding:14px;margin-bottom:10px;'>"
+        f"<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;'>"
+        f"<span style='font-family:Orbitron,monospace;font-size:0.78rem;color:#fff;'>{y['isim']}</span>"
+        f"<div style='display:flex;align-items:center;gap:8px;'>"
+        f"<span style='font-size:0.75rem;color:#555;'>{y['tarih']}</span>"
+        f"<form method='post' style='display:inline;'>"
+        f"<input type='hidden' name='action' value='del_yorum'>"
+        f"<input type='hidden' name='idx' value='{i}'>"
+        f"<input type='hidden' name='pw' value='{pw}' form='dform{i}'>"
+        f"<button type='submit' style='background:#cc0000;border:none;color:#fff;padding:3px 10px;border-radius:6px;cursor:pointer;font-size:0.65rem;'>SİL</button>"
+        f"</form></div></div>"
+        f"<div style='color:#aaa;font-size:0.88rem;'>{y['metin']}</div>"
+        f"<div style='color:#444;font-size:0.65rem;margin-top:4px;'>{'&#11088;'*y.get('puan',5)}</div>"
+        f"</div>"
+        for i, y in enumerate(reversed(yorumlar))
+    ) or "<div style='color:#333;font-size:0.78rem;padding:12px 0;'>Henuz yorum yok.</div>"
+
+    maint_color = "#cc0000" if anons.get("maintenance") else "#1a1a1a"
+    maint_text = "BAKIMI KAPAT" if anons.get("maintenance") else "BAKIMA AL"
+    anons_checked = "checked" if anons.get("active") else ""
 
     css = (
         "*{margin:0;padding:0;box-sizing:border-box;}"
-        "body{background:#050505;color:#fff;font-family:Rajdhani,sans-serif;padding:30px 20px;}"
-        ".logo{font-family:Orbitron,monospace;font-size:1.4rem;color:#ff4500;margin-bottom:6px;}"
-        ".sub{color:#333;font-size:0.78rem;letter-spacing:2px;margin-bottom:28px;}"
-        ".cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:24px;}"
-        ".card{background:#0a0a0a;border:1px solid #1a1a1a;border-radius:12px;padding:18px;text-align:center;}"
-        ".v{font-family:Orbitron,monospace;font-size:1.7rem;color:#ff4500;}"
-        ".vb{color:#00d4ff;} .vg{color:#00ff88;}"
-        ".l{font-size:0.68rem;color:#444;letter-spacing:2px;margin-top:4px;}"
-        ".sec{background:#0a0a0a;border:1px solid #1a1a1a;border-radius:12px;padding:18px;margin-bottom:16px;}"
-        ".sec h3{font-family:Orbitron,monospace;font-size:0.8rem;color:#444;letter-spacing:2px;margin-bottom:14px;}"
-        ".bars{display:flex;align-items:flex-end;gap:5px;height:95px;}"
-        ".back{display:inline-block;margin-top:18px;color:#333;text-decoration:none;"
-        "font-family:Orbitron,monospace;font-size:0.7rem;border:1px solid #1a1a1a;"
-        "padding:7px 16px;border-radius:50px;}"
+        "body{background:#050505;color:#fff;font-family:Rajdhani,sans-serif;padding:24px 16px;max-width:900px;margin:0 auto;}"
+        ".logo{font-family:Orbitron,monospace;font-size:1.3rem;color:#ff4500;margin-bottom:4px;}"
+        ".sub{color:#333;font-size:0.72rem;letter-spacing:2px;margin-bottom:24px;}"
+        ".cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px;}"
+        ".card{background:#0a0a0a;border:1px solid #1a1a1a;border-radius:12px;padding:16px;text-align:center;}"
+        ".v{font-family:Orbitron,monospace;font-size:1.6rem;color:#ff4500;}"
+        ".vb{color:#00d4ff;}.vg{color:#00ff88;}.vp{color:#bf00ff;}"
+        ".l{font-size:0.62rem;color:#333;letter-spacing:2px;margin-top:3px;}"
+        ".sec{background:#0a0a0a;border:1px solid #1a1a1a;border-radius:12px;padding:16px;margin-bottom:14px;}"
+        ".sec h3{font-family:Orbitron,monospace;font-size:0.75rem;color:#444;letter-spacing:2px;margin-bottom:12px;}"
+        ".bars{display:flex;align-items:flex-end;gap:5px;height:88px;}"
+        ".inp{background:#111;border:1px solid #222;color:#fff;padding:9px 14px;border-radius:8px;font-family:Rajdhani,sans-serif;font-size:0.92rem;width:100%;margin-bottom:10px;outline:none;}"
+        ".inp:focus{border-color:#ff4500;}"
+        ".btn-a{background:#ff4500;border:none;color:#fff;padding:9px 20px;border-radius:8px;cursor:pointer;font-family:Orbitron,monospace;font-size:0.72rem;margin-right:8px;}"
+        ".btn-m{border:none;color:#fff;padding:9px 20px;border-radius:8px;cursor:pointer;font-family:Orbitron,monospace;font-size:0.72rem;}"
+        ".tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}"
+        ".tab{background:#111;border:1px solid #1a1a1a;color:#555;padding:6px 16px;border-radius:50px;cursor:pointer;font-family:Orbitron,monospace;font-size:0.68rem;transition:all 0.2s;}"
+        ".tab.active{border-color:#ff4500;color:#ff4500;}"
+        ".panel{display:none;}.panel.active{display:block;}"
+        ".back{display:inline-block;margin-top:16px;color:#333;text-decoration:none;font-family:Orbitron,monospace;font-size:0.68rem;border:1px solid #1a1a1a;padding:7px 16px;border-radius:50px;}"
     )
 
     html = (
-        "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
-        "<meta name='viewport' content='width=device-width,initial-scale=1.0'>"
+        "<!DOCTYPE html><html><head>"
+        "<meta charset=\'UTF-8\'>"
+        "<meta name=\'viewport\' content=\'width=device-width,initial-scale=1.0\'>"
         "<title>Admin | Cano Studio</title>"
-        f"<style>{css}</style></head><body>"
-        "<div class='logo'>CANO STUDIO ADMIN</div>"
-        "<div class='sub'>ZİYARETÇİ İSTATİSTİKLERİ</div>"
-        "<div class='cards'>"
-        f"<div class='card'><div class='v'>{s['total']}</div><div class='l'>TOPLAM ZİYARET</div></div>"
-        f"<div class='card'><div class='v vb'>{s['daily'].get(today, 0)}</div><div class='l'>BUGÜN</div></div>"
-        f"<div class='card'><div class='v vg'>{s['monthly'].get(month, 0)}</div><div class='l'>BU AY</div></div>"
-        f"<div class='card'><div class='v'>{len(s['pages'])}</div><div class='l'>AKTİF SAYFA</div></div>"
+        "<style>" + css + "</style></head><body>"
+        "<div class=\'logo\'>CANO STUDIO ADMIN</div>"
+        "<div class=\'sub\'>YONETİM PANELİ</div>"
+        "<div class=\'cards\'>"
+        "<div class=\'card\'><div class=\'v\'>" + str(s["total"]) + "</div><div class=\'l\'>TOPLAM ZİYARET</div></div>"
+        "<div class=\'card\'><div class=\'v vb\'>" + str(s["daily"].get(today,0)) + "</div><div class=\'l\'>BUGÜN</div></div>"
+        "<div class=\'card\'><div class=\'v vg\'>" + str(s["monthly"].get(month,0)) + "</div><div class=\'l\'>BU AY</div></div>"
+        "<div class=\'card\'><div class=\'v vp\'>" + str(len(yorumlar)) + "</div><div class=\'l\'>YORUM</div></div>"
         "</div>"
-        "<div class='sec'><h3>SON 7 GÜN</h3>"
-        f"<div class='bars'>{bars7}</div></div>"
-        "<div class='sec'><h3>SON 6 AY</h3>"
-        f"<div class='bars'>{bars6}</div></div>"
-        "<div class='sec'><h3>SAYFA BAZINDA ZİYARET</h3>"
-        f"{pages_html}</div>"
-        "<a href='/' class='back'>&larr; ANASAYFA</a>"
-        "</body></html>"
+        "<div class=\'tabs\'>"
+        "<div class=\'tab active\' onclick=\'showTab(&#34;istatistik&#34;,this)\'>İSTATİSTİK</div>"
+        "<div class=\'tab\' onclick=\'showTab(&#34;anons&#34;,this)\'>ANONS</div>"
+        "<div class=\'tab\' onclick=\'showTab(&#34;yorumlar&#34;,this)\'>YORUMLAR</div>"
+        "<div class=\'tab\' onclick=\'showTab(&#34;xp&#34;,this)\'>XP SIRALAMA</div>"
+        "</div>"
+        "<div id=\'istatistik\' class=\'panel active\'>"
+        "<div class=\'sec\'><h3>SON 7 GÜN</h3><div class=\'bars\'>" + bars7 + "</div></div>"
+        "<div class=\'sec\'><h3>SON 6 AY</h3><div class=\'bars\'>" + bars6 + "</div></div>"
+        "<div class=\'sec\'><h3>SAYFA ZİYARETLERİ</h3>" + pages_html + "</div>"
+        "</div>"
+        "<div id=\'anons\' class=\'panel\'>"
+        "<div class=\'sec\'><h3>DUYURU YAYINLA</h3>"
+        "<form method=\'post\' action=\'/admin?pw=" + pw + "\'>"
+        "<input type=\'hidden\' name=\'action\' value=\'anons\'>"
+        "<input name=\'text\' class=\'inp\' placeholder=\'Duyuru metni...\' value=\'" + anons.get("text","") + "\'>"
+        "<label style=\'display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:0.85rem;color:#888;\'>"
+        "<input type=\'checkbox\' name=\'active\' value=\'1\' " + anons_checked + "> Duyuruyu aktif et</label>"
+        "<button type=\'submit\' class=\'btn-a\'>KAYDET</button></form></div>"
+        "<div class=\'sec\'><h3>BAKIM MODU</h3>"
+        "<div style=\'color:#888;font-size:0.85rem;margin-bottom:12px;\'>Aktifken ana sayfa bakim mesaji gosterir.</div>"
+        "<form method=\'post\' action=\'/admin?pw=" + pw + "\'>"
+        "<input type=\'hidden\' name=\'action\' value=\'maintenance\'>"
+        "<button type=\'submit\' class=\'btn-m\' style=\'background:" + maint_color + ";\'>"+maint_text+"</button>"
+        "</form></div></div>"
+        "<div id=\'yorumlar\' class=\'panel\'>"
+        "<div class=\'sec\'><h3>ZİYARETÇİ YORUMLARI (" + str(len(yorumlar)) + ")</h3>"
+        "<form method=\'post\' action=\'/admin?pw=" + pw + "\'>" + yorum_html + "</form></div></div>"
+        "<div id=\'xp\' class=\'panel\'>"
+        "<div class=\'sec\'><h3>XP SIRALAMASI (İLK 20)</h3>" + xp_html + "</div></div>"
+        "<a href=\'/\' class=\'back\'>&larr; ANASAYFA</a>"
+        "<script>"
+        "function showTab(id,el){"
+        "var ps=document.querySelectorAll(\'.panel\');"
+        "for(var i=0;i<ps.length;i++)ps[i].classList.remove(\'active\');"
+        "var ts=document.querySelectorAll(\'.tab\');"
+        "for(var i=0;i<ts.length;i++)ts[i].classList.remove(\'active\');"
+        "document.getElementById(id).classList.add(\'active\');"
+        "el.classList.add(\'active\');}"
+        "</script></body></html>"
     )
     return html
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(host="0.0.0.0", port=port, debug=False)
