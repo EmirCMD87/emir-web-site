@@ -2,27 +2,70 @@ from flask import Flask, request
 import os
 import json
 from datetime import datetime, date
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 app = Flask(__name__)
 
-# ===== DOSYALAR =====
-STATS_FILE    = "stats.json"
-YORUMLAR_FILE = "yorumlar.json"
-ANONS_FILE    = "anons.json"
-XP_FILE       = "xp_scores.json"
 ADMIN_PASSWORD = "cano2024"
+
+# ===== POSTGRESQL BAGLANTISI =====
+def get_db():
+    return psycopg2.connect(os.environ.get("DATABASE_URL"), sslmode="require")
+
+def init_db():
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS stats (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS yorumlar (
+                id SERIAL PRIMARY KEY,
+                isim TEXT NOT NULL,
+                metin TEXT NOT NULL,
+                puan INTEGER DEFAULT 5,
+                tarih TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS anons (
+                id INTEGER PRIMARY KEY DEFAULT 1,
+                text TEXT DEFAULT \'\',
+                active BOOLEAN DEFAULT FALSE,
+                maintenance BOOLEAN DEFAULT FALSE
+            );
+            CREATE TABLE IF NOT EXISTS xp_scores (
+                name TEXT PRIMARY KEY,
+                xp INTEGER NOT NULL
+            );
+        """)
+        cur.execute("INSERT INTO anons (id) VALUES (1) ON CONFLICT (id) DO NOTHING;")
+        conn.commit(); cur.close(); conn.close()
+    except Exception as e:
+        print("DB init error:", e)
 
 # ===== STATS =====
 def load_stats():
-    if not os.path.exists(STATS_FILE):
-        return {"total": 0, "daily": {}, "monthly": {}, "pages": {}}
     try:
-        with open(STATS_FILE, "r") as f: return json.load(f)
-    except:
-        return {"total": 0, "daily": {}, "monthly": {}, "pages": {}}
+        conn = get_db(); cur = conn.cursor()
+        cur.execute("SELECT value FROM stats WHERE key = \'data\'")
+        row = cur.fetchone()
+        cur.close(); conn.close()
+        if row: return json.loads(row[0])
+    except: pass
+    return {"total": 0, "daily": {}, "monthly": {}, "pages": {}}
 
 def save_stats(s):
-    with open(STATS_FILE, "w") as f: json.dump(s, f)
+    try:
+        conn = get_db(); cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO stats (key, value) VALUES (\'data\', %s) ON CONFLICT (key) DO UPDATE SET value = %s",
+            (json.dumps(s), json.dumps(s))
+        )
+        conn.commit(); cur.close(); conn.close()
+    except Exception as e:
+        print("save_stats error:", e)
 
 def track(page_name):
     s = load_stats()
@@ -35,46 +78,79 @@ def track(page_name):
 
 # ===== YORUMLAR =====
 def load_yorumlar():
-    if not os.path.exists(YORUMLAR_FILE): return []
     try:
-        with open(YORUMLAR_FILE, "r") as f: return json.load(f)
+        conn = get_db(); cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("SELECT * FROM yorumlar ORDER BY id DESC")
+        rows = [dict(r) for r in cur.fetchall()]
+        cur.close(); conn.close()
+        return rows
     except: return []
 
-def save_yorumlar(y):
-    with open(YORUMLAR_FILE, "w") as f: json.dump(y, f, ensure_ascii=False)
+def save_yorum(isim, metin, puan):
+    try:
+        conn = get_db(); cur = conn.cursor()
+        tarih = datetime.now().strftime("%d.%m.%Y %H:%M")
+        cur.execute(
+            "INSERT INTO yorumlar (isim, metin, puan, tarih) VALUES (%s, %s, %s, %s)",
+            (isim, metin, puan, tarih)
+        )
+        conn.commit(); cur.close(); conn.close()
+        return True
+    except Exception as e:
+        print("save_yorum error:", e)
+        return False
+
+def del_yorum(yid):
+    try:
+        conn = get_db(); cur = conn.cursor()
+        cur.execute("DELETE FROM yorumlar WHERE id = %s", (yid,))
+        conn.commit(); cur.close(); conn.close()
+    except: pass
 
 # ===== ANONS =====
 def load_anons():
-    if not os.path.exists(ANONS_FILE): return {"text": "", "active": False, "maintenance": False}
     try:
-        with open(ANONS_FILE, "r") as f: return json.load(f)
-    except: return {"text": "", "active": False, "maintenance": False}
+        conn = get_db(); cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("SELECT * FROM anons WHERE id = 1")
+        row = cur.fetchone()
+        cur.close(); conn.close()
+        if row: return dict(row)
+    except: pass
+    return {"text": "", "active": False, "maintenance": False}
 
-def save_anons(a):
-    with open(ANONS_FILE, "w") as f: json.dump(a, f, ensure_ascii=False)
+def save_anons(text, active, maintenance):
+    try:
+        conn = get_db(); cur = conn.cursor()
+        cur.execute(
+            "UPDATE anons SET text=%s, active=%s, maintenance=%s WHERE id=1",
+            (text, active, maintenance)
+        )
+        conn.commit(); cur.close(); conn.close()
+    except Exception as e:
+        print("save_anons error:", e)
 
 # ===== XP SIRALAMASI =====
 def load_xp():
-    if not os.path.exists(XP_FILE): return []
     try:
-        with open(XP_FILE, "r") as f: return json.load(f)
+        conn = get_db(); cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute("SELECT * FROM xp_scores ORDER BY xp DESC LIMIT 50")
+        rows = [dict(r) for r in cur.fetchall()]
+        cur.close(); conn.close()
+        return rows
     except: return []
 
-def save_xp(x):
-    with open(XP_FILE, "w") as f: json.dump(x, f, ensure_ascii=False)
-
 def update_xp(name, xp):
-    scores = load_xp()
-    found = False
-    for s in scores:
-        if s["name"] == name:
-            if xp > s["xp"]: s["xp"] = xp
-            found = True; break
-    if not found:
-        scores.append({"name": name, "xp": xp})
-    scores.sort(key=lambda x: -x["xp"])
-    scores = scores[:50]
-    save_xp(scores)
+    try:
+        conn = get_db(); cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO xp_scores (name, xp) VALUES (%s, %s) ON CONFLICT (name) DO UPDATE SET xp = GREATEST(xp_scores.xp, %s)",
+            (name, xp, xp)
+        )
+        conn.commit(); cur.close(); conn.close()
+    except Exception as e:
+        print("update_xp error:", e)
+
+init_db()
 
 # ============ YARDIMCI FONKSİYON ============
 def page(title, extra_css, body_html, extra_js, color="var(--neon-orange)"):
@@ -334,6 +410,7 @@ def ana_sayfa():
     <a href="/profil" class="card green"><span class="card-icon">&#128100;</span><h2>PROFİL</h2><p>İsim &amp; İstatistik</p></a>
     <a href="/gorevler" class="card green"><span class="card-icon">&#128203;</span><h2>GÖREVLER</h2><p>Günlük XP Kazan</p></a>
     <a href="/yorumlar" class="card" style="border-color:rgba(191,0,255,0.3)"><span class="card-icon">&#128172;</span><h2>YORUMLAR</h2><p>Görüşünü Yaz</p></a>
+    <a href="/neon-rush" class="card" style="border-color:rgba(191,0,255,0.3)"><span class="card-icon">&#9889;</span><h2>NEON RUSH</h2><p>Uzay Uçuşu</p></a>
   </div>
 </section>
 """
@@ -514,6 +591,7 @@ h1{font-family:'Orbitron';color:var(--neon-orange);font-size:clamp(1.2rem,4vw,2r
       <div class="shop-c"><div class="shop-ic">&#10084;</div><div class="shop-nm">CAN AL</div><div class="shop-lv" id="hpLv">3 Can</div><div class="shop-co" id="hpCo">50 &#128176;</div><button class="btn btn-blue" style="padding:5px 8px;font-size:0.58rem;margin-top:4px;" onclick="buyU('hp')">AL</button></div>
     </div>
   </div>
+  <a href="/neon-rush" style="display:inline-block;margin-top:16px;font-family:'Orbitron';font-size:0.72rem;color:var(--neon-purple);border:1px solid rgba(191,0,255,0.4);padding:8px 20px;border-radius:50px;text-decoration:none;">&#9889; NEON RUSH OYNA &rarr;</a>
 </div>
 """
     js = r"""
@@ -640,6 +718,292 @@ h1{font-family:'Orbitron';color:var(--neon-orange);font-size:clamp(1.2rem,4vw,2r
   renderShop();
 """
     return page("ARCADE", css, body, js)
+
+# ===== NEON RUSH (Flappy Bird tarzı) =====
+def neonrush_page():
+    css = """
+.nrw{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;text-align:center;}
+h1{font-family:'Orbitron';color:var(--neon-purple);font-size:clamp(1.2rem,4vw,2rem);margin-bottom:4px;}
+.sub{color:#555;font-size:0.78rem;letter-spacing:3px;margin-bottom:20px;}
+.hud2{display:flex;gap:20px;margin-bottom:12px;font-family:'Orbitron';font-size:0.8rem;}
+.hud2 span{color:var(--neon-purple);font-size:1.1rem;}
+#nrCanvas{border:2px solid var(--neon-purple);border-radius:12px;box-shadow:0 0 40px rgba(191,0,255,0.5);background:#0a0a0a;max-width:100%;touch-action:none;cursor:pointer;}
+.nrcw{position:relative;display:inline-block;}
+#nrov{position:absolute;inset:0;background:rgba(0,0,0,0.88);display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:10px;font-family:'Orbitron';}
+#nrov h2{font-size:1.4rem;color:var(--neon-purple);margin-bottom:8px;}
+#nrov p{color:#aaa;margin-bottom:6px;font-size:0.8rem;}
+#nrov .best{color:var(--neon-orange);font-size:0.75rem;margin-bottom:16px;}
+.tap-hint{margin-top:16px;color:#444;font-family:'Orbitron';font-size:0.7rem;letter-spacing:2px;}
+"""
+    body = """
+<a href="/neon-arcade" class="back-btn">&larr; ARCADE</a>
+<div class="nrw">
+  <h1>&#9889; NEON RUSH</h1>
+  <div class="sub">ENGELLERDEN KAC &middot; XP KAZAN</div>
+  <div class="hud2">
+    <div>SKOR: <span id="nrScore">0</span></div>
+    <div>EN İYİ: <span id="nrBest">0</span></div>
+    <div style="color:var(--neon-orange)">XP: <span id="nrXP">0</span></div>
+  </div>
+  <div class="nrcw">
+    <canvas id="nrCanvas" width="400" height="500"></canvas>
+    <div id="nrov">
+      <h2>NEON RUSH</h2>
+      <p>Engellerden kac, XP kazan!</p>
+      <p class="best" id="nrBestOv">En iyi: 0</p>
+      <button class="btn btn-purple" onclick="nrStart()">BASLAT</button>
+      <div class="tap-hint">SPACE / TIKLA / DOKUN</div>
+    </div>
+  </div>
+  <div class="tap-hint" style="margin-top:12px;">Her 5 skorda +10 XP</div>
+</div>
+"""
+    js = r"""
+  var nrc = document.getElementById('nrCanvas');
+  var nrcx = nrc.getContext('2d');
+  var NRW = nrc.width, NRH = nrc.height;
+  var nrRunning = false, nrScore = 0, nrXP = 0;
+  var nrBest = parseInt(localStorage.getItem('cano_nr_best')) || 0;
+  document.getElementById('nrBest').innerText = nrBest;
+  document.getElementById('nrBestOv').innerText = 'En iyi: ' + nrBest;
+
+  // Oyun değişkenleri
+  var ship, pipes, stars, particles3, nrFrame, nrSpeed, nrLastPipe, nrGravity;
+
+  function nrReset() {
+    ship = {
+      x: 80, y: NRH / 2, vy: 0,
+      w: 28, h: 18,
+      trail: []
+    };
+    pipes = [];
+    particles3 = [];
+    stars = [];
+    for (var i = 0; i < 80; i++) {
+      stars.push({
+        x: Math.random() * NRW,
+        y: Math.random() * NRH,
+        r: Math.random() * 1.5 + 0.3,
+        s: Math.random() * 0.5 + 0.2
+      });
+    }
+    nrScore = 0; nrXP = 0; nrFrame = 0;
+    nrSpeed = 3; nrLastPipe = 0;
+    nrGravity = 0.32;
+    document.getElementById('nrScore').innerText = 0;
+    document.getElementById('nrXP').innerText = 0;
+  }
+
+  function nrStart() {
+    document.getElementById('nrov').style.display = 'none';
+    nrReset();
+    nrRunning = true;
+    nrLoop();
+  }
+
+  function nrFlap() {
+    if (!nrRunning) return;
+    ship.vy = -7.5;
+  }
+
+  // Kontroller
+  document.addEventListener('keydown', function(e) {
+    if (e.code === 'Space') { e.preventDefault(); nrFlap(); }
+  });
+  nrc.addEventListener('click', nrFlap);
+  nrc.addEventListener('touchstart', function(e) { e.preventDefault(); nrFlap(); }, {passive: false});
+
+  function spawnPipe() {
+    var gap = Math.max(120, 180 - Math.floor(nrScore / 10) * 5);
+    var minTop = 60, maxTop = NRH - gap - 60;
+    var topH = Math.random() * (maxTop - minTop) + minTop;
+    var hue1 = (nrFrame * 0.5) % 360;
+    pipes.push({
+      x: NRW + 10, topH: topH, botY: topH + gap,
+      w: 52, scored: false,
+      color: 'hsl(' + hue1 + ',100%,60%)'
+    });
+  }
+
+  function nrLoop() {
+    if (!nrRunning) return;
+    nrFrame++;
+
+    // Fizik
+    ship.vy += nrGravity;
+    ship.y += ship.vy;
+    ship.trail.push({x: ship.x, y: ship.y});
+    if (ship.trail.length > 18) ship.trail.shift();
+
+    // Hız artışı
+    nrSpeed = 3 + nrScore * 0.12;
+
+    // Boru spawn
+    if (nrFrame - nrLastPipe > Math.max(60, 95 - nrScore * 2)) {
+      spawnPipe();
+      nrLastPipe = nrFrame;
+    }
+
+    // Borular güncelle
+    pipes = pipes.filter(function(p) {
+      p.x -= nrSpeed;
+      if (!p.scored && p.x + p.w < ship.x) {
+        p.scored = true;
+        nrScore++;
+        document.getElementById('nrScore').innerText = nrScore;
+        // XP
+        if (nrScore % 5 === 0) {
+          nrXP += 10;
+          addXP(10, 'Neon Rush');
+          document.getElementById('nrXP').innerText = nrXP;
+          showToast('+10 XP');
+        }
+        // Parçacık patlaması
+        for (var k = 0; k < 12; k++) {
+          particles3.push({
+            x: ship.x + 20, y: ship.y,
+            vx: (Math.random() - 0.5) * 5,
+            vy: (Math.random() - 0.5) * 5,
+            life: 30, color: p.color
+          });
+        }
+      }
+      return p.x > -p.w;
+    });
+
+    // Parçacıklar
+    particles3 = particles3.filter(function(p) {
+      p.x += p.vx; p.y += p.vy; p.life--;
+      return p.life > 0;
+    });
+
+    // Yıldızlar
+    stars.forEach(function(st) { st.x -= st.s; if (st.x < 0) st.x = NRW; });
+
+    // Çarpışma — zemin/tavan
+    if (ship.y + ship.h / 2 > NRH || ship.y - ship.h / 2 < 0) {
+      nrGameOver(); return;
+    }
+
+    // Çarpışma — borular
+    for (var i = 0; i < pipes.length; i++) {
+      var p = pipes[i];
+      var sx = ship.x, sy = ship.y, sw = ship.w * 0.7, sh = ship.h * 0.7;
+      if (sx + sw / 2 > p.x && sx - sw / 2 < p.x + p.w) {
+        if (sy - sh / 2 < p.topH || sy + sh / 2 > p.botY) {
+          nrGameOver(); return;
+        }
+      }
+    }
+
+    // Çiz
+    nrcx.clearRect(0, 0, NRW, NRH);
+
+    // Yıldızlar
+    stars.forEach(function(st) {
+      nrcx.beginPath();
+      nrcx.arc(st.x, st.y, st.r, 0, Math.PI * 2);
+      nrcx.fillStyle = 'rgba(255,255,255,0.6)';
+      nrcx.fill();
+    });
+
+    // Grid
+    nrcx.strokeStyle = 'rgba(191,0,255,0.04)';
+    nrcx.lineWidth = 1;
+    for (var i = 0; i < NRW; i += 40) { nrcx.beginPath(); nrcx.moveTo(i, 0); nrcx.lineTo(i, NRH); nrcx.stroke(); }
+    for (var i = 0; i < NRH; i += 40) { nrcx.beginPath(); nrcx.moveTo(0, i); nrcx.lineTo(NRW, i); nrcx.stroke(); }
+
+    // Borular
+    pipes.forEach(function(p) {
+      var grad = nrcx.createLinearGradient(p.x, 0, p.x + p.w, 0);
+      grad.addColorStop(0, p.color);
+      grad.addColorStop(1, 'rgba(0,0,0,0.3)');
+      nrcx.fillStyle = grad;
+      nrcx.shadowColor = p.color; nrcx.shadowBlur = 18;
+      // Üst boru
+      nrcx.fillRect(p.x, 0, p.w, p.topH);
+      nrcx.fillRect(p.x - 4, p.topH - 16, p.w + 8, 16);
+      // Alt boru
+      nrcx.fillRect(p.x, p.botY, p.w, NRH - p.botY);
+      nrcx.fillRect(p.x - 4, p.botY, p.w + 8, 16);
+      nrcx.shadowBlur = 0;
+    });
+
+    // Trail
+    ship.trail.forEach(function(t, i) {
+      var alpha = i / ship.trail.length * 0.5;
+      nrcx.beginPath();
+      nrcx.arc(t.x, t.y, 4 * (i / ship.trail.length), 0, Math.PI * 2);
+      nrcx.fillStyle = 'rgba(191,0,255,' + alpha + ')';
+      nrcx.fill();
+    });
+
+    // Gemi
+    nrcx.save();
+    nrcx.translate(ship.x, ship.y);
+    var tilt = Math.max(-0.5, Math.min(0.5, ship.vy * 0.06));
+    nrcx.rotate(tilt);
+    // Gövde
+    nrcx.fillStyle = '#bf00ff';
+    nrcx.shadowColor = '#bf00ff'; nrcx.shadowBlur = 20;
+    nrcx.beginPath();
+    nrcx.moveTo(14, 0); nrcx.lineTo(-14, -9); nrcx.lineTo(-10, 0); nrcx.lineTo(-14, 9);
+    nrcx.closePath(); nrcx.fill();
+    // Cam
+    nrcx.fillStyle = '#00d4ff';
+    nrcx.shadowColor = '#00d4ff'; nrcx.shadowBlur = 10;
+    nrcx.beginPath();
+    nrcx.arc(2, 0, 5, 0, Math.PI * 2); nrcx.fill();
+    // Motor alevi
+    nrcx.fillStyle = '#ff4500';
+    nrcx.shadowColor = '#ff4500'; nrcx.shadowBlur = 12;
+    nrcx.beginPath();
+    nrcx.moveTo(-10, 0);
+    var flicker = (Math.random() * 6 + 8);
+    nrcx.lineTo(-10 - flicker, -4); nrcx.lineTo(-10 - flicker * 0.6, 0);
+    nrcx.lineTo(-10 - flicker, 4); nrcx.closePath(); nrcx.fill();
+    nrcx.restore();
+
+    // Parçacıklar
+    particles3.forEach(function(p) {
+      nrcx.globalAlpha = p.life / 30;
+      nrcx.fillStyle = p.color;
+      nrcx.beginPath(); nrcx.arc(p.x, p.y, 3, 0, Math.PI * 2); nrcx.fill();
+    });
+    nrcx.globalAlpha = 1;
+
+    // Skor HUD (canvas üzerinde)
+    nrcx.fillStyle = 'rgba(191,0,255,0.8)';
+    nrcx.font = 'bold 22px Orbitron,monospace';
+    nrcx.textAlign = 'center';
+    nrcx.shadowColor = '#bf00ff'; nrcx.shadowBlur = 10;
+    nrcx.fillText(nrScore, NRW / 2, 40);
+    nrcx.shadowBlur = 0;
+
+    requestAnimationFrame(nrLoop);
+  }
+
+  function nrGameOver() {
+    nrRunning = false;
+    if (nrScore > nrBest) {
+      nrBest = nrScore;
+      localStorage.setItem('cano_nr_best', nrBest);
+      addXP(nrScore * 2, 'Neon Rush Rekoru');
+    }
+    document.getElementById('nrBest').innerText = nrBest;
+    var ov = document.getElementById('nrov');
+    ov.style.display = 'flex';
+    ov.innerHTML = (
+      '<h2>GAME OVER</h2>' +
+      '<p>Skor: ' + nrScore + '</p>' +
+      '<p class="best">En iyi: ' + nrBest + ' &nbsp;|&nbsp; Toplam XP: ' + nrXP + '</p>' +
+      '<button class="btn btn-purple" onclick="nrStart()">TEKRAR</button>' +
+      '<div class="tap-hint" style="margin-top:12px;">SPACE / TIKLA</div>'
+    );
+  }
+"""
+    return page("NEON RUSH", css, body, js)
+
 
 
 # ===== HORROR =====
@@ -1031,6 +1395,9 @@ def strateji(): track("strateji"); return strateji_page()
 @app.route("/neon-arcade")
 def arcade(): track("arcade"); return arcade_page()
 
+@app.route("/neon-rush")
+def neonrush(): track("neonrush"); return neonrush_page()
+
 @app.route("/horror")
 def horror(): track("horror"); return horror_page()
 
@@ -1146,13 +1513,8 @@ def yorum_gonder():
     puan = max(1, min(5, int(data.get("puan", 5))))
     if not isim or not metin:
         return jsonify({"ok": False, "error": "Bos alan"})
-    yorumlar = load_yorumlar()
-    yorumlar.append({
-        "isim": isim, "metin": metin, "puan": puan,
-        "tarih": datetime.now().strftime("%d.%m.%Y %H:%M")
-    })
-    save_yorumlar(yorumlar)
-    return jsonify({"ok": True})
+    ok = save_yorum(isim, metin, puan)
+    return jsonify({"ok": ok})
 
 @app.route("/xp-kaydet", methods=["POST"])
 def xp_kaydet():
@@ -1188,19 +1550,15 @@ def admin():
         action = request.form.get("action")
         if action == "anons":
             a = load_anons()
-            a["text"] = request.form.get("text", "")
-            a["active"] = request.form.get("active") == "1"
-            save_anons(a)
+            text = request.form.get("text", "")
+            active = request.form.get("active") == "1"
+            save_anons(text, active, a.get("maintenance", False))
         elif action == "maintenance":
             a = load_anons()
-            a["maintenance"] = not a.get("maintenance", False)
-            save_anons(a)
+            save_anons(a.get("text",""), a.get("active",False), not a.get("maintenance", False))
         elif action == "del_yorum":
-            idx = int(request.form.get("idx", -1))
-            yorumlar = load_yorumlar()
-            if 0 <= idx < len(yorumlar):
-                yorumlar.pop(idx)
-                save_yorumlar(yorumlar)
+            yid = request.form.get("yid", -1)
+            del_yorum(yid)
 
     s = load_stats()
     anons = load_anons()
