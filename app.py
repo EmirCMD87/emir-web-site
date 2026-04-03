@@ -411,6 +411,7 @@ def ana_sayfa():
     <a href="/gorevler" class="card green"><span class="card-icon">&#128203;</span><h2>GÖREVLER</h2><p>Günlük XP Kazan</p></a>
     <a href="/yorumlar" class="card" style="border-color:rgba(191,0,255,0.3)"><span class="card-icon">&#128172;</span><h2>YORUMLAR</h2><p>Görüşünü Yaz</p></a>
     <a href="/neon-rush" class="card" style="border-color:rgba(191,0,255,0.3)"><span class="card-icon">&#9889;</span><h2>NEON RUSH</h2><p>Uzay Uçuşu</p></a>
+    <a href="/isinlanma" class="card" style="border-color:rgba(100,0,180,0.4)"><span class="card-icon">&#128300;</span><h2>IŞINLANMA</h2><p>Bilim Kurgu Korku</p></a>
   </div>
 </section>
 """
@@ -1004,6 +1005,672 @@ h1{font-family:'Orbitron';color:var(--neon-purple);font-size:clamp(1.2rem,4vw,2r
 """
     return page("NEON RUSH", css, body, js)
 
+# ===== IŞINLANMA - HİKAYE OYUNU =====
+def isinlanma_page():
+    css = """
+body{background:#000!important;}
+.iw{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;background:#000;}
+.scene-box{width:100%;max-width:600px;min-height:320px;position:relative;border-radius:16px;overflow:hidden;margin-bottom:24px;background:#0a0005;}
+.scene-img{width:100%;height:280px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;}
+.scene-title{font-family:'Orbitron';font-size:0.7rem;color:#444;letter-spacing:3px;margin-bottom:8px;}
+.story-text{color:#ccc;font-size:1rem;line-height:1.8;font-family:'Rajdhani';width:100%;max-width:580px;margin-bottom:20px;min-height:80px;text-align:left;}
+.choices{display:flex;flex-direction:column;gap:10px;width:100%;max-width:580px;}
+.choice-btn{background:rgba(80,0,120,0.2);border:1px solid rgba(160,0,255,0.3);color:#ccc;padding:14px 20px;border-radius:8px;cursor:pointer;font-family:'Rajdhani';font-size:0.95rem;text-align:left;transition:all 0.2s;}
+.choice-btn:hover{background:rgba(160,0,255,0.2);border-color:#a000ff;color:#fff;}
+.end-screen{display:none;width:100%;max-width:580px;text-align:center;padding:30px;}
+.end-screen h2{font-family:'Orbitron';font-size:1.4rem;margin-bottom:10px;}
+.end-screen p{color:#888;margin-bottom:20px;}
+.progress-bar{width:100%;max-width:580px;height:3px;background:#111;border-radius:50px;margin-bottom:24px;overflow:hidden;}
+.progress-fill{height:100%;border-radius:50px;background:linear-gradient(90deg,#a000ff,#00d4ff);transition:width 0.6s;}
+#glitch{position:fixed;inset:0;pointer-events:none;z-index:9998;opacity:0;}
+.typing{border-right:2px solid #a000ff;animation:blink 0.7s infinite;}
+@keyframes blink{0%,100%{border-color:#a000ff;}50%{border-color:transparent;}}
+"""
+
+    body = """
+<div id="glitch"></div>
+<a href="/" class="back-btn">&larr; ANA SAYFA</a>
+<div class="iw">
+  <div class="progress-bar"><div class="progress-fill" id="progFill" style="width:0%"></div></div>
+  <div class="scene-title" id="sceneTitle">BÖLÜM 1</div>
+  <div class="scene-box">
+    <div class="scene-img" id="sceneImg"></div>
+  </div>
+  <div class="story-text" id="storyText"></div>
+  <div class="choices" id="choicesBox"></div>
+  <div class="end-screen" id="endScreen">
+    <h2 id="endTitle"></h2>
+    <p id="endDesc"></p>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+      <button class="btn btn-purple" onclick="restart()">TEKRAR OYNA</button>
+      <a href="/" class="btn" style="text-decoration:none;">ANA SAYFA</a>
+    </div>
+  </div>
+</div>
+"""
+
+    js = r"""
+  var chapter = 0;
+  var choices_made = [];
+
+  var SCENES = [
+    {
+      title: "SABAH — LAB",
+      color: "#0a0510",
+      draw: function(c,w,h) {
+        c.fillStyle = "#0a0510"; c.fillRect(0,0,w,h);
+        // Laboratuar arka plan
+        for(var i=0;i<w;i+=40){c.strokeStyle="rgba(100,0,150,0.15)";c.beginPath();c.moveTo(i,0);c.lineTo(i,h);c.stroke();}
+        for(var i=0;i<h;i+=40){c.beginPath();c.moveTo(0,i);c.lineTo(w,i);c.stroke();}
+        // Masa
+        c.fillStyle="#1a0a2a"; c.fillRect(w*0.1,h*0.55,w*0.8,h*0.35);
+        c.strokeStyle="#a000ff"; c.lineWidth=1; c.strokeRect(w*0.1,h*0.55,w*0.8,h*0.35);
+        // Makine
+        c.fillStyle="#200030"; c.fillRect(w*0.35,h*0.2,w*0.3,h*0.35);
+        c.strokeStyle="#00d4ff"; c.lineWidth=2; c.strokeRect(w*0.35,h*0.2,w*0.3,h*0.35);
+        // Makine ışıkları
+        for(var i=0;i<5;i++){
+          c.fillStyle="rgba(0,212,255,"+(0.3+Math.random()*0.4)+")";
+          c.beginPath(); c.arc(w*0.38+i*w*0.05, h*0.25, 4, 0, Math.PI*2); c.fill();
+        }
+        // Adam (basit siluet)
+        c.fillStyle="#2a0a3a";
+        c.beginPath(); c.arc(w*0.25,h*0.4,18,0,Math.PI*2); c.fill();
+        c.fillRect(w*0.18,h*0.47,30,50);
+        // Saat pencere
+        c.fillStyle="rgba(0,0,0,0.7)"; c.fillRect(w*0.65,h*0.1,w*0.2,h*0.15);
+        c.strokeStyle="#333"; c.strokeRect(w*0.65,h*0.1,w*0.2,h*0.15);
+        c.fillStyle="#ffcc00"; c.font="11px Orbitron,monospace";
+        c.textAlign="center"; c.fillText("06:47",w*0.75,h*0.19);
+      },
+      text: "Sabahın 6:47'si. Dr. Emir gözlerini açtığında masasının üzerinde yüzlerce kablo ve devre döküntüsü vardı. Uyumamıştı. Bir gecede... bitmişti. Işınlanma makinesi. Titreyen eliyle ON düğmesine uzandı.",
+      choices: [
+        {t:"Düğmeye bas", n:1, xp:10},
+        {t:"Önce test et — hayvanla dene", n:2, xp:10}
+      ]
+    },
+    {
+      title: "AKTİVASYON",
+      color: "#000520",
+      draw: function(c,w,h) {
+        c.fillStyle="#000520"; c.fillRect(0,0,w,h);
+        // Portal efekti
+        var cx=w/2, cy=h/2;
+        for(var r=80;r>0;r-=10){
+          var alpha = (80-r)/80*0.8;
+          c.strokeStyle="rgba(160,0,255,"+alpha+")";
+          c.lineWidth=2; c.beginPath(); c.arc(cx,cy,r,0,Math.PI*2); c.stroke();
+        }
+        c.fillStyle="rgba(160,0,255,0.15)"; c.beginPath(); c.arc(cx,cy,80,0,Math.PI*2); c.fill();
+        // Işık huzmeleri
+        for(var i=0;i<8;i++){
+          var angle = i * Math.PI/4;
+          c.strokeStyle="rgba(0,212,255,0.3)"; c.lineWidth=1;
+          c.beginPath(); c.moveTo(cx,cy);
+          c.lineTo(cx+Math.cos(angle)*w*0.6, cy+Math.sin(angle)*h*0.6); c.stroke();
+        }
+        // Titreşim efekti — yatay çizgiler
+        for(var i=0;i<h;i+=4){
+          if(Math.random()>0.85){
+            c.fillStyle="rgba(160,0,255,0.05)"; c.fillRect(0,i,w,2);
+          }
+        }
+        c.fillStyle="#a000ff"; c.font="bold 18px Orbitron,monospace";
+        c.textAlign="center"; c.fillText("IŞINLANMA AKTİF",w/2,h*0.85);
+      },
+      text: "Makine uğuldamaya başladı. Mavi-mor bir ışık tüm laboratuarı kapladı. Emir'in gözleri kamaştı. Ve sonra... ses. Dışarıdan değil. İÇERİDEN. Duvarların içinden gelen fısıltılar. Adını söylüyorlardı.",
+      choices: [
+        {t:"Makineyi kapat", n:3, xp:10},
+        {t:"Fısıltıları dinle", n:4, xp:15}
+      ]
+    },
+    {
+      title: "HAYVAN DENEYİ",
+      color: "#050a00",
+      draw: function(c,w,h) {
+        c.fillStyle="#050a00"; c.fillRect(0,0,w,h);
+        // Kafes
+        for(var i=0;i<8;i++){
+          c.strokeStyle="rgba(0,255,100,0.2)"; c.lineWidth=1;
+          c.beginPath(); c.moveTo(w*0.3+i*w*0.05,h*0.2); c.lineTo(w*0.3+i*w*0.05,h*0.7); c.stroke();
+        }
+        c.strokeStyle="rgba(0,255,100,0.3)"; c.strokeRect(w*0.3,h*0.2,w*0.4,h*0.5);
+        // Hayvan silueti (tavşan)
+        c.fillStyle="#0a1a0a";
+        c.beginPath(); c.arc(w*0.5,h*0.48,20,0,Math.PI*2); c.fill();
+        c.beginPath(); c.arc(w*0.46,h*0.32,8,0,Math.PI*2); c.fill();
+        c.beginPath(); c.arc(w*0.54,h*0.32,8,0,Math.PI*2); c.fill();
+        c.fillStyle="#00ff44"; c.font="12px Orbitron,monospace";
+        c.textAlign="center"; c.fillText("DENEY #001",w/2,h*0.85);
+      },
+      text: "Emir kafesten beyaz tavşanı çıkardı ve ışınlanma platformuna koydu. Makineyi çalıştırdı. Bir flaş. Tavşan gözden kayboldu. Sonra... beş saniye sessizlik. Ve platform yeniden parladı. Tavşan geri döndü. Ama farklıydı.",
+      choices: [
+        {t:"Tavşana dokun", n:5, xp:10},
+        {t:"Gözlemle — dokunma", n:6, xp:15}
+      ]
+    },
+    {
+      title: "KAPATIYOR",
+      color: "#0a0000",
+      draw: function(c,w,h) {
+        c.fillStyle="#0a0000"; c.fillRect(0,0,w,h);
+        // Kırmızı alarm
+        c.fillStyle="rgba(255,0,0,0.05)"; c.fillRect(0,0,w,h);
+        for(var i=0;i<3;i++){
+          c.strokeStyle="rgba(255,0,0,"+(0.1+i*0.1)+")";
+          c.lineWidth=3; c.strokeRect(10+i*8,10+i*8,w-20-i*16,h-20-i*16);
+        }
+        // Makine kapanıyor
+        c.fillStyle="#1a0000"; c.fillRect(w*0.35,h*0.2,w*0.3,h*0.4);
+        c.strokeStyle="rgba(255,50,0,0.5)"; c.lineWidth=2; c.strokeRect(w*0.35,h*0.2,w*0.3,h*0.4);
+        // Yanıp sönen ışık
+        c.fillStyle="rgba(255,100,0,0.6)"; c.beginPath(); c.arc(w*0.5,h*0.4,12,0,Math.PI*2); c.fill();
+        c.fillStyle="#ff3300"; c.font="14px Orbitron,monospace";
+        c.textAlign="center"; c.fillText("KAPANIYOR...",w/2,h*0.75);
+        c.fillText("ERİŞİLEMEZ",w/2,h*0.85);
+      },
+      text: "Emir güç düğmesine bastı. Makine durdu. Ama sesler... durmadı. Duvarlar hâlâ fısıldıyordu. Artık dışarıdan da sesler geliyordu. Sokaktan. Sanki herkes aynı anda konuşmaya başlamıştı. Cebinden telefonu çıkardı.",
+      choices: [
+        {t:"Arkadaşını ara — Mert'i", n:7, xp:10},
+        {t:"Evi terk et — kaç", n:8, xp:10}
+      ]
+    },
+    {
+      title: "FIŞILTILAR",
+      color: "#050510",
+      draw: function(c,w,h) {
+        c.fillStyle="#050510"; c.fillRect(0,0,w,h);
+        // Dalga efekti
+        for(var y=0;y<h;y+=3){
+          var offset = Math.sin(y*0.05)*20;
+          c.strokeStyle="rgba(100,0,200,"+(0.05+Math.sin(y*0.1)*0.05)+")";
+          c.lineWidth=1; c.beginPath(); c.moveTo(0+offset,y); c.lineTo(w+offset,y); c.stroke();
+        }
+        // Yüz silueti (bulanık)
+        c.fillStyle="rgba(80,0,150,0.2)";
+        c.beginPath(); c.arc(w/2,h*0.4,60,0,Math.PI*2); c.fill();
+        c.fillStyle="rgba(160,0,255,0.1)";
+        c.beginPath(); c.arc(w/2,h*0.4,40,0,Math.PI*2); c.fill();
+        // Gözler
+        c.fillStyle="rgba(255,255,255,0.8)";
+        c.beginPath(); c.arc(w*0.44,h*0.38,6,0,Math.PI*2); c.fill();
+        c.beginPath(); c.arc(w*0.56,h*0.38,6,0,Math.PI*2); c.fill();
+        c.fillStyle="#a000ff"; c.font="13px Orbitron,monospace";
+        c.textAlign="center"; c.fillText("SEN DE BİZDENSİN",w/2,h*0.82);
+      },
+      text: "Fısıltılar şekillendi. Bir ses, sonra on, sonra yüzlerce. 'Emir. Emir. Emir.' Onu çağırıyorlardı. Makinenin açtığı kapıdan bir şeyler gelmişti. Ve onlar Emir'i tanıyordu. Hep tanımışlardı.",
+      choices: [
+        {t:"Onlara cevap ver", n:9, xp:20},
+        {t:"Arkadaşını ara — hemen", n:7, xp:10}
+      ]
+    },
+    {
+      title: "TAVŞAN",
+      color: "#000a00",
+      draw: function(c,w,h) {
+        c.fillStyle="#000a00"; c.fillRect(0,0,w,h);
+        // Tavşan yakın plan — anormal
+        c.fillStyle="#0a1500";
+        c.beginPath(); c.arc(w/2,h*0.45,45,0,Math.PI*2); c.fill();
+        // Gözler — kırmızı
+        c.fillStyle="#ff0000"; c.shadowColor="#ff0000"; c.shadowBlur=15;
+        c.beginPath(); c.arc(w*0.43,h*0.4,8,0,Math.PI*2); c.fill();
+        c.beginPath(); c.arc(w*0.57,h*0.4,8,0,Math.PI*2); c.fill();
+        c.shadowBlur=0;
+        // Ağız
+        c.strokeStyle="rgba(200,0,0,0.7)"; c.lineWidth=2;
+        c.beginPath(); c.arc(w*0.5,h*0.5,15,0.1,Math.PI-0.1); c.stroke();
+        c.fillStyle="#ff3333"; c.font="12px Orbitron,monospace";
+        c.textAlign="center"; c.fillText("O ARTIK O DEĞİL",w/2,h*0.82);
+      },
+      text: "Emir elini uzattı. Tavşan kımıldamadı. Sonra döndü. Gözleri... kırmızıydı. Hem de kan kırmızısı. Sesi yoktu artık. Ama Emir bir şey hissetti — tavşanın içinde bir şey vardı. Makine onu götürmüş, başka bir şey göndermişti.",
+      choices: [
+        {t:"Tavşanı kafese geri koy", n:10, xp:10},
+        {t:"Makineyi hemen kapat", n:3, xp:10}
+      ]
+    },
+    {
+      title: "GÖZLEMCİ",
+      color: "#050a00",
+      draw: function(c,w,h) {
+        c.fillStyle="#050a00"; c.fillRect(0,0,w,h);
+        // Mikroskop görüntüsü
+        c.strokeStyle="rgba(0,200,0,0.2)"; c.lineWidth=1;
+        for(var i=0;i<5;i++){c.beginPath();c.arc(w/2,h/2,30+i*20,0,Math.PI*2);c.stroke();}
+        // Hücre benzeri şekiller
+        for(var i=0;i<6;i++){
+          var angle=i*Math.PI/3;
+          c.fillStyle="rgba(0,"+Math.floor(100+Math.random()*100)+",0,0.3)";
+          c.beginPath(); c.arc(w/2+Math.cos(angle)*40,h/2+Math.sin(angle)*40,10,0,Math.PI*2); c.fill();
+        }
+        c.fillStyle="#00ff44"; c.font="11px Orbitron,monospace";
+        c.textAlign="center"; c.fillText("DNA ANOMALY +%847",w/2,h*0.85);
+      },
+      text: "Emir not defterini açtı ve gözlemlemeye başladı. Tavşan saatlerce aynı köşede oturdu. Nefes almıyordu. Ama canlıydı. Sonra defterine baktı — kendi eliyle yazmıştı, ama yazmadığı bir cümle vardı: 'SEN SONRASIN'",
+      choices: [
+        {t:"Arkadaşını ara — Mert'i", n:7, xp:15},
+        {t:"Daha fazla araştır", n:11, xp:20}
+      ]
+    },
+    {
+      title: "MERT GELİYOR",
+      color: "#0a0005",
+      draw: function(c,w,h) {
+        c.fillStyle="#0a0005"; c.fillRect(0,0,w,h);
+        // Telefon ekranı
+        c.fillStyle="#111"; c.fillRect(w*0.35,h*0.15,w*0.3,h*0.55);
+        c.strokeStyle="#a000ff"; c.lineWidth=1; c.strokeRect(w*0.35,h*0.15,w*0.3,h*0.55);
+        // Profil
+        c.fillStyle="#2a0a3a"; c.beginPath(); c.arc(w*0.5,h*0.32,20,0,Math.PI*2); c.fill();
+        c.fillStyle="#ccc"; c.font="10px monospace"; c.textAlign="center";
+        c.fillText("MERT",w*0.5,h*0.5);
+        c.fillStyle="#00ff44"; c.font="9px monospace";
+        c.fillText("ARANIYOR...",w*0.5,h*0.58);
+        // Kapı
+        c.fillStyle="#0d0010"; c.fillRect(w*0.1,h*0.3,w*0.18,h*0.55);
+        c.strokeStyle="#333"; c.strokeRect(w*0.1,h*0.3,w*0.18,h*0.55);
+        c.fillStyle="#888"; c.beginPath(); c.arc(w*0.25,h*0.57,4,0,Math.PI*2); c.fill();
+      },
+      text: "Telefon üç kez çaldı. Mert cevap verdi. 'Sesim garipleşti, değil mi?' diye sordu Emir. Uzun bir sessizlik. 'Geliyorum' dedi Mert. Kırk dakika sonra kapı çalındı. Emir kapıyı açtı. Orada Mert vardı... ama gözleri farklıydı.",
+      choices: [
+        {t:"İçeri al", n:12, xp:10},
+        {t:"Kapıyı kapatmaya çalış", n:13, xp:15}
+      ]
+    },
+    {
+      title: "KAÇIŞ",
+      color: "#050000",
+      draw: function(c,w,h) {
+        c.fillStyle="#050000"; c.fillRect(0,0,w,h);
+        // Gece sokağı
+        for(var i=0;i<w;i+=60){
+          c.fillStyle="#0d0d0d"; c.fillRect(i,h*0.4,50,h*0.6);
+          c.strokeStyle="#1a0a00"; c.strokeRect(i,h*0.4,50,h*0.6);
+          // Pencere ışıkları
+          for(var j=0;j<3;j++){
+            c.fillStyle=Math.random()>0.5?"rgba(255,180,0,0.3)":"rgba(0,0,0,0.5)";
+            c.fillRect(i+8,h*0.45+j*h*0.12,15,10);
+          }
+        }
+        // Yol
+        c.fillStyle="#0a0a0a"; c.fillRect(0,h*0.7,w,h*0.3);
+        // Adam koşuyor
+        c.fillStyle="#1a0a2a";
+        c.beginPath(); c.arc(w*0.2,h*0.63,12,0,Math.PI*2); c.fill();
+        c.fillRect(w*0.16,h*0.67,18,28);
+        c.fillStyle="#ff3300"; c.font="11px Orbitron,monospace";
+        c.textAlign="center"; c.fillText("KAÇIYOR",w/2,h*0.88);
+      },
+      text: "Emir cebini kapıp dışarı fırladı. Gece sokaklarında koşmaya başladı. Ama sokak... değişmişti. Her köşede aynı adam duruyordu. Kendisi. Kendisine benzeyenler. Makine bir kapı açmıştı — ve o kapıdan çok şey geçmişti.",
+      choices: [
+        {t:"Durumunu kabul et", n:14, xp:20},
+        {t:"Geri dön — makineyi yok et", n:15, xp:25}
+      ]
+    },
+    {
+      title: "ONLARLA KONUŞ",
+      color: "#050510",
+      draw: function(c,w,h) {
+        c.fillStyle="#050510"; c.fillRect(0,0,w,h);
+        // Boyutlar arası geçiş
+        var cx=w/2, cy=h/2;
+        for(var i=0;i<20;i++){
+          var r=i*8; var alpha=(20-i)/20*0.3;
+          c.strokeStyle="rgba(160,0,255,"+alpha+")"; c.lineWidth=0.5;
+          c.beginPath(); c.arc(cx,cy,r,0,Math.PI*2); c.stroke();
+        }
+        // Siluetler
+        for(var i=0;i<5;i++){
+          var x=w*0.1+i*w*0.2;
+          c.fillStyle="rgba(80,0,150,0.2)";
+          c.beginPath(); c.arc(x,h*0.5,20,0,Math.PI*2); c.fill();
+          c.fillRect(x-10,h*0.55,20,30);
+        }
+        c.fillStyle="#a000ff"; c.font="11px Orbitron,monospace";
+        c.textAlign="center"; c.fillText("BOYUTLAR ARASI",w/2,h*0.88);
+      },
+      text: "Emir cevap verdi: 'Kimsiniz?' Fısıltılar birleşti, tek bir ses oldu. 'Biz senin olasılıklarınız. Makine onları serbest bıraktı. Her karar bir boyut yaratır — ve şimdi hepsi burada.' Emir anladı. Makine sadece nesne değil — olasılık kapısıydı.",
+      choices: [
+        {t:"Kapıyı kapat — hepsini gönder geri", n:16, xp:30},
+        {t:"Onları kabul et — yeni dünya", n:17, xp:25}
+      ]
+    },
+    {
+      title: "TEMAS",
+      color: "#050000",
+      draw: function(c,w,h) {
+        c.fillStyle="#050000"; c.fillRect(0,0,w,h);
+        // El uzanıyor
+        c.fillStyle="#0a0000";
+        c.beginPath();
+        c.moveTo(w*0.3,h*0.8); c.lineTo(w*0.45,h*0.5); c.lineTo(w*0.55,h*0.5); c.lineTo(w*0.7,h*0.8);
+        c.closePath(); c.fill();
+        // Parmaklar
+        for(var i=0;i<5;i++){
+          c.fillRect(w*0.35+i*w*0.07,h*0.3,10,h*0.22);
+        }
+        c.fillStyle="rgba(255,0,0,0.15)"; c.fillRect(0,0,w,h);
+        c.fillStyle="#ff3300"; c.font="12px Orbitron,monospace";
+        c.textAlign="center"; c.fillText("DOKUNMA...",w/2,h*0.18);
+      },
+      text: "Tavşanı kafese koydu ve elleri titreyerek geri çekildi. Ama geç kalmıştı. Parmak ucunda siyah bir leke belirmişti. Küçücük. Ama genişliyordu. Ve Emir bir şey hissetti — içinde bir sesin sustuğunu. Kendi sesinin.",
+      choices: [
+        {t:"Arkadaşını ara", n:7, xp:10},
+        {t:"Makineyi yeniden çalıştır — tersine", n:18, xp:25}
+      ]
+    },
+    {
+      title: "ARAŞTIRMA",
+      color: "#000510",
+      draw: function(c,w,h) {
+        c.fillStyle="#000510"; c.fillRect(0,0,w,h);
+        // Notlar, formüller
+        c.fillStyle="rgba(0,100,200,0.1)"; c.fillRect(0,0,w,h);
+        for(var i=0;i<8;i++){
+          c.fillStyle="rgba(100,150,255,0.15)"; c.fillRect(w*0.1,h*0.1+i*h*0.1,w*0.8,2);
+          c.fillStyle="rgba(100,150,255,0.2)"; c.font="9px monospace"; c.textAlign="left";
+          var formulas=["E=mc²","ΔX·ΔP≥ħ/2","∇²ψ=0","P(A|B)=P(B|A)·P(A)/P(B)","∮E·dA=Q/ε₀"];
+          c.fillText(formulas[i%formulas.length], w*0.12, h*0.15+i*h*0.1);
+        }
+        c.fillStyle="#00d4ff"; c.font="11px Orbitron,monospace";
+        c.textAlign="center"; c.fillText("BOYUT KAPISI TESPİT EDİLDİ",w/2,h*0.88);
+      },
+      text: "Saatler geçti. Emir notlarını inceledi ve tüyler ürpertici bir şey fark etti — makinenin formülleri, kendi el yazısıyla yazılmıştı. Ama bazı sayfalar sanki başka biri yazmış gibiydi. Aynı el ama... farklı bir zihin. Sonra telefon çaldı. Arayan: KENDİSİ.",
+      choices: [
+        {t:"Telefonu aç", n:19, xp:25},
+        {t:"Kapat — aramaya devam et", n:7, xp:15}
+      ]
+    },
+    {
+      title: "MERT — KAPIDA",
+      color: "#0a0010",
+      draw: function(c,w,h) {
+        c.fillStyle="#0a0010"; c.fillRect(0,0,w,h);
+        // Kapıda duran figür
+        c.fillStyle="#050010"; c.fillRect(w*0.35,h*0.05,w*0.3,h*0.85);
+        c.strokeStyle="#200030"; c.lineWidth=2; c.strokeRect(w*0.35,h*0.05,w*0.3,h*0.85);
+        // Figür silueti
+        c.fillStyle="#0d0020";
+        c.beginPath(); c.arc(w*0.5,h*0.28,22,0,Math.PI*2); c.fill();
+        c.fillRect(w*0.44,h*0.36,24,45);
+        // Gözler — parlıyor
+        c.fillStyle="rgba(160,0,255,0.9)"; c.shadowColor="#a000ff"; c.shadowBlur=10;
+        c.beginPath(); c.arc(w*0.47,h*0.26,5,0,Math.PI*2); c.fill();
+        c.beginPath(); c.arc(w*0.53,h*0.26,5,0,Math.PI*2); c.fill();
+        c.shadowBlur=0;
+        c.fillStyle="#a000ff"; c.font="11px Orbitron,monospace";
+        c.textAlign="center"; c.fillText("HER ŞEY BİTTİ",w/2,h*0.92);
+      },
+      text: "Mert içeri girdi ve kapıyı kapattı. Oturdu. Uzun süre sessiz kaldı. Sonra Emir'e döndü ve dedi ki: 'Her şey bitti.' Sesi farklıydı. Derin. Çok katmanlı. Sanki aynı anda birden fazla kişi konuşuyordu. 'Makine seçti seni, Emir.'",
+      choices: [
+        {t:"'Ne için seçti?' diye sor", n:20, xp:20},
+        {t:"Kaç — pencereden atla", n:21, xp:15}
+      ]
+    },
+    {
+      title: "DİRENİŞ",
+      color: "#0a0000",
+      draw: function(c,w,h) {
+        c.fillStyle="#0a0000"; c.fillRect(0,0,w,h);
+        // Kapı kapanıyor
+        c.fillStyle="#0d0005"; c.fillRect(w*0.35,h*0.05,w*0.3,h*0.85);
+        c.strokeStyle="rgba(255,0,0,0.5)"; c.lineWidth=3; c.strokeRect(w*0.35,h*0.05,w*0.3,h*0.85);
+        // Çizikler kapıda
+        for(var i=0;i<5;i++){
+          c.strokeStyle="rgba(255,0,0,0.2)"; c.lineWidth=2;
+          c.beginPath(); c.moveTo(w*0.4+i*5,h*0.1); c.lineTo(w*0.37+i*5,h*0.5); c.stroke();
+        }
+        // Kilit
+        c.fillStyle="#1a0000"; c.fillRect(w*0.46,h*0.5,0.08*w,0.1*h);
+        c.fillStyle="#ff3300"; c.font="11px Orbitron,monospace";
+        c.textAlign="center"; c.fillText("TUZAK",w/2,h*0.88);
+      },
+      text: "Emir kapıyı kapatmaya çalıştı — ama Mert çoktan içeri girmişti. Hız... insanüstüydü. Emir geri çekildi. 'Neden kaçıyorsun?' dedi Mert. Sesi sakin, soğuktu. 'Makineyi çalıştırdın. Bu bir kapıydı. Ve sen kapıyı açtın.'",
+      choices: [
+        {t:"'Ne geçti kapıdan?' diye sor", n:20, xp:20},
+        {t:"Makineyi kır", n:22, xp:30}
+      ]
+    },
+    {
+      title: "KABUL",
+      color: "#000510",
+      draw: function(c,w,h) {
+        c.fillStyle="#000510"; c.fillRect(0,0,w,h);
+        // Paralel çizgiler — çok boyut
+        for(var i=0;i<12;i++){
+          var y = i*h/12;
+          var col = "hsl("+(270+i*10)+",80%,30%)";
+          c.strokeStyle=col; c.lineWidth=0.5; c.globalAlpha=0.3;
+          c.beginPath(); c.moveTo(0,y); c.lineTo(w,y+20); c.stroke();
+        }
+        c.globalAlpha=1;
+        c.fillStyle="#6600aa"; c.font="13px Orbitron,monospace";
+        c.textAlign="center"; c.fillText("YENİ GERÇEK",w/2,h*0.88);
+      },
+      text: "Emir durdu. Baktı. Kendine bakan onlarca kendisi. Ve anladı — kaçış yoktu. Makine onu seçmemişti. O makineyi yapmıştı. Ve derin içinden bir ses dedi: 'Hep böyleydi. Sen sadece hatırladın.'",
+      choices: [
+        {t:"Onlara katıl", n:17, xp:30},
+        {t:"Hepsini reddet — kendi kal", n:23, xp:35}
+      ]
+    },
+    {
+      title: "YOK ET",
+      color: "#0a0000",
+      draw: function(c,w,h) {
+        c.fillStyle="#0a0000"; c.fillRect(0,0,w,h);
+        // Kırık makine
+        for(var i=0;i<20;i++){
+          var x=Math.random()*w, y=Math.random()*h;
+          var size=Math.random()*20+5;
+          c.fillStyle="rgba(255,"+(Math.floor(Math.random()*50))+",0,"+(0.1+Math.random()*0.3)+")";
+          c.fillRect(x,y,size,size);
+        }
+        c.fillStyle="#ff4400"; c.font="14px Orbitron,monospace";
+        c.textAlign="center"; c.fillText("SİSTEM ÇÖKÜYOR",w/2,h*0.5);
+        c.fillStyle="#ff6600"; c.font="11px Orbitron,monospace";
+        c.fillText("BOYUTLAR KAPANIYOR",w/2,h*0.6);
+      },
+      text: "Emir geri döndü, laboratuara girdi ve makineye bir kez baktı. Sonra balyozu kaldırdı. İlk darbe — bir çığlık. Makinenin çığlığı mıydı, yoksa başka bir şeyin mi? İkinci darbe. Üçüncü. Fısıltılar azaldı. Azaldı. Ve...",
+      choices: [
+        {t:"Son darbeyi vur", n:24, xp:40},
+        {t:"Dur — dinle", n:25, xp:20}
+      ]
+    },
+
+    // SONLAR
+    {
+      title: "SON: KAPININ BEKÇİSİ",
+      color: "#050010",
+      draw: function(c,w,h) {
+        c.fillStyle="#050010"; c.fillRect(0,0,w,h);
+        var cx=w/2,cy=h/2;
+        for(var r=120;r>0;r-=8){c.strokeStyle="rgba(160,0,255,"+(120-r)/120*0.5+")";c.lineWidth=1;c.beginPath();c.arc(cx,cy,r,0,Math.PI*2);c.stroke();}
+        c.fillStyle="#a000ff"; c.font="16px Orbitron,monospace"; c.textAlign="center";
+        c.fillText("∞",cx,cy+6);
+        c.fillStyle="#ccc"; c.font="11px Orbitron,monospace"; c.fillText("SEN ARTIK BEKÇİSİN",cx,h*0.85);
+      },
+      text: "Emir kapıyı kapattı — tüm olasılıkları geri gönderdi. Ama bedelini ödedi. Artık o da tam bu dünyada değildi. Kapının bekçisi olmuştu. Görünmez, ama her yerde. Makineyi bir daha kimse çalıştıramadı. Çünkü artık Emir vardı — aralarında.",
+      choices: [], end: "bekci", xpBonus: 80
+    },
+    {
+      title: "SON: YENİ DÜNYA",
+      color: "#000520",
+      draw: function(c,w,h) {
+        c.fillStyle="#000520"; c.fillRect(0,0,w,h);
+        for(var i=0;i<50;i++){
+          c.fillStyle="rgba("+Math.floor(Math.random()*100)+","+Math.floor(Math.random()*100)+",255,0.4)";
+          c.beginPath(); c.arc(Math.random()*w,Math.random()*h,Math.random()*3,0,Math.PI*2); c.fill();
+        }
+        c.fillStyle="#00d4ff"; c.font="14px Orbitron,monospace"; c.textAlign="center";
+        c.fillText("YENİ DÜZEN",w/2,h*0.85);
+      },
+      text: "Emir kabul etti. Tüm olasılıklar, tüm boyutlar birleşti. Dünya değişmedi — ama Emir değişti. Artık her şeyi görüyordu. Her kararın yarattığı dalgalanmaları. Ve bir gün, başka biri de bir makine yapacaktı. Emir orada olacaktı.",
+      choices: [], end: "yenidunya", xpBonus: 60
+    },
+    {
+      title: "SON: SEÇİLMİŞ",
+      color: "#0a0505",
+      draw: function(c,w,h) {
+        c.fillStyle="#0a0505"; c.fillRect(0,0,w,h);
+        c.fillStyle="#ff4400"; c.font="18px Orbitron,monospace"; c.textAlign="center";
+        c.fillText("SEÇİLMİŞ",w/2,h*0.45);
+        c.fillStyle="#ccc"; c.font="11px Orbitron,monospace";
+        c.fillText("SON YOK, SADECE BAŞLANGIÇ",w/2,h*0.62);
+      },
+      text: "Mert Emir'e döndü ve gülümsedi. 'Makine için değil. İnsanlık için seçildin. Her 10.000 yılda bir, birisi kapıyı açar. Sen açtın. Şimdi ne yapacağın senin elinde.' Emir pencereye baktı. Güneş doğuyordu — ama mavi.",
+      choices: [], end: "secilmis", xpBonus: 100
+    },
+    {
+      title: "SON: KAÇIŞ",
+      color: "#050000",
+      draw: function(c,w,h) {
+        c.fillStyle="#050000"; c.fillRect(0,0,w,h);
+        c.fillStyle="#333"; c.fillRect(0,h*0.7,w,h*0.3);
+        c.strokeStyle="#1a0000"; c.strokeRect(0,h*0.7,w,h*0.3);
+        for(var i=0;i<w;i+=20){c.strokeStyle="rgba(50,0,0,0.3)";c.beginPath();c.moveTo(i,h*0.7);c.lineTo(i,h);c.stroke();}
+        c.fillStyle="#ff6600"; c.font="13px Orbitron,monospace"; c.textAlign="center";
+        c.fillText("ÖZGÜR MÜ?",w/2,h*0.88);
+      },
+      text: "Pencereden atladı — ikinci kat. Düştü, kalktı. Koştu. Şehir dışına çıktı. Yıllarca saklandı. Ama her baktığı aynada kendisini gördü — ama hep biraz farklı. Makine onu bulamamıştı. Ya da bulmak istememişti.",
+      choices: [], end: "kacis", xpBonus: 40
+    },
+    {
+      title: "SON: KIRILMA",
+      color: "#0a0000",
+      draw: function(c,w,h) {
+        c.fillStyle="#0a0000"; c.fillRect(0,0,w,h);
+        for(var i=0;i<30;i++){
+          var x=Math.random()*w,y=Math.random()*h;
+          c.strokeStyle="rgba(255,50,0,0.2)"; c.lineWidth=1;
+          c.beginPath(); c.moveTo(x,y); c.lineTo(x+(Math.random()-0.5)*80,y+(Math.random()-0.5)*80); c.stroke();
+        }
+        c.fillStyle="#ff3300"; c.font="13px Orbitron,monospace"; c.textAlign="center";
+        c.fillText("HER ŞEY BİTTİ",w/2,h*0.88);
+      },
+      text: "Son darbe. Makine patladı. Bir flaş. Ve sessizlik. Emir yerde oturuyordu. Fısıltılar kesilmişti. Mert... kaybolmuştu. Dışarıya çıktı. Normal bir sabah. Kuşlar, trafik. Ama Emir biliyordu — bir şeyi kırmıştı. Ve o şey geri gelmezdi.",
+      choices: [], end: "kirilma", xpBonus: 70
+    },
+    {
+      title: "SON: SON KAPIYA DOĞRU",
+      color: "#050510",
+      draw: function(c,w,h) {
+        c.fillStyle="#050510"; c.fillRect(0,0,w,h);
+        var cx=w/2,cy=h/2;
+        c.fillStyle="rgba(100,0,200,0.15)"; c.fillRect(0,0,w,h);
+        c.strokeStyle="rgba(100,0,200,0.5)"; c.lineWidth=2;
+        c.strokeRect(w*0.3,h*0.2,w*0.4,h*0.6);
+        c.fillStyle="#a000ff"; c.font="13px Orbitron,monospace"; c.textAlign="center";
+        c.fillText("OTÖTEKİ KAPIYA",cx,h*0.88);
+      },
+      text: "Durdu. Dinledi. Fısıltılar değişmişti — artık çığlık değil, bir şarkıydı. Ve Emir anladı. Makine kırılmamıştı. Değişmişti. Bir sonraki boyuta kapı açmıştı. Emir eşiğe adım attı. Ve adım attığı anda, arkasında laboratuar —  kayboldu.",
+      choices: [], end: "oteki", xpBonus: 90
+    }
+  ];
+
+  var canvas = document.createElement('canvas');
+  canvas.width = 560; canvas.height = 280;
+  document.getElementById('sceneImg').appendChild(canvas);
+  var ctx = canvas.getContext('2d');
+
+  function drawScene(sc) {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    sc.draw(ctx, canvas.width, canvas.height);
+  }
+
+  function typeText(text, callback) {
+    var el = document.getElementById('storyText');
+    el.innerText = '';
+    el.classList.add('typing');
+    var i = 0;
+    var speed = text.length > 200 ? 18 : 25;
+    var timer = setInterval(function() {
+      el.innerText += text[i];
+      i++;
+      if(i >= text.length) {
+        clearInterval(timer);
+        el.classList.remove('typing');
+        if(callback) callback();
+      }
+    }, speed);
+  }
+
+  function glitchEffect() {
+    var el = document.getElementById('glitch');
+    el.style.background = 'rgba(160,0,255,0.08)';
+    el.style.opacity = '1';
+    setTimeout(function() { el.style.opacity='0'; }, 80);
+    setTimeout(function() { el.style.opacity='1'; el.style.background='rgba(255,0,0,0.05)'; }, 120);
+    setTimeout(function() { el.style.opacity='0'; }, 200);
+  }
+
+  function loadScene(idx) {
+    var sc = SCENES[idx];
+    chapter = idx;
+
+    var prog = Math.min(100, (idx / (SCENES.length-1)) * 100);
+    document.getElementById('progFill').style.width = prog + '%';
+    document.getElementById('sceneTitle').innerText = sc.title;
+
+    glitchEffect();
+    drawScene(sc);
+
+    if(sc.end) {
+      document.getElementById('choicesBox').innerHTML = '';
+      typeText(sc.text, function() {
+        var bonus = sc.xpBonus || 50;
+        addXP(bonus, sc.end + ' sonu');
+        setTimeout(function() {
+          document.getElementById('endScreen').style.display = 'block';
+          var titles = {
+            bekci: 'KAPININ BEKÇİSİ', yenidunya: 'YENİ DÜNYA',
+            secilmis: 'SEÇİLMİŞ', kacis: 'KAÇIŞ',
+            kirilma: 'KIRILMA', oteki: 'ÖTEKİ KAPI'
+          };
+          var descs = {
+            bekci: 'Sen kapıyı kapattın — ama içinde kaldın.',
+            yenidunya: 'Yeni bir düzen. Sen merkezindesin.',
+            secilmis: 'Her şeyin başlangıcısın. Mavi güneş doğuyor.',
+            kacis: 'Özgür müsün? Yoksa sadece başka bir kafeste mi?',
+            kirilma: 'Kırdın. Ama ne kırdın tam olarak?',
+            oteki: 'Öte kapıya adım attın. Dönüş yok.'
+          };
+          document.getElementById('endTitle').innerText = titles[sc.end] || 'SON';
+          document.getElementById('endDesc').innerText = descs[sc.end] || '';
+          document.getElementById('endScreen').style.display = 'block';
+        }, 500);
+      });
+      return;
+    }
+
+    typeText(sc.text, function() {
+      var box = document.getElementById('choicesBox');
+      box.innerHTML = '';
+      sc.choices.forEach(function(ch) {
+        var btn = document.createElement('button');
+        btn.className = 'choice-btn';
+        btn.innerText = ch.t;
+        btn.onclick = function() {
+          if(ch.xp) addXP(ch.xp, 'Işınlanma');
+          choices_made.push(idx);
+          document.getElementById('choicesBox').innerHTML = '';
+          document.getElementById('storyText').innerText = '';
+          setTimeout(function() { loadScene(ch.n); }, 300);
+        };
+        box.appendChild(btn);
+      });
+    });
+  }
+
+  function restart() {
+    document.getElementById('endScreen').style.display = 'none';
+    choices_made = [];
+    loadScene(0);
+  }
+
+  loadScene(0);
+"""
+    return page("IŞINLANMA", css, body, js)
+
 
 
 # ===== HORROR =====
@@ -1397,6 +2064,9 @@ def arcade(): track("arcade"); return arcade_page()
 
 @app.route("/neon-rush")
 def neonrush(): track("neonrush"); return neonrush_page()
+
+@app.route("/isinlanma")
+def isinlanma(): track("isinlanma"); return isinlanma_page()
 
 @app.route("/horror")
 def horror(): track("horror"); return horror_page()
