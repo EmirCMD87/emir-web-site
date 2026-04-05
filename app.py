@@ -1013,7 +1013,7 @@ body{background:#000!important;}
 .scene-box{width:100%;max-width:600px;min-height:320px;position:relative;border-radius:16px;overflow:hidden;margin-bottom:24px;background:#0a0005;}
 .scene-img{width:100%;height:280px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;}
 .scene-title{font-family:'Orbitron';font-size:0.7rem;color:#444;letter-spacing:3px;margin-bottom:8px;}
-.story-text{color:#ccc;font-size:1rem;line-height:1.8;font-family:'Rajdhani';width:100%;max-width:580px;margin-bottom:20px;min-height:80px;text-align:left;}
+.story-text{color:#ccc;font-size:1rem;line-height:1.8;font-family:'Rajdhani';width:100%;max-width:580px;margin-bottom:20px;min-height:80px;text-align:left;white-space:pre-wrap;word-break:break-word;}
 .choices{display:flex;flex-direction:column;gap:10px;width:100%;max-width:580px;}
 .choice-btn{background:rgba(80,0,120,0.2);border:1px solid rgba(160,0,255,0.3);color:#ccc;padding:14px 20px;border-radius:8px;cursor:pointer;font-family:'Rajdhani';font-size:0.95rem;text-align:left;transition:all 0.2s;}
 .choice-btn:hover{background:rgba(160,0,255,0.2);border-color:#a000ff;color:#fff;}
@@ -1579,12 +1579,12 @@ body{background:#000!important;}
 
   function typeText(text, callback) {
     var el = document.getElementById('storyText');
-    el.innerText = '';
+    el.textContent = '';
     el.classList.add('typing');
     var i = 0;
-    var speed = text.length > 200 ? 18 : 25;
+    var speed = 22;
     var timer = setInterval(function() {
-      el.innerText += text[i];
+      el.textContent += text.charAt(i);
       i++;
       if(i >= text.length) {
         clearInterval(timer);
