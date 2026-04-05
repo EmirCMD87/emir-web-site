@@ -2132,12 +2132,13 @@ def admin():
         action = request.form.get("action")
         if action == "anons":
             a = load_anons()
-            text = request.form.get("text", "")
-            active = request.form.get("active") == "1"
-            save_anons(text, active, a.get("maintenance", False))
+            a["text"] = request.form.get("text", "")
+            a["active"] = request.form.get("active") == "1"
+            save_anons(a)
         elif action == "maintenance":
             a = load_anons()
-            save_anons(a.get("text",""), a.get("active",False), not a.get("maintenance", False))
+            a["maintenance"] = not a.get("maintenance", False)
+            save_anons(a)
         elif action == "del_yorum":
             yid = request.form.get("yid", -1)
             del_yorum(yid)
