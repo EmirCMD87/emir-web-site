@@ -9,7 +9,7 @@ app = Flask(__name__)
 
 # ===== JSONBin AYARLARI =====
 JSONBIN_KEY = "$2a$10$/QqCTf0Zg.avUqA9tWZFY.jchh29FSMaVeEH5pKsO8CiVwieuKTZO"
-JSONBIN_BIN = "69d236bc856a682189ff5d81"
+JSONBIN_BIN = "69d23c9c36566621a87ed95d"
 JSONBIN_URL = "https://api.jsonbin.io/v3/b/" + JSONBIN_BIN
 ADMIN_PASSWORD = "emir2011"
 _lock = threading.Lock()
@@ -21,7 +21,6 @@ def jbin_load():
         req = urllib.request.Request(
             "https://api.jsonbin.io/v3/b/" + JSONBIN_BIN + "/latest"
         )
-        req.add_header("X-Master-Key", JSONBIN_KEY)
         req.add_header("X-Bin-Meta", "false")
         with urllib.request.urlopen(req, timeout=8, context=ctx) as r:
             raw = r.read().decode("utf-8")
