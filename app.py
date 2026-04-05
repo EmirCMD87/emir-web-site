@@ -18,11 +18,14 @@ def jbin_load():
     try:
         req = urllib.request.Request(
             JSONBIN_URL + "/latest",
-            headers={"X-Master-Key": JSONBIN_KEY}
+            headers={
+                "X-Master-Key": JSONBIN_KEY,
+                "X-Bin-Meta": "false"
+            }
         )
-        with urllib.request.urlopen(req, timeout=6) as r:
+        with urllib.request.urlopen(req, timeout=8) as r:
             data = json.loads(r.read().decode())
-            return data.get("record", {})
+            return data
     except Exception as e:
         print("jbin_load error:", e)
         return {}
@@ -35,11 +38,12 @@ def jbin_save(data):
             data=body,
             headers={
                 "X-Master-Key": JSONBIN_KEY,
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "X-Bin-Versioning": "false"
             },
             method="PUT"
         )
-        with urllib.request.urlopen(req, timeout=6) as r:
+        with urllib.request.urlopen(req, timeout=8) as r:
             pass
     except Exception as e:
         print("jbin_save error:", e)
