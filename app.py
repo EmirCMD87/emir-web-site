@@ -2,106 +2,58 @@ from flask import Flask, request
 import os
 import json
 import threading
-import urllib.request
 from datetime import datetime, date, timedelta
 
 app = Flask(__name__)
 
-# ===== JSONBin AYARLARI =====
-JSONBIN_KEY = "$2a$10$/QqCTf0Zg.avUqA9tWZFY.jchh29FSMaVeEH5pKsO8CiVwieuKTZO"
-JSONBIN_BIN = "69d23c9c36566621a87ed95d"
-JSONBIN_URL = "https://api.jsonbin.io/v3/b/" + JSONBIN_BIN
 ADMIN_PASSWORD = "emir2011"
 _lock = threading.Lock()
 
-def jbin_load():
-    try:
-        import ssl
-        ctx = ssl.create_default_context()
-        req = urllib.request.Request(
-            "https://api.jsonbin.io/v3/b/" + JSONBIN_BIN + "/latest"
-        )
-        req.add_header("X-Bin-Meta", "false")
-        with urllib.request.urlopen(req, timeout=8, context=ctx) as r:
-            raw = r.read().decode("utf-8")
-            data = json.loads(raw)
-            if isinstance(data, dict) and "record" in data:
-                return data["record"]
-            return data
-    except Exception as e:
-        print("jbin_load error:", e)
-        return {}
-
-def jbin_save(data):
-    try:
-        import ssl
-        ctx = ssl.create_default_context()
-        body = json.dumps(data, ensure_ascii=False).encode("utf-8")
-        req = urllib.request.Request(
-            "https://api.jsonbin.io/v3/b/" + JSONBIN_BIN,
-            data=body,
-            method="PUT"
-        )
-        req.add_header("X-Master-Key", JSONBIN_KEY)
-        req.add_header("Content-Type", "application/json")
-        req.add_header("X-Bin-Versioning", "false")
-        with urllib.request.urlopen(req, timeout=8, context=ctx) as r:
-            r.read()
-    except Exception as e:
-        print("jbin_save error:", e)
+# ===== BELLEK TABANLI VERİ =====
+_db = {
+    "total": 0, "daily": {}, "monthly": {}, "pages": {},
+    "yorumlar": [], "xp_scores": [],
+    "anons": {"text": "", "active": False, "maintenance": False}
+}
 
 def get_db():
-    d = jbin_load()
-    if not d:
-        d = {}
-    d.setdefault("total", 0)
-    d.setdefault("daily", {})
-    d.setdefault("monthly", {})
-    d.setdefault("pages", {})
-    d.setdefault("yorumlar", [])
-    d.setdefault("xp_scores", [])
-    d.setdefault("anons", {"text": "", "active": False, "maintenance": False})
-    return d
+    return _db
 
 def save_db(d):
-    threading.Thread(target=jbin_save, args=(d,), daemon=True).start()
+    pass  # Bellekte tutuluyor
 
 def track(page_name):
     with _lock:
-        d = get_db()
         today = str(date.today()); month = today[:7]
-        d["total"] += 1
-        d["daily"][today] = d["daily"].get(today, 0) + 1
-        d["monthly"][month] = d["monthly"].get(month, 0) + 1
-        d["pages"][page_name] = d["pages"].get(page_name, 0) + 1
-        save_db(d)
+        _db["total"] += 1
+        _db["daily"][today] = _db["daily"].get(today, 0) + 1
+        _db["monthly"][month] = _db["monthly"].get(month, 0) + 1
+        _db["pages"][page_name] = _db["pages"].get(page_name, 0) + 1
 
 def load_stats():
-    d = get_db()
-    return {"total": d["total"], "daily": d["daily"], "monthly": d["monthly"], "pages": d["pages"]}
+    return {"total": _db["total"], "daily": _db["daily"], "monthly": _db["monthly"], "pages": _db["pages"]}
 
 def load_yorumlar():
-    return get_db().get("yorumlar", [])
+    return _db["yorumlar"]
 
 def save_yorumlar(y):
-    d = get_db(); d["yorumlar"] = y; save_db(d)
+    _db["yorumlar"] = y
 
 def load_anons():
-    return get_db().get("anons", {"text": "", "active": False, "maintenance": False})
+    return _db["anons"]
 
 def save_anons(a):
-    d = get_db(); d["anons"] = a; save_db(d)
+    _db["anons"] = a
 
 def load_xp():
-    return get_db().get("xp_scores", [])
+    return _db["xp_scores"]
 
 def save_xp(x):
-    d = get_db(); d["xp_scores"] = x; save_db(d)
+    _db["xp_scores"] = x
 
 def update_xp(name, xp):
     with _lock:
-        d = get_db()
-        scores = d.get("xp_scores", [])
+        scores = _db["xp_scores"]
         found = False
         for s in scores:
             if s["name"] == name:
@@ -110,8 +62,8 @@ def update_xp(name, xp):
         if not found:
             scores.append({"name": name, "xp": xp})
         scores.sort(key=lambda x: -x["xp"])
-        d["xp_scores"] = scores[:50]
-        save_db(d)
+        _db["xp_scores"] = scores[:50]
+
 # ============ YARDIMCI FONKSİYON ============
 def page(title, extra_css, body_html, extra_js, color="var(--neon-orange)"):
     """Tüm sayfalar bu fonksiyonla üretiliyor — tek CSS/JS kaynağı"""
