@@ -16,15 +16,18 @@ _lock = threading.Lock()
 
 def jbin_load():
     try:
+        import ssl
+        ctx = ssl.create_default_context()
         req = urllib.request.Request(
-            JSONBIN_URL + "/latest",
-            headers={
-                "X-Master-Key": JSONBIN_KEY,
-                "X-Bin-Meta": "false"
-            }
+            "https://api.jsonbin.io/v3/b/" + JSONBIN_BIN + "/latest"
         )
-        with urllib.request.urlopen(req, timeout=8) as r:
-            data = json.loads(r.read().decode())
+        req.add_header("X-Master-Key", JSONBIN_KEY)
+        req.add_header("X-Bin-Meta", "false")
+        with urllib.request.urlopen(req, timeout=8, context=ctx) as r:
+            raw = r.read().decode("utf-8")
+            data = json.loads(raw)
+            if isinstance(data, dict) and "record" in data:
+                return data["record"]
             return data
     except Exception as e:
         print("jbin_load error:", e)
@@ -32,19 +35,19 @@ def jbin_load():
 
 def jbin_save(data):
     try:
+        import ssl
+        ctx = ssl.create_default_context()
         body = json.dumps(data, ensure_ascii=False).encode("utf-8")
         req = urllib.request.Request(
-            JSONBIN_URL,
+            "https://api.jsonbin.io/v3/b/" + JSONBIN_BIN,
             data=body,
-            headers={
-                "X-Master-Key": JSONBIN_KEY,
-                "Content-Type": "application/json",
-                "X-Bin-Versioning": "false"
-            },
             method="PUT"
         )
-        with urllib.request.urlopen(req, timeout=8) as r:
-            pass
+        req.add_header("X-Master-Key", JSONBIN_KEY)
+        req.add_header("Content-Type", "application/json")
+        req.add_header("X-Bin-Versioning", "false")
+        with urllib.request.urlopen(req, timeout=8, context=ctx) as r:
+            r.read()
     except Exception as e:
         print("jbin_save error:", e)
 
