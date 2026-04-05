@@ -3,7 +3,7 @@ import os
 import json
 import threading
 import urllib.request
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 app = Flask(__name__)
 
@@ -2191,19 +2191,18 @@ def admin():
     today = str(date.today())
     month = today[:7]
 
-    from datetime import timedelta
 
     days7 = []
     for i in range(6, -1, -1):
-        from datetime import date as dt2
-        d = str(dt2.today() - timedelta(days=i))
+        
+        d = str(date.today() - timedelta(days=i))
         days7.append({"d": d[5:], "v": s["daily"].get(d, 0)})
     max7 = max([d["v"] for d in days7] + [1])
 
     months6 = []
-    from datetime import date as dt3
+    
     for i in range(5, -1, -1):
-        m_date = dt3.today().replace(day=1)
+        m_date = date.today().replace(day=1)
         for _ in range(i):
             m_date = (m_date.replace(day=1) - timedelta(days=1)).replace(day=1)
         mk = str(m_date)[:7]
