@@ -11,7 +11,7 @@ app = Flask(__name__)
 JSONBIN_KEY = "$2a$10$/QqCTf0Zg.avUqA9tWZFY.jchh29FSMaVeEH5pKsO8CiVwieuKTZO"
 JSONBIN_BIN = "69d236bc856a682189ff5d81"
 JSONBIN_URL = "https://api.jsonbin.io/v3/b/" + JSONBIN_BIN
-ADMIN_PASSWORD = "cano2024"
+ADMIN_PASSWORD = "emir2011"
 _lock = threading.Lock()
 
 def jbin_load():
