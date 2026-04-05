@@ -1,157 +1,111 @@
 from flask import Flask, request
 import os
 import json
+import threading
+import urllib.request
 from datetime import datetime, date
-import psycopg2
-from psycopg2.extras import RealDictCursor
 
 app = Flask(__name__)
 
+# ===== JSONBin AYARLARI =====
+JSONBIN_KEY = "$2a$10$/QqCTf0Zg.avUqA9tWZFY.jchh29FSMaVeEH5pKsO8CiVwieuKTZO"
+JSONBIN_BIN = "69d236bc856a682189ff5d81"
+JSONBIN_URL = "https://api.jsonbin.io/v3/b/" + JSONBIN_BIN
 ADMIN_PASSWORD = "cano2024"
+_lock = threading.Lock()
 
-# ===== POSTGRESQL BAGLANTISI =====
-def get_db():
-    return psycopg2.connect(os.environ.get("DATABASE_URL"), sslmode="require")
-
-def init_db():
+def jbin_load():
     try:
-        conn = get_db()
-        cur = conn.cursor()
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS stats (
-                key TEXT PRIMARY KEY,
-                value TEXT NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS yorumlar (
-                id SERIAL PRIMARY KEY,
-                isim TEXT NOT NULL,
-                metin TEXT NOT NULL,
-                puan INTEGER DEFAULT 5,
-                tarih TEXT NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS anons (
-                id INTEGER PRIMARY KEY DEFAULT 1,
-                text TEXT DEFAULT \'\',
-                active BOOLEAN DEFAULT FALSE,
-                maintenance BOOLEAN DEFAULT FALSE
-            );
-            CREATE TABLE IF NOT EXISTS xp_scores (
-                name TEXT PRIMARY KEY,
-                xp INTEGER NOT NULL
-            );
-        """)
-        cur.execute("INSERT INTO anons (id) VALUES (1) ON CONFLICT (id) DO NOTHING;")
-        conn.commit(); cur.close(); conn.close()
-    except Exception as e:
-        print("DB init error:", e)
-
-# ===== STATS =====
-def load_stats():
-    try:
-        conn = get_db(); cur = conn.cursor()
-        cur.execute("SELECT value FROM stats WHERE key = \'data\'")
-        row = cur.fetchone()
-        cur.close(); conn.close()
-        if row: return json.loads(row[0])
-    except: pass
-    return {"total": 0, "daily": {}, "monthly": {}, "pages": {}}
-
-def save_stats(s):
-    try:
-        conn = get_db(); cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO stats (key, value) VALUES (\'data\', %s) ON CONFLICT (key) DO UPDATE SET value = %s",
-            (json.dumps(s), json.dumps(s))
+        req = urllib.request.Request(
+            JSONBIN_URL + "/latest",
+            headers={"X-Master-Key": JSONBIN_KEY}
         )
-        conn.commit(); cur.close(); conn.close()
+        with urllib.request.urlopen(req, timeout=6) as r:
+            data = json.loads(r.read().decode())
+            return data.get("record", {})
     except Exception as e:
-        print("save_stats error:", e)
+        print("jbin_load error:", e)
+        return {}
+
+def jbin_save(data):
+    try:
+        body = json.dumps(data, ensure_ascii=False).encode("utf-8")
+        req = urllib.request.Request(
+            JSONBIN_URL,
+            data=body,
+            headers={
+                "X-Master-Key": JSONBIN_KEY,
+                "Content-Type": "application/json"
+            },
+            method="PUT"
+        )
+        with urllib.request.urlopen(req, timeout=6) as r:
+            pass
+    except Exception as e:
+        print("jbin_save error:", e)
+
+def get_db():
+    d = jbin_load()
+    if not d:
+        d = {}
+    d.setdefault("total", 0)
+    d.setdefault("daily", {})
+    d.setdefault("monthly", {})
+    d.setdefault("pages", {})
+    d.setdefault("yorumlar", [])
+    d.setdefault("xp_scores", [])
+    d.setdefault("anons", {"text": "", "active": False, "maintenance": False})
+    return d
+
+def save_db(d):
+    threading.Thread(target=jbin_save, args=(d,), daemon=True).start()
 
 def track(page_name):
-    s = load_stats()
-    today = str(date.today()); month = today[:7]
-    s["total"] = s.get("total", 0) + 1
-    s["daily"][today] = s["daily"].get(today, 0) + 1
-    s["monthly"][month] = s["monthly"].get(month, 0) + 1
-    s["pages"][page_name] = s["pages"].get(page_name, 0) + 1
-    save_stats(s)
+    with _lock:
+        d = get_db()
+        today = str(date.today()); month = today[:7]
+        d["total"] += 1
+        d["daily"][today] = d["daily"].get(today, 0) + 1
+        d["monthly"][month] = d["monthly"].get(month, 0) + 1
+        d["pages"][page_name] = d["pages"].get(page_name, 0) + 1
+        save_db(d)
 
-# ===== YORUMLAR =====
+def load_stats():
+    d = get_db()
+    return {"total": d["total"], "daily": d["daily"], "monthly": d["monthly"], "pages": d["pages"]}
+
 def load_yorumlar():
-    try:
-        conn = get_db(); cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT * FROM yorumlar ORDER BY id DESC")
-        rows = [dict(r) for r in cur.fetchall()]
-        cur.close(); conn.close()
-        return rows
-    except: return []
+    return get_db().get("yorumlar", [])
 
-def save_yorum(isim, metin, puan):
-    try:
-        conn = get_db(); cur = conn.cursor()
-        tarih = datetime.now().strftime("%d.%m.%Y %H:%M")
-        cur.execute(
-            "INSERT INTO yorumlar (isim, metin, puan, tarih) VALUES (%s, %s, %s, %s)",
-            (isim, metin, puan, tarih)
-        )
-        conn.commit(); cur.close(); conn.close()
-        return True
-    except Exception as e:
-        print("save_yorum error:", e)
-        return False
+def save_yorumlar(y):
+    d = get_db(); d["yorumlar"] = y; save_db(d)
 
-def del_yorum(yid):
-    try:
-        conn = get_db(); cur = conn.cursor()
-        cur.execute("DELETE FROM yorumlar WHERE id = %s", (yid,))
-        conn.commit(); cur.close(); conn.close()
-    except: pass
-
-# ===== ANONS =====
 def load_anons():
-    try:
-        conn = get_db(); cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT * FROM anons WHERE id = 1")
-        row = cur.fetchone()
-        cur.close(); conn.close()
-        if row: return dict(row)
-    except: pass
-    return {"text": "", "active": False, "maintenance": False}
+    return get_db().get("anons", {"text": "", "active": False, "maintenance": False})
 
-def save_anons(text, active, maintenance):
-    try:
-        conn = get_db(); cur = conn.cursor()
-        cur.execute(
-            "UPDATE anons SET text=%s, active=%s, maintenance=%s WHERE id=1",
-            (text, active, maintenance)
-        )
-        conn.commit(); cur.close(); conn.close()
-    except Exception as e:
-        print("save_anons error:", e)
+def save_anons(a):
+    d = get_db(); d["anons"] = a; save_db(d)
 
-# ===== XP SIRALAMASI =====
 def load_xp():
-    try:
-        conn = get_db(); cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT * FROM xp_scores ORDER BY xp DESC LIMIT 50")
-        rows = [dict(r) for r in cur.fetchall()]
-        cur.close(); conn.close()
-        return rows
-    except: return []
+    return get_db().get("xp_scores", [])
+
+def save_xp(x):
+    d = get_db(); d["xp_scores"] = x; save_db(d)
 
 def update_xp(name, xp):
-    try:
-        conn = get_db(); cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO xp_scores (name, xp) VALUES (%s, %s) ON CONFLICT (name) DO UPDATE SET xp = GREATEST(xp_scores.xp, %s)",
-            (name, xp, xp)
-        )
-        conn.commit(); cur.close(); conn.close()
-    except Exception as e:
-        print("update_xp error:", e)
-
-init_db()
-
+    with _lock:
+        d = get_db()
+        scores = d.get("xp_scores", [])
+        found = False
+        for s in scores:
+            if s["name"] == name:
+                if xp > s["xp"]: s["xp"] = xp
+                found = True; break
+        if not found:
+            scores.append({"name": name, "xp": xp})
+        scores.sort(key=lambda x: -x["xp"])
+        d["xp_scores"] = scores[:50]
+        save_db(d)
 # ============ YARDIMCI FONKSİYON ============
 def page(title, extra_css, body_html, extra_js, color="var(--neon-orange)"):
     """Tüm sayfalar bu fonksiyonla üretiliyor — tek CSS/JS kaynağı"""
