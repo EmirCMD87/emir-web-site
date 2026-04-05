@@ -2001,19 +2001,20 @@ def yorumlar():
     if anons.get("active") and anons.get("text"):
         anons_html = f"<div style=\"position:fixed;top:70px;left:50%;transform:translateX(-50%);background:rgba(255,69,0,0.15);border:1px solid var(--neon-orange);padding:10px 24px;border-radius:50px;z-index:999;font-family:Orbitron,sans-serif;font-size:0.75rem;color:#ff4500;\">&#128226; {anons['text']}</div>"
 
-    cards = ""
+    card_parts = []
     for y in reversed(yorumlar_list):
         stars = "&#11088;" * y.get("puan", 5)
-        cards += (
+        card_parts.append(
             "<div style='background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);"
             "border-radius:14px;padding:20px;margin-bottom:14px;'>"
-            f"<div style='display:flex;justify-content:space-between;margin-bottom:8px;'>"
-            f"<span style='font-family:Orbitron,sans-serif;font-size:0.82rem;color:#fff;'>{y['isim']}</span>"
-            f"<span style='font-size:0.8rem;'>{stars}</span></div>"
-            f"<div style='color:#aaa;font-size:0.9rem;line-height:1.6;'>{y['metin']}</div>"
-            f"<div style='color:#333;font-size:0.65rem;margin-top:8px;font-family:Orbitron,sans-serif;'>{y['tarih']}</div>"
+            "<div style='display:flex;justify-content:space-between;margin-bottom:8px;'>"
+            "<span style='font-family:Orbitron,sans-serif;font-size:0.82rem;color:#fff;'>" + y["isim"] + "</span>"
+            "<span style='font-size:0.8rem;'>" + stars + "</span></div>"
+            "<div style='color:#aaa;font-size:0.9rem;line-height:1.6;'>" + y["metin"] + "</div>"
+            "<div style='color:#333;font-size:0.65rem;margin-top:8px;font-family:Orbitron,sans-serif;'>" + y["tarih"] + "</div>"
             "</div>"
         )
+    cards = "".join(card_parts)
     if not cards:
         cards = "<div style='color:#333;text-align:center;font-family:Orbitron,sans-serif;font-size:0.8rem;padding:40px;'>Henuz yorum yok. İlk sen yaz!</div>"
 
@@ -2199,23 +2200,25 @@ def admin():
         for i, sc in enumerate(xp_scores[:20])
     ) or "<div style='color:#333;font-size:0.78rem;padding:12px 0;'>Henuz kayit yok.</div>"
 
-    yorum_html = "".join(
-        f"<div style='background:#0d0d0d;border:1px solid #1a1a1a;border-radius:10px;padding:14px;margin-bottom:10px;'>"
-        f"<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;'>"
-        f"<span style='font-family:Orbitron,monospace;font-size:0.78rem;color:#fff;'>{y['isim']}</span>"
-        f"<div style='display:flex;align-items:center;gap:8px;'>"
-        f"<span style='font-size:0.75rem;color:#555;'>{y['tarih']}</span>"
-        f"<form method='post' style='display:inline;'>"
-        f"<input type='hidden' name='action' value='del_yorum'>"
-        f"<input type='hidden' name='idx' value='{i}'>"
-        f"<input type='hidden' name='pw' value='{pw}' form='dform{i}'>"
-        f"<button type='submit' style='background:#cc0000;border:none;color:#fff;padding:3px 10px;border-radius:6px;cursor:pointer;font-size:0.65rem;'>SİL</button>"
-        f"</form></div></div>"
-        f"<div style='color:#aaa;font-size:0.88rem;'>{y['metin']}</div>"
-        f"<div style='color:#444;font-size:0.65rem;margin-top:4px;'>{'&#11088;'*y.get('puan',5)}</div>"
-        f"</div>"
-        for i, y in enumerate(reversed(yorumlar))
-    ) or "<div style='color:#333;font-size:0.78rem;padding:12px 0;'>Henuz yorum yok.</div>"
+    yorum_parts = []
+    for i, y in enumerate(reversed(yorumlar)):
+        stars = "&#11088;" * y.get("puan", 5)
+        yorum_parts.append(
+            "<div style='background:#0d0d0d;border:1px solid #1a1a1a;border-radius:10px;padding:14px;margin-bottom:10px;'>"
+            "<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;'>"
+            "<span style='font-family:Orbitron,monospace;font-size:0.78rem;color:#fff;'>" + y["isim"] + "</span>"
+            "<div style='display:flex;align-items:center;gap:8px;'>"
+            "<span style='font-size:0.75rem;color:#555;'>" + y["tarih"] + "</span>"
+            "<form method='post' action='/admin?pw=" + pw + "' style='display:inline;'>"
+            "<input type='hidden' name='action' value='del_yorum'>"
+            "<input type='hidden' name='idx' value='" + str(i) + "'>"
+            "<button type='submit' style='background:#cc0000;border:none;color:#fff;padding:3px 10px;border-radius:6px;cursor:pointer;font-size:0.65rem;'>SIL</button>"
+            "</form></div></div>"
+            "<div style='color:#aaa;font-size:0.88rem;'>" + y["metin"] + "</div>"
+            "<div style='color:#444;font-size:0.65rem;margin-top:4px;'>" + stars + "</div>"
+            "</div>"
+        )
+    yorum_html = "".join(yorum_parts) if yorum_parts else "<div style='color:#333;font-size:0.78rem;padding:12px 0;'>Henuz yorum yok.</div>"
 
     maint_color = "#cc0000" if anons.get("maintenance") else "#1a1a1a"
     maint_text = "BAKIMI KAPAT" if anons.get("maintenance") else "BAKIMA AL"
